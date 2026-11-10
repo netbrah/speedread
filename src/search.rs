@@ -17,6 +17,7 @@ use grep_searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkContex
 use parking_lot::Mutex;
 use rayon::prelude::*;
 
+use crate::context::{self, ScopeIndex};
 use crate::engine::Engine;
 use crate::outline::{Kind, Outline, split_segments};
 use crate::render::{self, push_num};
@@ -35,6 +36,9 @@ pub enum Output {
     Symbols,
     /// Paths with match counts only.
     Files,
+    /// Matching lines plus the header lines of the syntax that encloses
+    /// them (loops, conditions, match arms …).
+    Scopes,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -48,7 +52,11 @@ pub enum Case {
 }
 
 /// A loaded file and its outline, prepared for rendering.
-type Prepared = (Option<Arc<Source>>, Option<Arc<Outline>>);
+type Prepared = (
+    Option<Arc<Source>>,
+    Option<Arc<Outline>>,
+    Option<ScopeIndex>,
+);
 /// A definition hit: source, outline, symbol index.
 pub type DefHit = (Arc<Source>, Arc<Outline>, usize);
 
@@ -380,11 +388,13 @@ fn owner(o: &Outline, line0: u32) -> Option<usize> {
     o.innermost_at(line0)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_file(
     e: &Engine,
     f: &FileHits,
     src: Option<&Arc<Source>>,
     o: Option<&Arc<Outline>>,
+    scopes: Option<&ScopeIndex>,
     output: Output,
     matcher: &RegexMatcher,
     numbers_budget: usize,
@@ -406,6 +416,8 @@ fn render_file(
     let mut shown_syms: Vec<usize> = Vec::new();
     let mut cur: Option<Option<usize>> = None;
     let mut shown_matches = 0usize;
+    // Lines printed in this block, so shared ancestors appear once.
+    let mut printed: std::collections::HashSet<u32> = hits.iter().map(|h| h.line).collect();
     for h in &hits {
         if out.len() > numbers_budget {
             let rest = f.matches.saturating_sub(shown_matches);
@@ -451,6 +463,27 @@ fn render_file(
                 symbol_header(&mut out, o, i);
             }
             cur = Some(sym);
+        }
+        if let (Some(index), Some(src)) = (scopes, src) {
+            let row = h.line.saturating_sub(1);
+            let mut rows = context::scope_rows(index, src, o.map(|o| &**o), row);
+            rows.retain(|r| !printed.contains(&(r + 1)));
+            let (rows, dropped) = context::cap(rows);
+            for (k, r) in rows.iter().enumerate() {
+                printed.insert(r + 1);
+                render::push_lines(
+                    &mut out,
+                    src,
+                    *r as usize,
+                    *r as usize,
+                    true,
+                    300,
+                    usize::MAX,
+                );
+                if k == 0 && dropped > 0 {
+                    out.push_str(&format!("⋯ {} more\n", plural(dropped, "level")));
+                }
+            }
         }
         push_hit_line(&mut out, h, matcher);
         if h.is_match {
@@ -556,6 +589,19 @@ fn search_request(e: &Engine, req: &SearchRequest) -> String {
         fs.par_iter()
             .map(|f| {
                 let src = e.load_text(&f.path).ok();
+                // Ancestor lines come from the syntax tree: one parse yields
+                // it and the outline.
+                if req.output == Output::Scopes {
+                    let both = src
+                        .as_ref()
+                        .filter(|s| s.data.len() <= MAX_GROUP_BYTES)
+                        .and_then(|s| e.outline_with_tree(s));
+                    let (o, tree) = match both {
+                        Some((o, tree)) => (Some(o), tree),
+                        None => (None, None),
+                    };
+                    return (src, o, tree.map(|t| ScopeIndex::build(&t)));
+                }
                 // Grouping hits is worth a parse for source-sized files only.
                 let o = if needs_outline {
                     src.as_ref()
@@ -564,7 +610,7 @@ fn search_request(e: &Engine, req: &SearchRequest) -> String {
                 } else {
                     None
                 };
-                (src, o)
+                (src, o, None)
             })
             .collect()
     };
@@ -577,11 +623,11 @@ fn search_request(e: &Engine, req: &SearchRequest) -> String {
             let end = (k + chunk).min(sc.files.len());
             prepared.extend(prepare(&sc.files[k..end]));
         }
-        let (src, o) = prepared
+        let (src, o, scopes) = prepared
             .get(k)
-            .map(|(s, o)| (s.as_ref(), o.as_ref()))
-            .unwrap_or((None, None));
-        let block = render_file(e, f, src, o, req.output, &matcher, per_file_cap);
+            .map(|(s, o, x)| (s.as_ref(), o.as_ref(), x.as_ref()))
+            .unwrap_or((None, None, None));
+        let block = render_file(e, f, src, o, scopes, req.output, &matcher, per_file_cap);
         if out.len() + block.len() > max_bytes && rendered_files > 0 {
             break 'files;
         }

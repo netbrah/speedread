@@ -81,6 +81,8 @@ enum OutputArg {
     Matches,
     Symbols,
     Files,
+    /// Matches plus the header lines of the enclosing loops, conditions and branches.
+    Scopes,
 }
 
 #[derive(Subcommand)]
@@ -284,6 +286,7 @@ fn run() -> anyhow::Result<()> {
                     OutputArg::Matches => Output::Matches,
                     OutputArg::Symbols => Output::Symbols,
                     OutputArg::Files => Output::Files,
+                    OutputArg::Scopes => Output::Scopes,
                 },
                 budget,
                 max_matches: 5000,

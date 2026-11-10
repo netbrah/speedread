@@ -209,7 +209,20 @@ pub fn search(e: &Engine, req: &SearchRequest, w: &mut impl Write) -> Result<usi
                     n += 1;
                 }
             }
-            Output::Matches => {
+            Output::Matches | Output::Scopes => {
+                // Ancestor line numbers per record (`scopes` output only).
+                let scoped = (req.output == Output::Scopes)
+                    .then(|| e.load_text(&f.path).ok())
+                    .flatten()
+                    .filter(|s| !s.binary && s.data.len() <= search::MAX_GROUP_BYTES)
+                    .and_then(|s| {
+                        let lang = s.lang.filter(|l| !l.is_structured_data())?;
+                        let tree =
+                            std::panic::catch_unwind(|| crate::outline::parse_tree(lang, &s.data))
+                                .ok()
+                                .flatten()?;
+                        Some((crate::context::ScopeIndex::build(&tree), s))
+                    });
                 for h in &f.hits {
                     let (text, clipped) = clip(&h.text);
                     let mut m = serde_json::Map::new();
@@ -226,6 +239,20 @@ pub fn search(e: &Engine, req: &SearchRequest, w: &mut impl Write) -> Result<usi
                         m.insert("symbol".into(), json!(o.qualified_name(i)));
                         let s = &o.symbols[i];
                         m.insert("symbol_lines".into(), json!([s.start + 1, s.end + 1]));
+                    }
+                    if let Some((index, src)) = &scoped {
+                        let rows = crate::context::scope_rows(
+                            index,
+                            src,
+                            o.as_deref(),
+                            h.line.saturating_sub(1),
+                        );
+                        let (rows, dropped) = crate::context::cap(rows);
+                        let lines: Vec<u32> = rows.iter().map(|r| r + 1).collect();
+                        m.insert("scopes".into(), json!(lines));
+                        if dropped > 0 {
+                            m.insert("scopes_omitted".into(), json!(dropped));
+                        }
                     }
                     write_line(w, &Value::Object(m)).map_err(err)?;
                     n += 1;

@@ -272,7 +272,7 @@ impl JsonSchema for SearchArgs {
                 "word": {"type": "boolean", "description": "Whole words only."},
                 "case": {"type": "string", "enum": ["smart", "sensitive", "insensitive"], "description": "smart (default): insensitive unless the pattern has uppercase."},
                 "context": {"type": "integer", "description": "Context lines per hit (default 0)."},
-                "output": {"type": "string", "enum": ["matches", "symbols", "files"], "description": "matches (default) | symbols: full source of each enclosing symbol | files: paths + counts."},
+                "output": {"type": "string", "enum": ["matches", "symbols", "files", "scopes"], "description": "matches (default) | symbols: full source of each enclosing symbol | files: paths + counts | scopes: matches plus the enclosing loop/condition/branch header lines."},
                 "budget": {"type": "integer", "description": "Max response tokens (default 8000)."},
                 "base_dir": {"type": "string", "description": "Absolute directory that relative paths and the default scope resolve against (default: workspace root)."}
             },

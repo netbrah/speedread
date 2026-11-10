@@ -549,8 +549,19 @@ pub fn parse_tree(lang: LangId, src: &[u8]) -> Option<tree_sitter::Tree> {
 /// Parse `src` and extract its outline. Returns `None` if the language has no
 /// grammar or parsing failed.
 pub fn parse_outline(lang: LangId, src: &[u8], lines: &[u32]) -> Option<Outline> {
+    parse_outline_with_tree(lang, src, lines).map(|(o, _)| o)
+}
+
+/// [`parse_outline`], also handing back the syntax tree it was read from
+/// (`None` for structured data, which has no tree) so a caller that needs
+/// both parses once.
+pub fn parse_outline_with_tree(
+    lang: LangId,
+    src: &[u8],
+    lines: &[u32],
+) -> Option<(Outline, Option<tree_sitter::Tree>)> {
     if lang.is_structured_data() {
-        return Some(crate::structured::outline(lang, src, lines));
+        return Some((crate::structured::outline(lang, src, lines), None));
     }
     let (tree, cleaned, lang) = parse_best(lang, src)?;
     let src: &[u8] = cleaned.as_deref().unwrap_or(src);
@@ -566,11 +577,12 @@ pub fn parse_outline(lang: LangId, src: &[u8], lines: &[u32]) -> Option<Outline>
     if lang == LangId::Python {
         ex.elide_docstring(root);
     }
-    Some(Outline {
+    let outline = Outline {
         symbols: ex.syms,
         elide: ex.elide,
         luau: lang == LangId::Luau,
-    })
+    };
+    Some((outline, Some(tree)))
 }
 
 struct Def<'t> {

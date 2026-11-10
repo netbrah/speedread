@@ -385,6 +385,34 @@ impl Engine {
         }
     }
 
+    /// Outline plus the syntax tree, parsing once when the outline is not
+    /// cached. The tree is not cached (trees are large; outlines are small).
+    pub fn outline_with_tree(
+        &self,
+        src: &Source,
+    ) -> Option<(Arc<Outline>, Option<tree_sitter::Tree>)> {
+        let lang = src.lang?;
+        if src.binary || src.data.len() > MAX_PARSE {
+            return None;
+        }
+        let key = (src.hash, lang);
+        if let Some(o) = self.shared.outlines.lock().get(&key) {
+            let tree = std::panic::catch_unwind(|| outline::parse_tree(lang, &src.data))
+                .ok()
+                .flatten();
+            return Some((o, tree));
+        }
+        let (parsed, tree) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            outline::parse_outline_with_tree(lang, &src.data, &src.lines)
+        }))
+        .ok()
+        .flatten()?;
+        let o = Arc::new(parsed);
+        let cost = o.heap_bytes();
+        self.shared.outlines.lock().insert(key, o.clone(), cost);
+        Some((o, tree))
+    }
+
     /// Outline for a source (cached by content hash).
     pub fn outline(&self, src: &Source) -> Option<Arc<Outline>> {
         let lang = src.lang?;

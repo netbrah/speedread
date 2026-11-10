@@ -65,3 +65,16 @@ upstream behaviour exactly. This is a trade, not a free win, and it is recorded 
 Decision: ship. Limits default to a backstop (1,000,000 files per walk, 30 s per request);
 cache total defaults to 512 MiB. Not measured: macOS fast walker (not compilable here), and a
 real monorepo — the corpus is synthetic.
+
+### T3 — ancestor context (`evals/fork/t3-scopes.tsv`)
+
+| Check | Result |
+|---|---|
+| Output of the 15 unchanged queries | byte-identical (15/15) |
+| Total wall of the unchanged queries | 1531 ms (upstream re-run in the same session: 1535 ms) |
+| New tests | 8 integration (`tests/fork_scopes.rs`): Rust, TypeScript, Python, C, TSX, depth cap, context merge, JSON, MCP schema |
+| `scopes` versus `matches`, 12 searches, unlimited budget | +15% bytes (per query +1% … +53%), +9% wall |
+| `scopes` versus `symbols` | 24% of the bytes |
+| Model-facing text | one enum value and 11 words in the `output` property description |
+
+Decision: ship as opt-in. Not the default: 5 of 12 queries exceed the 35% overhead bar.

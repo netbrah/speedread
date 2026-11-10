@@ -60,7 +60,7 @@ tests `tests/fork_bounds.rs`; measurement `scripts/fork-rss.py`.
 ### T3 — Ancestor context (spec 03)
 Files: `src/context.rs` (new), `src/lib.rs`, `src/search.rs`, `src/json.rs`, `src/main.rs`, `src/server.rs`;
 tests `tests/fork_scopes.rs`, fixtures `tests/fixtures/fork/`.
-- [ ] Failing tests first. - [ ] `ScopeIndex`. - [ ] `Output::Scopes` rendering. - [ ] Ship-gate measurement. - [ ] Verify, commit, push.
+- [x] Failing tests first. - [x] `ScopeIndex`. - [x] `Output::Scopes` rendering. - [x] Ship-gate measurement. - [x] Verify, commit, push.
 
 ### T4 — Relationship kinds (spec 05)
 Files: `src/trace.rs`; tests `tests/fork_trace.rs`.
