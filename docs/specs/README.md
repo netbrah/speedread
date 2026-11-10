@@ -31,7 +31,7 @@ A feature merges into the fork's default behavior only when, against the previou
 
 - `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test --all-targets` pass on Linux;
 - its own regression tests were seen failing before the change and passing after;
-- `scripts/fork-eval.sh` shows no regression in latency, peak RSS or output size on the
+- `scripts/fork-eval.py` shows no regression in latency, peak RSS or output size on the
   reference repos beyond the thresholds in [eval.md](eval.md), and the feature's own metric improves;
 - otherwise it stays opt-in (flag/argument) or is dropped, and the result is logged in [eval.md](eval.md).
 

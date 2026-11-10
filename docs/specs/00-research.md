@@ -76,7 +76,7 @@ directories with large untracked trees. The system must answer:
 ## Scale evidence and unknowns
 
 - Upstream benchmarks are macOS-first; the Linux portable walker (`ignore` crate) is what we run.
-  Our numbers come from `scripts/fork-eval.sh` on this sandbox (2 vCPU, 7 GiB) — small-machine
+  Our numbers come from `scripts/fork-eval.py` on this sandbox (2 vCPU, 7 GiB) — small-machine
   evidence, not fleet evidence. Concurrent-agent behavior on real NetApp-scale checkouts is **unvalidated**.
 - sem's memory growth under untracked trees is **not reproduced**; spec 02 is justified by
   speedread's own unbounded walks and fixed caches, independent of sem's root cause.

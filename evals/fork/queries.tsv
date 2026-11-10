@@ -1,0 +1,16 @@
+# id<TAB>repo<TAB>argv... (tab separated). Baseline set: must run on upstream 37abea2.
+rg-search	ripgrep	search	Searcher
+rg-search-files	ripgrep	search	fn new	--output	files
+rg-search-symbols	ripgrep	search	line_terminator	--output	symbols
+rg-read-symbol	ripgrep	read	#SearcherBuilder
+rg-read-file	ripgrep	read	crates/searcher/src/searcher/mod.rs
+rg-trace-callers	ripgrep	trace	#search_path
+rg-trace-callees	ripgrep	trace	#search_path	-d	callees
+rg-trace-refs	ripgrep	trace	#Sink	-d	refs
+rg-map	ripgrep	map	--symbols
+zod-search	zod	search	safeParse
+zod-search-symbols	zod	search	addIssue	--output	symbols
+zod-read-symbol	zod	read	#ZodType
+zod-trace-callers	zod	trace	#safeParse
+zod-trace-impls	zod	trace	#ZodType	-d	impls
+zod-map	zod	map	--symbols

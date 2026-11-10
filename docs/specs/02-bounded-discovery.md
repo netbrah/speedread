@@ -61,5 +61,5 @@ Rules:
 
 ## Measurement (ship gate)
 
-`scripts/fork-eval.sh`: peak RSS and wall time for the query set, at cache caps
+`scripts/fork-eval.py`: peak RSS and wall time for the query set, at cache caps
 {default, 64 MiB}, before deciding whether the fork lowers the default.

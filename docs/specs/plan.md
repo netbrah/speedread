@@ -31,7 +31,7 @@ cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test --a
 - [x] Fork, branch, specs committed.
 - [ ] Gate macOS-only walker helpers (`IgnoreNode`, `is_ignored`, `load_matcher`, `global_node`,
       `initial_stack` in `src/walk.rs`) behind `#[cfg(target_os = "macos")]` so clippy `-D warnings` passes on Linux.
-- [ ] `scripts/fork-eval.sh`: clone pinned reference repos (Rust: `BurntSushi/ripgrep`; TS: `colinhacks/zod`)
+- [ ] `scripts/fork-eval.py`: clone pinned reference repos (Rust: `BurntSushi/ripgrep`; TS: `colinhacks/zod`)
       into `target/eval-repos`, run the query set, record wall time, peak RSS (`/usr/bin/time -v`), output bytes
       to `evals/fork/<label>.tsv`. Record baseline (`evals/fork/baseline-37abea2.tsv`).
 
