@@ -10,10 +10,13 @@
 //! Other platforms fall back to `ignore::WalkParallel`.
 
 use std::path::{Path, PathBuf};
+#[cfg(target_os = "macos")]
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+#[cfg(target_os = "macos")]
 use ignore::Match;
+#[cfg(target_os = "macos")]
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use ignore::overrides::{Override, OverrideBuilder};
 
@@ -111,12 +114,14 @@ fn use_portable() -> bool {
     *PORTABLE.get_or_init(|| std::env::var("SPEEDREAD_WALKER").is_ok_and(|v| v == "portable"))
 }
 
+#[cfg(target_os = "macos")]
 struct IgnoreNode {
     parent: Option<Arc<IgnoreNode>>,
     /// Lowest precedence first.
     matchers: Vec<Gitignore>,
 }
 
+#[cfg(target_os = "macos")]
 fn is_ignored(stack: &Option<Arc<IgnoreNode>>, path: &Path, is_dir: bool) -> bool {
     let mut cur = stack.as_ref();
     while let Some(node) = cur {
@@ -132,6 +137,7 @@ fn is_ignored(stack: &Option<Arc<IgnoreNode>>, path: &Path, is_dir: bool) -> boo
     false
 }
 
+#[cfg(target_os = "macos")]
 fn load_matcher(dir: &Path, files: &[&str]) -> Option<Gitignore> {
     let mut b = GitignoreBuilder::new(dir);
     let mut any = false;
@@ -151,6 +157,7 @@ fn load_matcher(dir: &Path, files: &[&str]) -> Option<Gitignore> {
 /// then every `.gitignore` from the enclosing repository root down to (but
 /// excluding) `root` itself.
 /// The global excludes file (`core.excludesFile`), the base of every stack.
+#[cfg(target_os = "macos")]
 fn global_node() -> Option<Arc<IgnoreNode>> {
     let (global, _) = Gitignore::global();
     (!global.is_empty()).then(|| {
@@ -164,6 +171,7 @@ fn global_node() -> Option<Arc<IgnoreNode>> {
 /// A repository root is an ignore boundary: rules from an enclosing
 /// repository (a dotfiles repo in `~`, a monorepo around a nested checkout)
 /// never apply inside it, exactly as in git.
+#[cfg(target_os = "macos")]
 fn initial_stack(root: &Path, global: Option<Arc<IgnoreNode>>) -> Option<Arc<IgnoreNode>> {
     let mut node = global;
     if root.join(".git").exists() {
