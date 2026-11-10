@@ -28,8 +28,10 @@ pub struct Config {
     pub max_walk: u64,
     /// Wall-clock bound on a request's discovery (`None`: unlimited).
     pub deadline: Option<Duration>,
-    /// Ceiling of the source cache; the snapshot cache gets half of it.
-    /// Residency only: answers do not depend on it.
+    /// Ceiling for cached content in total: half for file contents, a quarter
+    /// each for outlines and for `path@etag` snapshots. Residency only: files
+    /// and outlines are re-read on a miss, so search/read/trace/map answers do
+    /// not depend on it (an evicted snapshot turns a diff into a full read).
     pub cache_bytes: usize,
 }
 
@@ -193,13 +195,16 @@ pub struct Engine {
 
 impl Engine {
     pub fn new(ws: Workspace, cfg: Config) -> Engine {
+        let total = cfg.cache_bytes.max(1 << 20);
         let shared = Shared {
             bpt: AtomicU32::new(cfg.bytes_per_token.to_bits()),
             token_scale: AtomicU32::new(1.0f32.to_bits()),
             tokenizer_pinned: std::sync::atomic::AtomicBool::new(false),
-            sources: Mutex::new(Lru::new(cfg.cache_bytes.max(1 << 20))),
-            outlines: Mutex::new(Lru::new(8192)),
-            snapshots: Mutex::new(Lru::new(cfg.cache_bytes.max(1 << 20) / 2)),
+            sources: Mutex::new(Lru::new(total / 2)),
+            // Bounded by bytes: a count bound let generated files with
+            // thousands of symbols each hold over a gigabyte.
+            outlines: Mutex::new(Lru::new(total / 4)),
+            snapshots: Mutex::new(Lru::new(total / 4)),
             bigs: Mutex::new(Lru::new(64)),
             big_snaps: Mutex::new(Lru::new(1024)),
             files: Mutex::new(None),
@@ -397,7 +402,8 @@ impl Engine {
         .ok()
         .flatten()?;
         let o = Arc::new(parsed);
-        self.shared.outlines.lock().insert(key, o.clone(), 1);
+        let cost = o.heap_bytes();
+        self.shared.outlines.lock().insert(key, o.clone(), cost);
         Some(o)
     }
 

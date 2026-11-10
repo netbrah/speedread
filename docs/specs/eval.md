@@ -32,3 +32,36 @@ median of 5: total wall 1455 ms, max peak RSS 65.0 MiB.
 
 Decision: ship, on by default (no behaviour change unless a target lies outside the primary
 root, the server has no root, or `base_dir`/`--no-cwd-root` is used).
+
+### T2 — bounded discovery and residency (`evals/fork/t2-bounds.tsv`)
+
+| Check | Result |
+|---|---|
+| Output of the 15 unchanged queries | byte-identical (15/15 `out_sha` equal) |
+| Total wall (median of 5) | 1569 ms versus 1535 ms for the upstream binary re-run in the same session (+2.2%) |
+| Max peak RSS (one-shot CLI) | 65.0 → 67.2 MiB (+3.4%) |
+| New tests | 8 integration (`tests/fork_bounds.rs`), 4 consecutive runs green |
+| Explicit reads on a tree with 0 / 3,000 / 20,000 untracked files | 0 walks at every size, identical output |
+| Walk stopped by entry limit, deadline, cancellation or candidate cap | answer ends with `incomplete:`; no absence claim |
+| MCP `notifications/cancelled` | walk stops (`cancelled=1`, fewer than the 30,000 entries of the tree), next request answered in full |
+
+Residency of a long-lived MCP server (`scripts/fork-rss.py`: 1,200 files, ~250 MiB, one symbol
+read from each, twice; a deliberately hostile corpus whose outlines outweigh its source):
+
+| Binary / setting | RSS after reads | RSS at end | First pass | Repeat pass |
+|---|---|---|---|---|
+| upstream 37abea2 | 1126 MiB | 1143 MiB | 28.1 s | 0.5 s |
+| fork, default (512 MiB total) | 511 MiB | 524 MiB | 27.7 s | 27.4 s |
+| fork, `--cache-mb 128` | 184 MiB | 205 MiB | 28.2 s | 28.1 s |
+| fork, `--cache-mb 4096` | 1126 MiB | 1139 MiB | 27.5 s | 0.5 s |
+
+Output bytes are identical in all four rows (181,380 per pass).
+
+Reading: upstream's outline cache is bounded by count, so this corpus pins about 1.1 GiB. The
+fork bounds it by bytes; the default halves resident memory, and pays for it only when the
+working set exceeds the ceiling (the repeat pass re-parses). `--cache-mb 4096` reproduces
+upstream behaviour exactly. This is a trade, not a free win, and it is recorded as such.
+
+Decision: ship. Limits default to a backstop (1,000,000 files per walk, 30 s per request);
+cache total defaults to 512 MiB. Not measured: macOS fast walker (not compilable here), and a
+real monorepo — the corpus is synthetic.

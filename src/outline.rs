@@ -102,6 +102,24 @@ impl Outline {
         self.symbols.is_empty()
     }
 
+    /// Approximate memory held, for cache accounting.
+    pub fn heap_bytes(&self) -> usize {
+        let strings: usize = self
+            .symbols
+            .iter()
+            .map(|s| {
+                s.name.capacity()
+                    + s.label.capacity()
+                    + s.scope.as_ref().map_or(0, |x| x.capacity())
+            })
+            .sum();
+        // Each heap string also costs an allocator header.
+        self.symbols.capacity() * (std::mem::size_of::<Symbol>() + 32)
+            + strings
+            + self.elide.capacity() * 8
+            + 128
+    }
+
     /// Innermost symbol containing `line` (0-based).
     pub fn innermost_at(&self, line: u32) -> Option<usize> {
         let mut best: Option<usize> = None;

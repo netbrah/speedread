@@ -48,14 +48,14 @@ Files: `src/workspace.rs`, `src/engine.rs`, `src/search.rs`, `src/trace.rs`, `sr
 - [x] Verify, commit, push.
 
 ### T2 — Bounded discovery and residency (spec 02)
-Files: `src/walk.rs`, `src/engine.rs`, `src/search.rs`, `src/trace.rs`, `src/map.rs`, `src/read.rs`, `src/main.rs`;
-tests `tests/fork_bounds.rs`.
-- [ ] Failing tests first (spec 02 → Tests), including the untracked-growth test.
-- [ ] `walk::Limits`, `walk::STATS`, both walkers call `admit()`.
-- [ ] Incomplete reporting in `search`, `#Symbol` lookup, `trace`, `map`.
-- [ ] `Config.cache_bytes`, `--cache-mb`, `--max-walk`, `--deadline-ms` (+ env).
-- [ ] Measure RSS at cache caps; decide default; log in `eval.md`.
-- [ ] Verify, commit, push.
+Files: `src/walk.rs`, `src/engine.rs`, `src/search.rs`, `src/trace.rs`, `src/map.rs`, `src/read.rs`, `src/main.rs`, `src/server.rs`, `src/json.rs`, `src/outline.rs`;
+tests `tests/fork_bounds.rs`; measurement `scripts/fork-rss.py`.
+- [x] Failing tests first (spec 02 → Tests), including the untracked-growth test.
+- [x] `walk::Limits`, `walk::STATS`, both walkers call `admit()`.
+- [x] Incomplete reporting in `search`, `#Symbol` lookup, `trace`, `map`.
+- [x] `Config.cache_bytes`, `--cache-mb`, `--max-walk`, `--deadline-ms` (+ env).
+- [x] Measure RSS at cache caps; decide default; log in `eval.md`.
+- [x] Verify, commit, push.
 
 ### T3 — Ancestor context (spec 03)
 Files: `src/context.rs` (new), `src/lib.rs`, `src/search.rs`, `src/json.rs`, `src/main.rs`, `src/server.rs`;
