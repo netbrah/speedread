@@ -376,3 +376,97 @@ fn mcp_search_takes_ast_and_lang() {
     drop(stdin);
     let _ = child.wait();
 }
+
+const MACROS: &str = "\
+macro_rules! must {
+    ($e:expr) => {
+        $e.unwrap()
+    };
+}
+
+pub fn check(a: Option<u32>, b: Option<u32>) {
+    assert!(a.unwrap() > 0);
+    assert_eq!(a.unwrap(), b.unwrap());
+    println!(\"{:?}\", vec![a.unwrap()]);
+    let n = a.map(|x| x + 1).unwrap().checked_add(1).unwrap();
+    must!(b);
+    let _ = n;
+}
+";
+
+/// Rust macro arguments are token trees: arguments that read as code are
+/// matched, and what cannot be matched is counted rather than dropped.
+#[test]
+fn rust_macro_arguments_are_matched_and_the_rest_is_counted() {
+    let fx = Fx::new("macros");
+    std::fs::write(fx.dir.join("src/mac.rs"), MACROS).unwrap();
+    let out = fx.run(&["$V.unwrap()", "src/mac.rs"]);
+    assert!(
+        out.starts_with(
+            "6 matches in 1 file for structural `$V.unwrap()` (rust)\n\
+             `unwrap` also appears on 1 line inside macro bodies that do not parse as code; those were not matched (a text search shows them).\n"
+        ),
+        "{out}"
+    );
+    assert_eq!(
+        hits(&out),
+        vec![
+            "8\t    assert!(a.unwrap() > 0);\t$V=a",
+            // Two on a line: both captures, in match order.
+            "9\t    assert_eq!(a.unwrap(), b.unwrap());\t$V=a\t$V=b",
+            // A macro inside a macro's arguments.
+            "10\t    println!(\"{:?}\", vec![a.unwrap()]);\t$V=a",
+            // A chain: the inner call and the whole expression.
+            "11\t    let n = a.map(|x| x + 1).unwrap().checked_add(1).unwrap();\t$V=a.map(|x| x + 1)\t$V=a.map(|x| x + 1).unwrap().checked_add(1)",
+        ],
+        "{out}"
+    );
+    // Same lines as the text search, less the macro definition.
+    let text = Command::new(env!("CARGO_BIN_EXE_speedread"))
+        .arg("--root")
+        .arg(&fx.dir)
+        .args(["search", "-F", ".unwrap()", "src/mac.rs"])
+        .current_dir("/")
+        .output()
+        .unwrap();
+    let text = String::from_utf8(text.stdout).unwrap();
+    let lines = |o: &str| -> Vec<String> {
+        hits(o)
+            .iter()
+            .map(|l| l.split('\t').next().unwrap().to_string())
+            .collect()
+    };
+    assert_eq!(lines(&text), vec!["3", "8", "9", "10", "11"], "{text}");
+    assert_eq!(lines(&out), vec!["8", "9", "10", "11"], "{out}");
+}
+
+/// A match spanning lines is shown on the line of the pattern's own literal,
+/// not of one inside a captured node.
+#[test]
+fn a_nested_match_is_shown_on_its_own_line() {
+    let fx = Fx::new("nested");
+    std::fs::write(
+        fx.dir.join("src/chain.rs"),
+        "pub fn two(a: Option<Option<u32>>) -> u32 {\n    a\n        .unwrap()\n        .or(None)\n        .unwrap()\n}\n",
+    )
+    .unwrap();
+    for pattern in ["$V.unwrap()", "$_.unwrap()"] {
+        let out = fx.run(&[pattern, "src/chain.rs"]);
+        let lines: Vec<&str> = hits(&out)
+            .iter()
+            .map(|l| l.split('\t').next().unwrap())
+            .collect();
+        assert_eq!(lines, vec!["3", "5"], "{pattern}: {out}");
+    }
+    std::fs::write(
+        fx.dir.join("src/nest.ts"),
+        "export const v = wrap(\n  1,\n  wrap(2, 3),\n);\n",
+    )
+    .unwrap();
+    let out = fx.run(&["wrap($$$)", "src/nest.ts"]);
+    let lines: Vec<&str> = hits(&out)
+        .iter()
+        .map(|l| l.split('\t').next().unwrap())
+        .collect();
+    assert_eq!(lines, vec!["1", "3"], "{out}");
+}

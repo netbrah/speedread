@@ -158,13 +158,12 @@ fn compile(pattern: &str, lang: LangId) -> Result<Pattern, String> {
     Ok(p)
 }
 
-/// The longest literal word of a pattern (letters, digits, `_`; at least two
-/// bytes) that is not a metavariable. Every match contains it verbatim, so
-/// files without it need no parse.
-pub fn literal(pattern: &str) -> Option<&str> {
+/// The literal words of a pattern (letters, digits, `_`; at least two bytes)
+/// that are not metavariables. Every match contains each of them verbatim.
+fn words(pattern: &str) -> Vec<&str> {
     let b = pattern.as_bytes();
     let word = |c: u8| c.is_ascii_alphanumeric() || c == b'_';
-    let mut best: Option<&str> = None;
+    let mut out: Vec<&str> = Vec::new();
     let mut i = 0;
     while i < b.len() {
         if !word(b[i]) {
@@ -179,7 +178,18 @@ pub fn literal(pattern: &str) -> Option<&str> {
         let w = &pattern[start..i];
         // Numbers are written in too many ways (`1_000`, `0x10`) to rely on.
         let numeric = w.as_bytes()[0].is_ascii_digit();
-        if !meta && !numeric && w.len() >= 2 && best.is_none_or(|x| w.len() > x.len()) {
+        if !meta && !numeric && w.len() >= 2 && !out.contains(&w) {
+            out.push(w);
+        }
+    }
+    out
+}
+
+/// The longest literal word of a pattern: files without it need no parse.
+pub fn literal(pattern: &str) -> Option<&str> {
+    let mut best: Option<&str> = None;
+    for w in words(pattern) {
+        if best.is_none_or(|x| w.len() > x.len()) {
             best = Some(w);
         }
     }
@@ -253,6 +263,9 @@ pub(crate) struct AstScan {
     pub parsed: usize,
     /// Candidates too large to parse (not searched).
     pub too_large: usize,
+    /// Lines that mention the literal inside macro bodies that have no
+    /// syntax tree to match (Rust), so a match there would go unseen.
+    pub opaque: usize,
     /// The text prefilter, if the pattern has a literal.
     pub literal: Option<String>,
     /// The language asked for, if any.
@@ -309,13 +322,26 @@ impl AstScan {
         } else {
             t.push_str(&format!(" Ran for: {}.", Self::names(&self.langs)));
         }
+        t.push_str(&self.caveats());
+        t.push('\n');
+        t
+    }
+
+    /// What a complete-looking answer leaves out, as sentences (or nothing).
+    pub(crate) fn caveats(&self) -> String {
+        let mut t = String::new();
         if self.too_large > 0 {
             t.push_str(&format!(
                 " {} larger than 1 MiB not parsed.",
                 crate::util::plural(self.too_large, "file")
             ));
         }
-        t.push('\n');
+        if let (Some(lit), true) = (&self.literal, self.opaque > 0) {
+            t.push_str(&format!(
+                " `{lit}` also appears on {} inside macro bodies that do not parse as code; those were not matched (a text search shows them).",
+                crate::util::plural(self.opaque, "line")
+            ));
+        }
         t
     }
 }
@@ -385,6 +411,177 @@ fn candidates(
     Ok(out)
 }
 
+type Doc = StrDoc<Sg>;
+
+/// Where a match is shown and what it captured: the byte offset (in the
+/// matched text) of the pattern's own literal, i.e. its first occurrence
+/// outside every captured node, and the `\t$NAME=value` suffix. For
+/// `$V.unwrap()` on `a.unwrap().b().unwrap()` the outer match is the last
+/// `unwrap`, not the one inside `$V`.
+fn shown(
+    text: &str,
+    m: &ast_grep_core::NodeMatch<Doc>,
+    names: &[(String, bool)],
+    word: Option<(&str, bool)>,
+) -> (usize, String) {
+    let env = m.get_env();
+    let mut held: Vec<std::ops::Range<usize>> = Vec::new();
+    let mut suffix = String::new();
+    for (name, multi) in names {
+        let range = if *multi {
+            let nodes = env.get_multiple_matches(name);
+            match (nodes.first(), nodes.last()) {
+                (Some(a), Some(b)) => Some(a.range().start..b.range().end),
+                _ => Some(0..0),
+            }
+        } else {
+            env.get_match(name).map(|n| n.range())
+        };
+        let Some(range) = range else { continue };
+        let value = text.get(range.clone()).map(clip).unwrap_or_default();
+        suffix.push_str(&format!(
+            "\t${}{name}={value}",
+            if *multi { "$$" } else { "" }
+        ));
+        if !range.is_empty() {
+            held.push(range);
+        }
+    }
+    let span = m.range();
+    let at = word
+        .and_then(|(lit, trailing)| {
+            let hay = text.as_bytes().get(span.clone())?;
+            let mut all: Vec<usize> = memchr::memmem::find_iter(hay, lit.as_bytes())
+                .map(|i| span.start + i)
+                .collect();
+            // With nothing captured to rule occurrences out, the pattern's
+            // own literal is the last one when it follows the metavariables.
+            if trailing {
+                all.reverse();
+            }
+            all.iter()
+                .find(|off| !held.iter().any(|r| r.contains(off)))
+                .or(all.first())
+                .copied()
+        })
+        .unwrap_or(span.start);
+    (at, suffix)
+}
+
+/// Does the literal come after every metavariable of the pattern?
+fn trailing(pattern: &str, lit: &str) -> bool {
+    match (pattern.rfind(lit), pattern.rfind('$')) {
+        (Some(l), Some(m)) => l > m,
+        _ => false,
+    }
+}
+
+/// Rust macro arguments are token trees, so `assert!(x.unwrap())` has no call
+/// node to match. Arguments that read as code are parsed on their own and
+/// matched; `found` gets `(file offset, captures)`, `opaque` the file offsets
+/// of mentions in bodies that do not parse (and in `macro_rules!` rules).
+struct Macros<'a> {
+    pat: &'a Pattern,
+    names: &'a [(String, bool)],
+    word: &'a str,
+    trailing: bool,
+    found: Vec<(usize, String)>,
+    opaque: Vec<usize>,
+}
+
+impl Macros<'_> {
+    /// `text` parsed as `tree`; `origin` maps its offsets to file offsets.
+    fn visit(
+        &mut self,
+        text: &str,
+        tree: &tree_sitter::Tree,
+        origin: &dyn Fn(usize) -> usize,
+        depth: usize,
+    ) {
+        let lit = self.word.as_bytes();
+        let mut done = 0usize;
+        for off in memchr::memmem::find_iter(text.as_bytes(), lit) {
+            if off < done {
+                continue;
+            }
+            let mut node = tree
+                .root_node()
+                .descendant_for_byte_range(off, off + lit.len());
+            let mut body: Option<(tree_sitter::Node, bool)> = None;
+            while let Some(n) = node {
+                match n.kind() {
+                    "macro_invocation" => {
+                        body = Some((n, true));
+                        break;
+                    }
+                    "macro_definition" => {
+                        body = Some((n, false));
+                        break;
+                    }
+                    _ => node = n.parent(),
+                }
+            }
+            let Some((mac, call)) = body else { continue };
+            let args = if call {
+                let mut c = mac.walk();
+                mac.children(&mut c).find(|n| n.kind() == "token_tree")
+            } else {
+                None
+            };
+            let inner = match args {
+                Some(tt) if tt.end_byte() - tt.start_byte() >= 2 => {
+                    tt.start_byte() + 1..tt.end_byte() - 1
+                }
+                Some(_) => continue,
+                None if call => continue,
+                None => mac.start_byte()..mac.end_byte(),
+            };
+            if off < inner.start {
+                // The macro's own name.
+                continue;
+            }
+            done = inner.end;
+            let Some(code) = text.get(inner.clone()) else {
+                continue;
+            };
+            let parsed = if call && depth < 4 {
+                // As call arguments, as statements, then as items.
+                [("fn __m(){__m(", ");}"), ("fn __m(){", "}"), ("", "")]
+                    .iter()
+                    .find_map(|(pre, post)| {
+                        let frag = format!("{pre}{code}{post}");
+                        let t = crate::outline::parse_tree(LangId::Rust, frag.as_bytes())?;
+                        (!t.root_node().has_error()).then_some((frag, t, pre.len()))
+                    })
+            } else {
+                None
+            };
+            let Some((frag, t, pre)) = parsed else {
+                for i in memchr::memmem::find_iter(code.as_bytes(), lit) {
+                    self.opaque.push(origin(inner.start + i));
+                }
+                continue;
+            };
+            let start = inner.start;
+            let here = move |o: usize| origin(o.saturating_sub(pre) + start);
+            let within = pre..pre + code.len();
+            let doc = AstGrep::doc(StrDoc {
+                src: frag.clone(),
+                lang: Sg(LangId::Rust),
+                tree: t.clone(),
+            });
+            for m in doc.root().find_all(self.pat) {
+                let r = m.range();
+                if r.start >= within.start && r.end <= within.end {
+                    let (at, caps) = shown(&frag, &m, self.names, Some((self.word, self.trailing)));
+                    self.found.push((here(at), caps));
+                }
+            }
+            self.visit(&frag, &t, &here, depth + 1);
+        }
+    }
+}
+
 /// Run `req.pattern` as a structural pattern over `roots`.
 pub(crate) fn scan(
     e: &Engine,
@@ -418,7 +615,13 @@ pub(crate) fn scan(
         ));
     }
     let word = literal(pattern);
+    let tail = word.is_some_and(|w| trailing(pattern, w));
     let lit = word.filter(|_| !prefilter_off());
+    let all_words = if prefilter_off() {
+        Vec::new()
+    } else {
+        words(pattern)
+    };
     if word.is_none() && req.paths.is_empty() && req.globs.is_empty() {
         return Err(format!(
             "Pattern `{pattern}` has no literal word to narrow files with, so every file would be parsed. Give a path or glob.\n"
@@ -434,6 +637,7 @@ pub(crate) fn scan(
     let total = AtomicUsize::new(0);
     let parsed = AtomicUsize::new(0);
     let too_large = AtomicUsize::new(0);
+    let opaque = AtomicUsize::new(0);
     let stopped = AtomicBool::new(false);
     let ran: Mutex<Vec<LangId>> = Mutex::new(Vec::new());
     let matched: Mutex<Vec<LangId>> = Mutex::new(Vec::new());
@@ -465,6 +669,13 @@ pub(crate) fn scan(
             return None;
         }
         let text = std::str::from_utf8(&src.data).ok()?;
+        // A match contains every literal word of the pattern.
+        if all_words
+            .iter()
+            .any(|w| memchr::memmem::find(&src.data, w.as_bytes()).is_none())
+        {
+            return None;
+        }
         // One parse gives the tree to match and the outline rendering wants.
         let (_, tree) = e.outline_with_tree(&src)?;
         let tree = tree?;
@@ -481,56 +692,75 @@ pub(crate) fn scan(
         let pat = patterns.get(lang)?;
         parsed.fetch_add(1, Ordering::Relaxed);
         note(&ran, lang);
+        let macros = (lang == LangId::Rust).then(|| tree.clone());
         let root = AstGrep::doc(StrDoc {
             src: text.to_string(),
             lang: Sg(lang),
             tree,
         });
+        // (file offset shown, captures) per match.
+        let mut found: Vec<(usize, String)> = root
+            .root()
+            .find_all(&*pat)
+            .map(|m| shown(text, &m, &names, word.map(|w| (w, tail))))
+            .collect();
+        if let (Some(tree), Some(w)) = (macros, word) {
+            let mut inside = Macros {
+                pat: &pat,
+                names: &names,
+                word: w,
+                trailing: tail,
+                found: Vec::new(),
+                opaque: Vec::new(),
+            };
+            inside.visit(text, &tree, &|o| o, 0);
+            found.append(&mut inside.found);
+            let row = |o: &usize| src.lines.partition_point(|&s| s as usize <= *o);
+            let mut lines: Vec<usize> = inside.opaque.iter().map(row).collect();
+            lines.sort_unstable();
+            lines.dedup();
+            opaque.fetch_add(lines.len(), Ordering::Relaxed);
+        }
+        // A pattern that is a single token matches inside token trees too.
+        found.sort();
+        found.dedup();
+        let matches = found.len();
+        if matches == 0 {
+            return None;
+        }
+        // One hit per line, in line order; a line with several matches shows
+        // each one's captures.
+        let mut at: Vec<(u32, String)> = found
+            .into_iter()
+            .map(|(o, caps)| {
+                let row = src
+                    .lines
+                    .partition_point(|&s| s as usize <= o)
+                    .saturating_sub(1);
+                (row as u32, caps)
+            })
+            .collect();
+        at.sort_by_key(|(row, _)| *row);
         let mut hits: Vec<Hit> = Vec::new();
-        let mut matches = 0usize;
         let mut rows: Vec<u32> = Vec::new();
-        for m in root.root().find_all(&*pat) {
-            matches += 1;
-            if hits.len() >= MAX_HITS_PER_FILE {
+        for (row, caps) in at {
+            if rows.last() == Some(&row) {
+                if let Some(h) = hits.last_mut() {
+                    h.text.extend_from_slice(caps.as_bytes());
+                }
                 continue;
             }
-            // A match can span lines (`x\n  .foo()\n  .unwrap()`): show the
-            // first of them that has the literal, as a text search would.
-            let first = m.start_pos().line();
-            let last = m.end_pos().line().min(first + 200);
-            let row = word
-                .and_then(|lit| {
-                    (first..=last)
-                        .find(|&r| memchr::memmem::find(src.line(r), lit.as_bytes()).is_some())
-                })
-                .unwrap_or(first);
-            let mut line = src.line(row).to_vec();
-            let env = m.get_env();
-            for (name, multi) in &names {
-                let value = if *multi {
-                    let nodes = env.get_multiple_matches(name);
-                    match (nodes.first(), nodes.last()) {
-                        (Some(a), Some(b)) => text.get(a.range().start..b.range().end).map(clip),
-                        _ => Some(String::new()),
-                    }
-                } else {
-                    env.get_match(name).map(|n| clip(&n.text()))
-                };
-                if let Some(v) = value {
-                    line.extend_from_slice(
-                        format!("\t${}{name}={v}", if *multi { "$$" } else { "" }).as_bytes(),
-                    );
-                }
+            if hits.len() >= MAX_HITS_PER_FILE {
+                break;
             }
-            rows.push(row as u32);
+            let mut line = src.line(row as usize).to_vec();
+            line.extend_from_slice(caps.as_bytes());
+            rows.push(row);
             hits.push(Hit {
-                line: row as u32 + 1,
+                line: row + 1,
                 text: line,
                 is_match: true,
             });
-        }
-        if matches == 0 {
-            return None;
         }
         if context > 0 {
             let last = src.line_count().saturating_sub(1) as u32;
@@ -590,6 +820,7 @@ pub(crate) fn scan(
         candidates: files.len(),
         parsed: parsed.load(Ordering::Relaxed),
         too_large: too_large.load(Ordering::Relaxed),
+        opaque: opaque.load(Ordering::Relaxed),
         literal: lit.map(str::to_string),
         wanted: want,
     })

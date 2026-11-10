@@ -622,6 +622,13 @@ fn search_request(e: &Engine, req: &SearchRequest) -> String {
             String::new()
         }
     );
+    if let Some(a) = &ast {
+        let more = a.caveats();
+        if !more.is_empty() {
+            out.push_str(more.trim_start());
+            out.push('\n');
+        }
+    }
     // Load sources/outlines lazily in small parallel chunks: only files that
     // can still fit in the budget are ever parsed.
     let needs_outline = req.output != Output::Files;
