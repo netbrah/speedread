@@ -2,6 +2,18 @@
 
 Notable changes by release. Before 1.0, minor versions may change tool arguments and output formats.
 
+## Fork (`netbrah/speedread`, on upstream `37abea2`)
+
+Not part of an upstream release. Details and measurements: [docs/FORK.md](docs/FORK.md), [docs/specs/](docs/specs/README.md).
+
+- Paths: `--base-dir`, `--no-cwd-root` (`SPEEDREAD_NO_CWD_ROOT=1`) and MCP `base_dir` on every tool. Relative paths and path-less `search`/`map` resolve against a stated base, never an assumed working directory; a server with no root refuses path-less requests instead of walking from `/`. Definition and usage lookups run in the root that contains the target.
+- Limits: `--max-walk`, `--deadline-ms` (`SPEEDREAD_MAX_WALK`, `SPEEDREAD_DEADLINE_MS`), and MCP `notifications/cancelled` stops walks. An answer cut short ends with `incomplete: …`; silent caps are reported. Reading a named file never walks the tree.
+- Memory: `--cache-mb` (`SPEEDREAD_CACHE_MB`, default 512) bounds cached contents and outlines by bytes; the outline cache was bounded by count.
+- `search output=scopes`: hits plus the header lines of the enclosing loops, conditions and branches.
+- `search ast=true` (`--ast`, `--lang`): structural patterns with metavariables (`$X.unwrap()`, `router.$METHOD($$$ARGS)`), through `ast-grep-core`. Opt-in; parses every candidate file.
+- `trace`: call sites inside closures are marked `λ`; places a function is passed, assigned or returned as a value are listed with `→`.
+- Linux: clippy passes with `-D warnings` (macOS-only code gated).
+
 ## Unreleased
 
 - Luau: outlines, `path#Symbol`, function-grouped `search` hits and `trace` for `.luau` files, and for `.lua` files that use Luau syntax (recognized by a `--!strict` directive, type aliases or annotations, or because only Luau parses them). Covers type aliases, attributes such as `@native`, and functions in table constructors.

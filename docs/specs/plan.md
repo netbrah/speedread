@@ -59,7 +59,7 @@ tests `tests/fork_bounds.rs`; measurement `scripts/fork-rss.py`.
 
 ### T3 — Ancestor context (spec 03)
 Files: `src/context.rs` (new), `src/lib.rs`, `src/search.rs`, `src/json.rs`, `src/main.rs`, `src/server.rs`;
-tests `tests/fork_scopes.rs`, fixtures `tests/fixtures/fork/`.
+tests `tests/fork_scopes.rs` (fixtures inline).
 - [x] Failing tests first. - [x] `ScopeIndex`. - [x] `Output::Scopes` rendering. - [x] Ship-gate measurement. - [x] Verify, commit, push.
 
 ### T4 — Relationship kinds (spec 05)
@@ -67,11 +67,11 @@ Files: `src/trace.rs`; tests `tests/fork_trace.rs`.
 - [x] Failing tests first. - [x] `ValueUse` on sites (no `OccKind::Value`, see spec 05 "As shipped"), `in_closure`, rendering, summary counts. - [x] Precision pass against upstream on 120 sampled targets. - [x] Verify, commit, push.
 
 ### T5 — Structural search (spec 04)
-Files: `Cargo.toml`, `src/structural.rs` (new), `src/search.rs`, `src/main.rs`, `src/server.rs`; tests `tests/fork_ast.rs`.
-- [ ] Spike: `ast-grep-core` builds against tree-sitter 0.27 with speedread's grammars; binary size delta recorded.
-- [ ] Failing tests first. - [ ] `Language` impl, prefilter, rendering. - [ ] Ship-gate measurement. - [ ] Verify, commit, push.
+Files: `Cargo.toml`, `src/structural.rs` (new), `src/search.rs`, `src/json.rs`, `src/main.rs`, `src/server.rs`; tests `tests/fork_ast.rs`; measurement `scripts/fork-ast-eval.py`.
+- [x] Spike: `ast-grep-core` 0.51.1 builds against tree-sitter 0.27 with speedread's grammars (new crates: `ast-grep-core`, `bit-set`, `bit-vec`); binary +261,888 bytes (+0.6%).
+- [x] Failing tests first. - [x] `Language` impl, prefilter, rendering. - [x] Ship-gate measurement (found and fixed the Rust macro gap). - [x] Verify, commit, push.
 
 ### T6 — Wrap-up
-- [ ] README/skill docs for new flags and arguments; CHANGELOG "Fork" section.
-- [ ] `eval.md` complete; decide per slice: default, opt-in, or dropped.
+- [x] `docs/FORK.md` for new flags and arguments, README pointer, CHANGELOG "Fork" section. The bundled skill and tool descriptions are left alone (model-facing; unmeasured).
+- [x] `eval.md` complete; decision per slice in its summary table.
 - [ ] Open upstream issues/PRs per `00-research.md#pr-or-fork` (only after user confirms).

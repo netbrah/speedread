@@ -1,16 +1,16 @@
 id	repo	args	exit	wall_ms	peak_rss_kb	out_bytes	out_sha
-rg-search	ripgrep	search Searcher	0	58.2	38300	20019	174fa9c9573a
-rg-search-files	ripgrep	search fn new --output files	0	10.4	31128	2332	d7f270a6ce0e
-rg-search-symbols	ripgrep	search line_terminator --output symbols	0	44.2	32444	11599	145fb3693f6d
-rg-read-symbol	ripgrep	read #SearcherBuilder	0	39.2	32724	13039	ceb342da5ff7
-rg-read-file	ripgrep	read crates/searcher/src/searcher/mod.rs	0	8.3	18576	17341	98acccdcba25
-rg-trace-callers	ripgrep	trace #search_path	0	23.8	27300	1322	e43f63c6f6f8
-rg-trace-callees	ripgrep	trace #search_path -d callees	0	21.7	27328	658	fc1e7090bb2f
-rg-trace-refs	ripgrep	trace #Sink -d refs	0	63.1	39096	4283	80277e27e8c7
-rg-map	ripgrep	map --symbols	0	190.0	62048	6311	d6a9a3ae45d5
-zod-search	zod	search safeParse	0	29.8	32104	19189	7994e506bbfc
-zod-search-symbols	zod	search addIssue --output symbols	0	50.5	39628	18725	c55c3ddc9f6c
-zod-read-symbol	zod	read #ZodType	0	159.3	54084	15505	5575eaf55417
-zod-trace-callers	zod	trace #safeParse	0	292.0	64368	10752	30df5d210d9a
-zod-trace-impls	zod	trace #ZodType -d impls	0	417.1	66832	10547	a02b9fb2264c
-zod-map	zod	map --symbols	0	135.9	65204	6957	bbb1657c9004
+rg-search	ripgrep	search Searcher	0	49.0	40192	20019	174fa9c9573a
+rg-search-files	ripgrep	search fn new --output files	0	11.4	33320	2332	d7f270a6ce0e
+rg-search-symbols	ripgrep	search line_terminator --output symbols	0	38.3	32576	11599	145fb3693f6d
+rg-read-symbol	ripgrep	read #SearcherBuilder	0	37.8	32936	13039	ceb342da5ff7
+rg-read-file	ripgrep	read crates/searcher/src/searcher/mod.rs	0	7.5	18556	17341	98acccdcba25
+rg-trace-callers	ripgrep	trace #search_path	0	24.5	26984	1322	e43f63c6f6f8
+rg-trace-callees	ripgrep	trace #search_path -d callees	0	18.5	27644	658	fc1e7090bb2f
+rg-trace-refs	ripgrep	trace #Sink -d refs	0	63.0	39032	4283	80277e27e8c7
+rg-map	ripgrep	map --symbols	0	179.7	62192	6311	d6a9a3ae45d5
+zod-search	zod	search safeParse	0	30.9	33796	19189	7994e506bbfc
+zod-search-symbols	zod	search addIssue --output symbols	0	49.6	41656	18725	c55c3ddc9f6c
+zod-read-symbol	zod	read #ZodType	0	161.5	54272	15505	5575eaf55417
+zod-trace-callers	zod	trace #safeParse	0	293.6	64364	10752	30df5d210d9a
+zod-trace-impls	zod	trace #ZodType -d impls	0	415.0	66920	10547	a02b9fb2264c
+zod-map	zod	map --symbols	0	136.6	65736	6957	bbb1657c9004

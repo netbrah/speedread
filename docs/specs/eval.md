@@ -94,3 +94,66 @@ Decision: ship as default. Caveat: at a fixed budget, marks and value sites take
 truncated answer can show slightly fewer trailing sites than upstream (the truncation note
 still counts them).
 
+### T5 — structural search (`evals/fork/t5-ast.tsv`, `evals/fork/t5-ast-shapes.tsv`)
+
+| Check | Result |
+|---|---|
+| Output of the 15 eval queries | byte-identical to T4 (15/15); versus upstream 14/15, the one T4 difference |
+| Total wall of the unchanged queries (median of 5) | 1517 ms (T4: 1598 ms; upstream: 1455–1535 ms) |
+| Max peak RSS of the unchanged queries | 65.4 MiB (upstream 65.0 MiB) |
+| Binary (`--profile fast`) | 43,764,224 → 44,026,112 bytes over upstream (+0.6%); three new crates |
+| New tests | 10 integration (`tests/fork_ast.rs`) + 5 unit: Rust, TypeScript, TSX, Python, Go; every grammar compiles a call pattern; prefilter on/off equal; macros; nested matches; errors; MCP |
+| Model-facing text | two properties on `search` (`ast`, `lang`), 51 words; descriptions and instructions untouched |
+| Deadline | `--deadline-ms 20` on zod: partial answer ending in `incomplete: stopped after 20 ms …` |
+
+Three shapes against the regex an agent would write (`scripts/fork-ast-eval.py`, lines of
+tracked files; a regex-only line is classified by what it is):
+
+| Shape | Regex lines | Structural lines | Regex-only: comment / string | Regex-only: other | Structural-only |
+|---|---|---|---|---|---|
+| `$V.unwrap()` vs `\.unwrap\(\)`, ripgrep | 1,043 | 1,020 | 12 / 0 | 11, all inside `macro_rules!` rules (reported in the answer as unmatched) | 0 |
+| `expect($A).toBe($B)` vs `expect\(.*\)\.toBe\(`, zod | 2,192 | 2,160 | 37 / 0 | 34, all `expect(value, message).toBe(…)` — a different shape, which the pattern rightly excludes | 39, all calls spanning lines that a line regex cannot see |
+| `console.log($$$A)` vs `console\.log\(`, zod | 419 | 394 | 18 / 7 | 0 | 0 |
+
+Wall time, median of 7 (ms):
+
+| Shape | Structural | Literal search, default budget | Literal search grouping every hit (`output=symbols`, unlimited) |
+|---|---|---|---|
+| `$V.unwrap()` | 194 | 76 (2.6×) | 170 (1.1×) |
+| `expect($A).toBe($B)` | 207 | 18 (11.5×) | 150 (1.4×) |
+| `console.log($$$A)` | 84 | 39 (2.2×) | 76 (1.1×) |
+
+Peak RSS of a structural search: 51–56 MiB (literal: 29–40 MiB).
+
+Reading:
+
+- **The wall-time gate in spec 04 ("within 2× of the equivalent literal search") is not met:**
+  2.2× to 11.5×. The cause is structural: a literal search counts hits without parsing and
+  parses only the files it has budget to show; a structural search has to parse every file
+  that contains the pattern's words to know whether it matches. Against a literal search made
+  to parse the same files the cost is 1.1–1.4×. In absolute terms the worst case here is
+  207 ms on two cores for 279 files. The gate was written without that distinction; it is
+  recorded here as missed rather than rewritten.
+- **Precision over a regex is small on common shapes:** 1–6% of regex lines were comments or
+  strings. The gains that matter are elsewhere: calls spanning lines (39 on zod), argument
+  shape (`expect($A)` versus `expect($A, $B)`), captures, and patterns no regex expresses
+  (`$A == $A`).
+- **The first implementation was worse than a regex on Rust** — it missed 119 of 1,043 lines,
+  everything inside macro arguments and chains ending on a later line. That was found by this
+  measurement, fixed, and is now covered by tests; what remains unmatched (`macro_rules!`
+  rules) is counted in the answer.
+
+Decision: ship as opt-in (`ast=true`). Nothing changes unless it is asked for. Open question
+for the default tool description: whether models reach for it at the right times is not
+measured — that needs the agent evals upstream runs (`evals/`), which need API keys.
+
+### Summary of decisions
+
+| Slice | Decision | Changes default output? |
+|---|---|---|
+| 01 Path and scope contract | shipped, default | only for targets outside the primary root or a rootless server |
+| 02 Bounded discovery and residency | shipped, default | no; long-lived servers hold less memory and may re-parse |
+| 03 Ancestor context (`output=scopes`) | shipped, opt-in | no |
+| 04 Structural search (`ast=true`) | shipped, opt-in; wall-time gate missed as written | no |
+| 05 Relationship kinds (`λ`, `→`) | shipped, default | `trace` only: marks, value sites, legend |
+| 06 Backlog (entity correspondence, import-aware lookup, Git input layer) | specified, not started | — |

@@ -43,7 +43,7 @@ A feature merges into the fork's default behavior only when, against the previou
 | 01 | [Path and scope contract (CWD independence)](01-path-and-scope-contract.md) | shipped | codegraph/CBM operational lessons |
 | 02 | [Bounded discovery and residency](02-bounded-discovery.md) | shipped | weave (file-local core), gix (traversal controls), sem (failure mode) |
 | 03 | [Ancestor context for search hits](03-ancestor-context.md) | shipped, opt-in | grep-ast |
-| 04 | [Structural search](04-structural-search.md) | specified | ast-grep |
+| 04 | [Structural search](04-structural-search.md) | shipped, opt-in | ast-grep |
 | 05 | [Relationship kinds and evidence](05-relationship-kinds.md) | shipped | codebase-memory-mcp, CodeGraph |
 | 06 | [Backlog: entity correspondence, import-aware lookup, Git input layer](06-backlog.md) | backlog | sem, weave, gix |
 | — | [Implementation plan](plan.md) | living | — |
