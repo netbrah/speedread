@@ -32,6 +32,9 @@ Nothing here adds a persistent index, a graph store or a background process.
 - A long-lived server holds at most `--cache-mb` (256 MiB) of file contents and outlines. On
   a working set larger than that it re-parses instead of growing. Upstream's outline cache
   has no byte limit; `--cache-mb 4096` approximates that.
+- A long-lived server gives memory back when a request ends. Tree-sitter's C library used the
+  system allocator, which kept what each parse freed: upstream stays at the high-water mark
+  of the largest file it ever parsed (340 MiB after one 7 MiB file; 33 MiB here).
 - `trace` marks call sites inside closures with `λ` and lists places a function is passed,
   assigned or returned as a value with `→`.
 

@@ -147,13 +147,96 @@ Decision: ship as opt-in (`ast=true`). Nothing changes unless it is asked for. O
 for the default tool description: whether models reach for it at the right times is not
 measured — that needs the agent evals upstream runs (`evals/`), which need API keys.
 
+### Large trees (`evals/fork/big-linux.txt`, `evals/fork/big-chromium.txt`, `evals/fork/t9-memory.tsv`)
+
+Asked for after the first defaults (30 s, 512 MiB) shipped without a large tree to measure
+on. Corpora: the Linux kernel at `067c5c24c` (97,361 files, 1.6 GB, C) and Chromium at
+`3a7520d2d79d` (474,447 files, 4.5 GB after leaving out images, media, fonts and archives;
+143,863 C/C++ files, plus Java, TypeScript, Python). Machine: 2 vCPUs, 7.9 GiB. Warm page
+cache unless said. Reproduce with `scripts/fork-big-eval.py REPO BINARY [--session]`.
+
+One-shot requests, fork (`big-*.txt` has every row; "upstream" is `37abea2` on the same
+machine and session):
+
+| Request | Linux | Chromium | Upstream, Chromium |
+|---|---|---|---|
+| `search` literal, stops at 5,000 matches | 0.4 s / 29 MiB | 0.2 s / 46 MiB | — |
+| `search -w` whole tree | 1.6 s / 58 MiB | 2.9 s / 56 MiB | 3.2 s / 93 MiB |
+| `search`, no match (every file read) | 0.7 s / 30 MiB | 2.8 s / 47 MiB | 2.9 s / 69 MiB |
+| `search` in a subtree | — | 0.16 s / 36 MiB | — |
+| `read #Name` (walks the tree) | 0.6 s / 36 MiB | 3.0 s / 82–109 MiB | 3.0–3.8 s / 95–106 MiB |
+| `read path#Name` (no walk) | — | 0.19 s / 33 MiB | — |
+| `trace NAME` | 0.8–2.1 s / 46–74 MiB | 4.7–5.8 s / 103–123 MiB | 9.6–10.7 s / 150–169 MiB; `PostTask` 7.8 s |
+| `trace NAME --depth 2` | 5.5 s / 90 MiB | cut at 10 s with the note / 119–179 MiB | — |
+| `map` | 0.3 s / 64 MiB | 1.5 s / 164 MiB (listing capped at 400,000) | 1.6 s / 141 MiB |
+| `search --ast`, subtree | 0.4 s / 47 MiB | 1.2 s / 47 MiB | n/a |
+| `search --ast`, whole tree | 6.6 s / 40 MiB (stops at 5,000) | 8.2 s / 62 MiB (stops at 5,000) | n/a |
+| `search --ast`, pattern that matches nothing but whose words are everywhere | cut at 10 s | 2.7 s (words absent) | n/a |
+
+For scale, ripgrep 15 on the same Chromium tree: 2.7–3.2 s / 27–41 MiB warm, **56 s with a
+cold page cache**. A first whole-tree request after a reboot is I/O-bound whatever the tool;
+the fork answers at 10 s with `incomplete: stopped after 10000 ms (165,033 files examined)`
+and the retry reads from cache.
+
+What these runs found, in the order found. Each was fixed and is covered by a test.
+
+| Finding | Before | After |
+|---|---|---|
+| A text search buffered whole lines (`scripts/fork-longline-rss.py`: a 200 MiB one-line bundle) | upstream server 998–1,022 MiB resident after one search | 28 MiB peak, 20–23 MiB resident; the answer names the file it could not read to the end |
+| The deadline bounded walks, not parsing; a trace that ran out of time claimed there were no callers | kernel `trace mutex_lock --depth 2`: 25.7 s under a 10 s deadline, "0 call sites … No call sites found" | 5.5 s, 548 call sites in 485 functions, same answer every run (upstream: 30.2 s, 548 in 484) |
+| The definition prefilter kept every statement call (`name(args);`) as a definition-looking line | every C caller parsed | only real candidates; `trace kmalloc` 3.5 → 2.1 s, byte-identical |
+| A trace walked the tree three times (definition, namesakes, call sites) | Chromium `trace DidCommitNavigation` 9.9 s | 4.7 s; walks 3 → 1, depth 2: 5 → 2 |
+| A limited call-site scan kept whichever files the walk reached first | different sites on different runs | nearest the definition first, deterministic |
+| Candidate limit counted files that mention the name | `trace PostTask` "incomplete" at 9.4 s | complete at 5.8 s |
+| Bare call patterns never matched in C, Objective-C and PHP (`kfree($A)`: 0 matches) | structural search silently wrong there | 3,516 lines against the regex's 3,514 in `fs/`: 3,502 in both, 12 regex-only (11 of them comments), 14 structural-only |
+| Structural scan cached every source it parsed | kernel-wide scan 437 MiB | 40–47 MiB |
+| A file with a line over 4 MiB counted as mentioning every name | Chromium `read #Name` 160–180 MiB peak (two unrelated 6–7 MiB one-line JSON files parsed per lookup) | 82–109 MiB (upstream 95–106) |
+| Tree-sitter used the system allocator; freed parse memory was never returned | 340 MiB resident after one 7 MiB file, at any `--cache-mb` (upstream the same) | 33 MiB |
+
+One MCP server, a session of symbol reads, searches and traces run twice
+(`--session`; kernel: 100 / 10 / 5, Chromium: 40 / 4 / 2):
+
+| | Resident after pass 1 → 2 | Reads | Searches | Traces |
+|---|---|---|---|---|
+| Linux, upstream | 126 → 125 MiB | 53.9 / 51.1 s | 6.6 / 6.6 s | 8.4 / 8.4 s |
+| Linux, fork | 73 → 73 MiB | 55.1 / 52.8 s | 6.7 / 6.8 s | 3.1 / 3.1 s |
+| Chromium, upstream | 221 → 222 MiB | 83.6 / 81.4 s | 11.4 / 11.5 s | 13.8 / 14.9 s |
+| Chromium, fork before the allocator change | 247 → 250 MiB | 92.9 / 84.9 s | 11.6 / 11.4 s | 5.9 / 5.7 s |
+| Chromium, fork | 123 → 125 MiB | 87.2 / 81.2 s | 12.7 / 11.2 s | 5.9 / 5.8 s |
+
+Hostile corpus of `scripts/fork-rss.py` at the new default: 238 MiB after reads, 245 MiB at
+the end, passes 26.2 s and 24.9 s (upstream in the same session: 909 → 920 MiB, 26.1 s and
+0.3 s). The 15 reference queries (`t9-memory.tsv`): 15/15 byte-identical to T5, total
+1307 ms against 1465 ms for upstream re-run in the same session, max peak RSS 56.7 MiB
+against 66.7 MiB.
+
+Reading:
+
+- **Ordinary requests on a 474k-file tree cost what one pass of ripgrep costs** (about 3 s on
+  two cores) when they have to read the tree, and 0.03–0.2 s when a path narrows them. No
+  index is the reason for both halves of that sentence.
+- **Every `read #Name` re-reads the tree** (2–3 s on Chromium). A session of 40 of them is
+  80 s, same as upstream. That is the price of nothing to keep fresh; `path#Name` avoids it.
+- **Symbol reads are up to 3% slower than upstream in a session on the kernel** (52.8 against
+  51.1 s per 100): the cost of handing memory back after every call. Traces are 2.5× faster.
+- **Not finished in 10 s on two cores:** a depth-2 trace on Chromium, a structural pattern
+  whose words are in most files of the kernel, and anything whole-tree on a cold page cache.
+  All three end with the note and what was found.
+- **Structural search is parse-bound**: tree-sitter C about 4 MB/s per core, so whole-tree
+  patterns take 6–9 s where a literal takes 0.2–3 s. In a subtree it is 0.4–1.2 s.
+
+Decisions: deadline default 30 s → 10 s; cache default 512 → 256 MiB; both are one flag or
+environment variable to put back (`--deadline-ms 30000`, `--cache-mb 512`). Structural search
+stays, opt-in. Not measured: macOS, more than two cores, a tree with a large untracked
+build directory (the walk honours `.gitignore`; the entry limit is the backstop).
+
 ### Summary of decisions
 
 | Slice | Decision | Changes default output? |
 |---|---|---|
 | 01 Path and scope contract | shipped, default | only for targets outside the primary root or a rootless server |
-| 02 Bounded discovery and residency | shipped, default | no; long-lived servers hold less memory and may re-parse |
+| 02 Bounded discovery and residency | shipped, default; defaults revised to 10 s and 256 MiB after the large-tree runs | no; long-lived servers hold less memory and may re-parse; a request past 10 s ends with a note |
 | 03 Ancestor context (`output=scopes`) | shipped, opt-in | no |
-| 04 Structural search (`ast=true`) | shipped, opt-in; wall-time gate missed as written | no |
+| 04 Structural search (`ast=true`) | shipped, opt-in; wall-time gate missed as written; C, Objective-C and PHP call patterns fixed | no |
 | 05 Relationship kinds (`λ`, `→`) | shipped, default | `trace` only: marks, value sites, legend |
 | 06 Backlog (entity correspondence, import-aware lookup, Git input layer) | specified, not started | — |

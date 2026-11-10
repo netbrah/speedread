@@ -120,9 +120,31 @@ measurement, on 2 vCPUs:
   and `classify_file` now stop at the deadline too, and running out of time outranks a count
   limit in the note (`Limits::mark`).
 - **Cache 256 MiB.** On the hostile corpus the default resident size follows the ceiling
-  (512 → 511 MiB, 256 → see eval.md); on the kernel and Chromium sessions the working set
-  of hundreds of symbol reads stays under it. `--cache-mb 4096` was never a default: it is the
-  setting that reproduces upstream's unbounded outline cache for comparison.
+  (512 → 511 MiB, 256 → 238 MiB); on the kernel and Chromium sessions the working set
+  of hundreds of symbol reads stays under it (73 and 125 MiB resident). `--cache-mb 4096` was
+  never a default: it is the setting that reproduces upstream's unbounded outline cache for
+  comparison.
+
+### Memory a request freed goes back
+
+The cache ceiling bounds what the server keeps. It did not bound what the server held:
+measured over a session on Chromium, resident memory sat at 220–260 MiB whether the ceiling
+was 64, 256 or 512 MiB, upstream and fork alike. Two causes, both outside the cache:
+
+- **Tree-sitter did not use the program's allocator.** Its C library calls the system
+  `malloc`; the Rust `#[global_allocator]` (mimalloc) covers Rust code only. glibc keeps
+  freed memory with the thread that used it, so every parse left its high-water mark behind.
+  One `read` of a symbol in a 7 MiB source file left the server at 340 MiB for good with
+  `--cache-mb 1`. `main` now gives tree-sitter mimalloc (`tree_sitter::set_allocator`, before
+  anything is parsed).
+- **Nothing asked for freed pages back.** After each MCP tool call the handler thread and
+  every pool thread run `mi_collect(true)` (`server::AFTER_REQUEST`, set by the binary).
+
+Same request after both: 33 MiB resident (test
+`memory_a_request_freed_is_returned_to_the_system`, Linux only: it reads `/proc`). Sessions:
+Chromium 250 → 125 MiB (upstream 222), kernel 73 MiB (upstream 125); request times within
+3% of upstream on symbol reads, and parsing itself is about 10% faster with one allocator.
+The CLI is unaffected except for that speed: it exits.
 
 ### One walk per question
 
@@ -151,10 +173,17 @@ keep fresh):
 A text search buffers whole lines. One 200 MiB line (a bundle, a data file) made a single
 `search` peak at 1 GiB and left an MCP server at 1.0–1.3 GiB resident, upstream and fork
 alike. The searcher's line buffer is now limited to 4 MiB (`MAX_LINE_BYTES`); a file with a
-longer line is searched up to that line, counts as a candidate for definition lookup, and the
-answer says `not fully searched: N files have a line longer than 4 MiB and were read only up
-to it, e.g. <path>`. Matched lines are kept as a 4 KiB window around the match. After:
-28 MiB peak, 39 MiB resident (`scripts/fork-longline-rss.py`). Chromium has three such files.
+longer line is searched up to that line and the answer says `not fully searched: N files have
+a line longer than 4 MiB and were read only up to it, e.g. <path>`. Matched lines are kept as
+a 4 KiB window around the match. After: 28 MiB peak, 20–23 MiB resident
+(`scripts/fork-longline-rss.py`). Chromium has three such files.
+
+Definition lookup must not lose a definition behind such a line, so the first version counted
+every file with one as mentioning every name. On Chromium that made each symbol lookup parse
+two 6–7 MiB one-line JSON files that have nothing to do with the name (+60 MiB peak per
+lookup, found by comparing against upstream). `search::file_has` now matches such a file
+whole when it is small enough to parse (at most 8 MiB, read once) and only says "maybe" for
+larger ones, which are never parsed anyway.
 
 Known gaps:
 

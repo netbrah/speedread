@@ -1,0 +1,12 @@
+search kmalloc                                             first    448 ms  best    364 ms  cpu   0.7 s  peak   29 MiB   21210 B | 5,003 matches in 1,950 files for /kmalloc/ (stopped at 5,000; narrow with path
+search -w schedule_timeout                                 first   1622 ms  best   1551 ms  cpu   2.7 s  peak   58 MiB   19483 B | 287 matches in 196 files for /schedule_timeout/
+search struct file_operations --output files               first    936 ms  best    870 ms  cpu   1.7 s  peak   54 MiB   14342 B | 2,609 matches in 1,258 files for /struct file_operations/
+search zzz_not_there_zzz                                   first    720 ms  best    671 ms  cpu   1.3 s  peak   30 MiB      92 B | No matches for /zzz_not_there_zzz/ in . (97,253 files searched; .gitignored fi
+read #vfs_read                                             first    593 ms  best    578 ms  cpu   1.1 s  peak   36 MiB    1011 B | ==> fs/read_write.c:534-563 @526a6adc6e16c117 (1,804 lines) vfs_read
+trace vfs_read                                             first    756 ms  best    756 ms  cpu   1.4 s  peak   46 MiB     841 B | ==> callers of vfs_read (fs/read_write.c:534-563)
+trace kmalloc                                              first   2091 ms  best   2091 ms  cpu   4.0 s  peak   74 MiB    4641 B | ==> callers of kmalloc (tools/lib/slab.c:14-28)
+trace mutex_lock --depth 2                                 first   5667 ms  best   5452 ms  cpu  10.7 s  peak   90 MiB   10628 B | ==> callers of mutex_lock (kernel/locking/mutex.c:293-320)
+map                                                        first    320 ms  best    316 ms  cpu   0.5 s  peak   64 MiB    5200 B | ==> ./ (97,361 files, 1.6 GB; .gitignore respected)
+search --ast kfree($A) --lang c fs/ext4                    first    368 ms  best    368 ms  cpu   0.6 s  peak   47 MiB   11007 B | 99 matches in 17 files for structural `kfree($A)` (c)
+search --ast kfree($A) --lang c                            first   6593 ms  best   6593 ms  cpu  11.6 s  peak   40 MiB   18417 B | 5,000 matches in 1,453 files for structural `kfree($A)` (c) (stopped at 5,000;
+search --ast kfree($A, $B) --lang c                        first  10015 ms  best  10015 ms  cpu  17.8 s  peak   45 MiB     376 B | Nothing matched structural `kfree($A, $B)` in . before the search stopped (10, | incomplete: stopped after 10000 ms (97,255 files examined); results may 
