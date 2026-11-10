@@ -633,6 +633,8 @@ pub(crate) fn scan(
         compiled: Mutex::new(HashMap::new()),
     };
     let names = metavars(pattern);
+    // What a long hit line is windowed on (as the renderer does).
+    let shows = crate::search::line_matcher(req)?;
     let max_matches = req.max_matches.max(1);
     let total = AtomicUsize::new(0);
     let parsed = AtomicUsize::new(0);
@@ -741,26 +743,27 @@ pub(crate) fn scan(
             })
             .collect();
         at.sort_by_key(|(row, _)| *row);
+        // The text of a row is its line and the captures of every match
+        // on it.
+        let mut shown_rows: Vec<(u32, String)> = Vec::new();
+        for (row, caps) in at {
+            match shown_rows.last_mut() {
+                Some((r, all)) if *r == row => all.push_str(&caps),
+                _ => {
+                    if shown_rows.len() >= MAX_HITS_PER_FILE {
+                        break;
+                    }
+                    shown_rows.push((row, caps));
+                }
+            }
+        }
         let mut hits: Vec<Hit> = Vec::new();
         let mut rows: Vec<u32> = Vec::new();
-        for (row, caps) in at {
-            if rows.last() == Some(&row) {
-                if let Some(h) = hits.last_mut() {
-                    h.text.extend_from_slice(caps.as_bytes());
-                }
-                continue;
-            }
-            if hits.len() >= MAX_HITS_PER_FILE {
-                break;
-            }
+        for (row, caps) in shown_rows {
             let mut line = src.line(row as usize).to_vec();
             line.extend_from_slice(caps.as_bytes());
             rows.push(row);
-            hits.push(Hit {
-                line: row + 1,
-                text: line,
-                is_match: true,
-            });
+            hits.push(Hit::new(row + 1, &line, true, &shows));
         }
         if context > 0 {
             let last = src.line_count().saturating_sub(1) as u32;
@@ -769,11 +772,7 @@ pub(crate) fn scan(
                 let hi = (row + context as u32).min(last);
                 for r in lo..=hi {
                     if r != row && hits.len() < MAX_HITS_PER_FILE {
-                        hits.push(Hit {
-                            line: r + 1,
-                            text: src.line(r as usize).to_vec(),
-                            is_match: false,
-                        });
+                        hits.push(Hit::new(r + 1, src.line(r as usize), false, &shows));
                     }
                 }
             }

@@ -225,18 +225,26 @@ impl Engine {
         }
     }
 
-    /// Append the one-line reason when this request's discovery was cut
-    /// short, so a partial answer is never mistaken for a complete one.
+    /// Append the one-line reasons when this request's answer is partial
+    /// (discovery cut short, files not read to their end), so a partial
+    /// answer is never mistaken for a complete one.
     pub fn note_incomplete(&self, out: &mut String) {
         if let Some(note) = self.limits.note()
             && !out.contains("incomplete: ")
         {
-            if !out.is_empty() && !out.ends_with('\n') {
-                out.push('\n');
-            }
-            out.push_str(&note);
-            out.push('\n');
+            push_note(out, &note);
         }
+        if let Some(note) = self.long_note()
+            && !out.ends_with(&format!("{note}\n"))
+        {
+            push_note(out, &note);
+        }
+    }
+
+    /// The note for files a text search read only up to a line too long
+    /// to buffer, if there were any in this request.
+    pub fn long_note(&self) -> Option<String> {
+        self.limits.long_note(|p| self.ws.display(p))
     }
 
     /// The same engine with `base_dir` as the base for one request (`None`
@@ -493,6 +501,14 @@ impl Engine {
         *self.shared.files.lock() = Some((Instant::now(), root, list.clone()));
         list
     }
+}
+
+fn push_note(out: &mut String, note: &str) {
+    if !out.is_empty() && !out.ends_with('\n') {
+        out.push('\n');
+    }
+    out.push_str(note);
+    out.push('\n');
 }
 
 #[cfg(test)]

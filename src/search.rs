@@ -81,8 +81,66 @@ pub struct SearchRequest {
 #[derive(Clone)]
 pub(crate) struct Hit {
     pub(crate) line: u32,
+    /// The line, or its first [`KEEP_LINE`] bytes when it is longer.
     pub(crate) text: Vec<u8>,
     pub(crate) is_match: bool,
+    /// For a line longer than [`KEEP_LINE`]: the part shown around the match.
+    pub(crate) long: Option<Box<Window>>,
+}
+
+/// The shown part of a long line; `before`/`after` say text was cut there.
+#[derive(Clone)]
+pub(crate) struct Window {
+    text: Vec<u8>,
+    before: bool,
+    after: bool,
+}
+
+/// Longest line a text search buffers, per worker thread. A file with a
+/// longer line is searched up to that line and reported (see
+/// [`crate::walk::Limits::long_line`]): unbounded, one 200 MiB line costs
+/// 200 MiB on every thread that meets it, kept for the life of the server.
+pub(crate) const MAX_LINE_BYTES: usize = 4 << 20;
+
+/// Bytes of a hit line kept: more than text output shows (a 300-byte
+/// window) or JSON output carries (1,000 bytes).
+const KEEP_LINE: usize = 4096;
+
+/// The 300 bytes of a long line shown: from 100 before its first match.
+fn window(text: &[u8], matcher: &RegexMatcher) -> (usize, usize) {
+    let pos = matcher
+        .find(text)
+        .ok()
+        .flatten()
+        .map(|m| m.start())
+        .unwrap_or(0);
+    let start = pos.saturating_sub(100);
+    (start, (start + 300).min(text.len()))
+}
+
+impl Hit {
+    /// A hit for `full`, holding a bounded part of it however long it is.
+    pub(crate) fn new(line: u32, full: &[u8], is_match: bool, matcher: &RegexMatcher) -> Hit {
+        if full.len() <= KEEP_LINE {
+            return Hit {
+                line,
+                text: full.to_vec(),
+                is_match,
+                long: None,
+            };
+        }
+        let (start, end) = window(full, matcher);
+        Hit {
+            line,
+            text: full[..KEEP_LINE].to_vec(),
+            is_match,
+            long: Some(Box::new(Window {
+                text: full[start..end].to_vec(),
+                before: start > 0,
+                after: end < full.len(),
+            })),
+        }
+    }
 }
 
 pub(crate) struct FileHits {
@@ -95,12 +153,12 @@ pub(crate) const MAX_HITS_PER_FILE: usize = 400;
 /// Larger files are shown without enclosing-symbol grouping.
 pub(crate) const MAX_GROUP_BYTES: usize = 1 << 20;
 
-struct Collect {
+struct Collect<'a> {
     hits: Vec<Hit>,
     matches: usize,
+    matcher: &'a RegexMatcher,
 }
-
-impl Sink for Collect {
+impl Sink for Collect<'_> {
     type Error = io::Error;
 
     fn matched(&mut self, _s: &Searcher, m: &SinkMatch<'_>) -> Result<bool, io::Error> {
@@ -110,11 +168,8 @@ impl Sink for Collect {
             // Multi-line matches are not enabled; take the first line.
             let bytes = m.bytes();
             let end = memchr::memchr(b'\n', bytes).unwrap_or(bytes.len());
-            self.hits.push(Hit {
-                line,
-                text: trim_cr(&bytes[..end]).to_vec(),
-                is_match: true,
-            });
+            self.hits
+                .push(Hit::new(line, trim_cr(&bytes[..end]), true, self.matcher));
         }
         Ok(true)
     }
@@ -124,14 +179,35 @@ impl Sink for Collect {
             let line = c.line_number().unwrap_or(0) as u32;
             let bytes = c.bytes();
             let end = memchr::memchr(b'\n', bytes).unwrap_or(bytes.len());
-            self.hits.push(Hit {
-                line,
-                text: trim_cr(&bytes[..end]).to_vec(),
-                is_match: false,
-            });
+            self.hits
+                .push(Hit::new(line, trim_cr(&bytes[..end]), false, self.matcher));
         }
         Ok(true)
     }
+}
+
+/// Did a search stop because a line exceeds [`MAX_LINE_BYTES`]?
+pub(crate) fn line_too_long(err: &io::Error) -> bool {
+    err.to_string().contains("allocation limit")
+}
+
+/// Could `path` have a line matching `m`? Used to pick the files worth
+/// parsing, so a file with a line too long to search counts as a yes: it
+/// is small enough to parse, and parsing decides.
+pub(crate) fn file_has(m: &RegexMatcher, path: &Path) -> bool {
+    let mut found = false;
+    // `sinks::Bytes` requires line numbers.
+    let res = with_searcher(0, |s| {
+        s.search_path(
+            m,
+            path,
+            grep_searcher::sinks::Bytes(|_, _| {
+                found = true;
+                Ok(false)
+            }),
+        )
+    });
+    found || res.is_err_and(|e| line_too_long(&e))
 }
 
 fn trim_cr(b: &[u8]) -> &[u8] {
@@ -151,6 +227,7 @@ fn with_searcher<R>(context: usize, f: impl FnOnce(&mut Searcher) -> R) -> R {
                 .before_context(context)
                 .after_context(context)
                 .binary_detection(BinaryDetection::quit(b'\x00'))
+                .heap_limit(Some(MAX_LINE_BYTES))
                 .build();
             *slot = Some((context, s));
         }
@@ -278,9 +355,16 @@ pub(crate) fn scan(
         let mut sink = Collect {
             hits: Vec::new(),
             matches: 0,
+            matcher,
         };
         let res = with_searcher(context, |s| s.search_path(matcher, path, &mut sink));
-        if res.is_ok() && sink.matches > 0 {
+        // A line over the limit ends the file's search there: what came
+        // before it counts, and the request says the file was cut short.
+        let long = res.as_ref().is_err_and(line_too_long);
+        if long {
+            e.limits.long_line(path);
+        }
+        if (res.is_ok() || long) && sink.matches > 0 {
             total.fetch_add(sink.matches, Ordering::Relaxed);
             out.lock().push(FileHits {
                 path: path.to_path_buf(),
@@ -359,16 +443,17 @@ pub(crate) fn resolve_roots(e: &Engine, paths: &[String]) -> Result<Vec<PathBuf>
 fn push_hit_line(out: &mut String, h: &Hit, matcher: &RegexMatcher) {
     push_num(out, h.line as usize);
     out.push('\t');
-    if h.text.len() > 300 {
+    if let Some(w) = &h.long {
+        if w.before {
+            out.push('…');
+        }
+        render::push_text(out, &w.text, 300);
+        if w.after {
+            out.push('…');
+        }
+    } else if h.text.len() > 300 {
         // Show a window around the first match.
-        let pos = matcher
-            .find(&h.text)
-            .ok()
-            .flatten()
-            .map(|m| m.start())
-            .unwrap_or(0);
-        let start = pos.saturating_sub(100);
-        let end = (start + 300).min(h.text.len());
+        let (start, end) = window(&h.text, matcher);
         if start > 0 {
             out.push('…');
         }
@@ -760,18 +845,7 @@ pub fn find_definitions(
             if crate::lang::detect(&entry.path, b"").is_none() {
                 return true;
             }
-            let mut found = false;
-            let _ = with_searcher(0, |s| {
-                s.search_path(
-                    &matcher,
-                    &entry.path,
-                    grep_searcher::sinks::Bytes(|_, _| {
-                        found = true;
-                        Ok(false)
-                    }),
-                )
-            });
-            if found {
+            if file_has(&matcher, &entry.path) {
                 candidates.lock().push(entry.path);
             }
             if candidates.lock().len() >= walk::MAX_CANDIDATES {
@@ -898,23 +972,7 @@ pub(crate) fn prefilter_definitions(candidates: &mut Vec<PathBuf>, names: &[Stri
     else {
         return;
     };
-    let keep: Vec<bool> = candidates
-        .par_iter()
-        .map(|p| {
-            let mut found = false;
-            let _ = with_searcher(0, |s| {
-                s.search_path(
-                    &m,
-                    p,
-                    grep_searcher::sinks::Bytes(|_, _| {
-                        found = true;
-                        Ok(false)
-                    }),
-                )
-            });
-            found
-        })
-        .collect();
+    let keep: Vec<bool> = candidates.par_iter().map(|p| file_has(&m, p)).collect();
     let mut it = keep.into_iter();
     candidates.retain(|_| it.next().unwrap_or(true));
 }

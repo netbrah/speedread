@@ -439,3 +439,117 @@ fn mcp_cancellation_stops_the_walk() {
     assert_eq!(stat(&err, "cancelled"), 1, "{err}");
     assert!(stat(&err, "entries") < 30_000, "{err}");
 }
+
+/// Files a text search can hurt itself on: one line of 3 MiB, one of 6 MiB
+/// (more than a search buffers), and many matching lines of 256 KiB.
+fn long_lines(fx: &Fx) {
+    let mut wide = vec![b'a'; 3 << 20];
+    wide[2 << 20..(2 << 20) + 10].copy_from_slice(b" needle_w ");
+    wide.push(b'\n');
+    std::fs::write(fx.dir.join("repo/src/wide.min.js"), wide).unwrap();
+
+    let mut huge = b"var needle_early = 1;\n".to_vec();
+    huge.extend(std::iter::repeat_n(b'b', 6 << 20));
+    huge.extend_from_slice(b"\nvar needle_late = 2;\n");
+    std::fs::write(fx.dir.join("repo/src/huge.min.js"), huge).unwrap();
+
+    let mut many = Vec::new();
+    for i in 0..300 {
+        many.extend_from_slice(format!("{{\"k\":\"needle_many\",\"i\":{i},\"v\":\"").as_bytes());
+        many.extend(std::iter::repeat_n(b'x', 256 << 10));
+        many.extend_from_slice(b"\"}\n");
+    }
+    std::fs::write(fx.dir.join("repo/src/many.jsonl"), many).unwrap();
+}
+
+const LONG_NOTE: &str = "not fully searched: 1 file has a line longer than 4 MiB and was read only up to it: src/huge.min.js\n";
+
+#[test]
+fn a_line_too_long_to_search_is_reported_not_skipped_silently() {
+    let fx = Fx::new("longlines", 0);
+    long_lines(&fx);
+
+    // A long line within the limit: found, shown as a window on the match.
+    let (out, _) = fx.run(&["search", "needle_w"]);
+    assert!(
+        out.starts_with("1 match in 1 file for /needle_w/\n"),
+        "{out}"
+    );
+    let hit = out.lines().find(|l| l.starts_with("1\t")).expect("a hit");
+    assert_eq!(
+        hit,
+        format!("1\t…{} needle_w {}…", "a".repeat(99), "a".repeat(191)),
+        "{out}"
+    );
+    // The other file in scope has a line over the limit, and the answer
+    // says so; a search that does not reach that file has nothing to add.
+    assert!(out.ends_with(LONG_NOTE), "{out}");
+    let (out, _) = fx.run(&["search", "needle_w", &fx.p("repo/src/wide.min.js")]);
+    assert!(
+        out.starts_with("1 match in 1 file for /needle_w/\n"),
+        "{out}"
+    );
+    assert!(!out.contains("not fully searched"), "{out}");
+
+    // What precedes a line over the limit is found; the answer says the
+    // file was not read to its end.
+    let (out, _) = fx.run(&["search", "needle_early"]);
+    assert!(
+        out.starts_with("1 match in 1 file for /needle_early/\n"),
+        "{out}"
+    );
+    assert!(out.contains("1\tvar needle_early = 1;\n"), "{out}");
+    assert!(out.ends_with(LONG_NOTE), "{out}");
+
+    // What follows it is not reached, and absence is not claimed outright.
+    let (out, _) = fx.run(&["search", "needle_late"]);
+    assert!(out.starts_with("No matches for /needle_late/"), "{out}");
+    assert!(out.ends_with(LONG_NOTE), "{out}");
+
+    // Hits on long lines keep what output needs, in text and JSON.
+    let (out, _) = fx.run(&["search", "needle_many", "--output", "files"]);
+    assert!(
+        out.starts_with("300 matches in 1 file for /needle_many/\n"),
+        "{out}"
+    );
+    let (out, err) = fx.run(&["search", "needle_many", "--json"]);
+    // Machine-readable output carries the note on stderr.
+    assert!(err.contains(LONG_NOTE), "{err}");
+    assert!(!out.contains("not fully searched"), "{out}");
+    let first: Value = serde_json::from_str(out.lines().next().unwrap()).unwrap();
+    assert_eq!(first["clipped"], json!(true), "{first}");
+    let text = first["text"].as_str().unwrap();
+    assert_eq!(text.len(), 1000);
+    assert!(
+        text.starts_with("{\"k\":\"needle_many\",\"i\":0,\"v\":\"xxx"),
+        "{text}"
+    );
+}
+
+/// Symbol lookups pick files by a text search first. A source file with a
+/// line too long for that search is still parsed, so a definition after
+/// the line is found.
+#[test]
+fn a_definition_after_a_very_long_line_is_still_found() {
+    let fx = Fx::new("longdef", 0);
+    let mut generated = b"pub fn before_long() -> u32 {\n    1\n}\n// ".to_vec();
+    generated.extend(std::iter::repeat_n(b'c', 5 << 20));
+    generated.extend_from_slice(b"\npub fn after_long() -> u32 {\n    before_long()\n}\n");
+    std::fs::write(fx.dir.join("repo/src/generated.rs"), generated).unwrap();
+    std::fs::write(
+        fx.dir.join("repo/src/user.rs"),
+        "pub fn user() -> u32 {\n    crate::generated::after_long()\n}\n",
+    )
+    .unwrap();
+
+    let (out, _) = fx.run(&["read", "#after_long"]);
+    assert!(out.contains("src/generated.rs:"), "{out}");
+    assert!(out.contains("pub fn after_long() -> u32 {"), "{out}");
+
+    let (out, _) = fx.run(&["trace", "after_long"]);
+    assert!(
+        out.starts_with("==> callers of after_long (src/generated.rs:"),
+        "{out}"
+    );
+    assert!(out.contains("crate::generated::after_long()"), "{out}");
+}

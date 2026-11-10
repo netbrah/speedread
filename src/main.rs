@@ -416,10 +416,13 @@ fn setting<T: std::str::FromStr>(flag: Option<T>, var: &str) -> anyhow::Result<O
     }
 }
 
-/// Machine-readable output keeps stdout clean: the incomplete note goes to
+/// Machine-readable output keeps stdout clean: the incomplete notes go to
 /// stderr.
 fn note_stderr(engine: &Engine) {
     if let Some(note) = engine.limits.note() {
+        eprintln!("{note}");
+    }
+    if let Some(note) = engine.long_note() {
         eprintln!("{note}");
     }
 }

@@ -394,8 +394,9 @@ fn file_matches(m: &RegexMatcher, path: &Path) -> bool {
     // `sinks::Bytes` requires line numbers.
     let mut searcher = grep_searcher::SearcherBuilder::new()
         .line_number(true)
+        .heap_limit(Some(crate::search::MAX_LINE_BYTES))
         .build();
-    let _ = searcher.search_path(
+    let res = searcher.search_path(
         m,
         path,
         grep_searcher::sinks::Bytes(|_, _| {
@@ -403,7 +404,8 @@ fn file_matches(m: &RegexMatcher, path: &Path) -> bool {
             Ok(false)
         }),
     );
-    found
+    // A line too long to search leaves the answer to the parse.
+    found || res.is_err_and(|e| crate::search::line_too_long(&e))
 }
 
 fn is_word(b: u8) -> bool {

@@ -99,6 +99,10 @@ pub struct Limits {
     cancel: AtomicBool,
     stop: AtomicU8,
     examined: AtomicU64,
+    /// Files a text search read only up to a line too long to buffer.
+    long_lines: AtomicU64,
+    /// The first of them in path order, to name one.
+    long_first: parking_lot::Mutex<Option<PathBuf>>,
 }
 
 impl Limits {
@@ -111,6 +115,8 @@ impl Limits {
             cancel: AtomicBool::new(false),
             stop: AtomicU8::new(0),
             examined: AtomicU64::new(0),
+            long_lines: AtomicU64::new(0),
+            long_first: parking_lot::Mutex::new(None),
         }
     }
 
@@ -185,6 +191,36 @@ impl Limits {
         }
         self.examined.fetch_add(n, Ordering::Relaxed);
         true
+    }
+
+    /// Record that a text search stopped in `path` at a line too long to
+    /// buffer (`search::MAX_LINE_BYTES`).
+    pub(crate) fn long_line(&self, path: &Path) {
+        self.long_lines.fetch_add(1, Ordering::Relaxed);
+        let mut first = self.long_first.lock();
+        if first.as_deref().is_none_or(|f| path < f) {
+            *first = Some(path.to_path_buf());
+        }
+    }
+
+    /// One line for the end of a response, when files were not read to
+    /// their end. `show` renders a path for the reader.
+    pub fn long_note(&self, show: impl Fn(&Path) -> String) -> Option<String> {
+        let n = self.long_lines.load(Ordering::Relaxed) as usize;
+        let first = self.long_first.lock().clone()?;
+        let limit = crate::search::MAX_LINE_BYTES >> 20;
+        Some(if n == 1 {
+            format!(
+                "not fully searched: 1 file has a line longer than {limit} MiB and was read only up to it: {}",
+                show(&first)
+            )
+        } else {
+            format!(
+                "not fully searched: {} files have a line longer than {limit} MiB and were read only up to it, e.g. {}",
+                crate::util::thousands(n),
+                show(&first)
+            )
+        })
     }
 
     /// One line for the end of a response, when discovery was cut short.
