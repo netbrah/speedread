@@ -87,7 +87,26 @@ impl Def {
             package: package_of(&self.src),
             lang: self.src.lang,
             kind: s.kind,
+            accessor: is_accessor(&self.src, s),
         }
+    }
+}
+
+/// A getter or property: `obj.name` reads it, so a mention without
+/// parentheses is not the callable handed around.
+fn is_accessor(src: &Source, s: &Symbol) -> bool {
+    match src.lang {
+        Some(LangId::JavaScript | LangId::TypeScript | LangId::Tsx) => s
+            .label
+            .split(|c: char| !(c.is_alphanumeric() || c == '_' || c == '$'))
+            .take_while(|w| *w != s.name)
+            .any(|w| matches!(w, "get" | "set")),
+        Some(LangId::Python) => (s.start..s.def).any(|row| {
+            let line = trim_ascii_start(src.line(row as usize));
+            line.starts_with(b"@")
+                && (line.windows(8).any(|w| w == b"property") || line.ends_with(b".setter"))
+        }),
+        _ => false,
     }
 }
 
@@ -101,6 +120,8 @@ struct Info {
     package: Option<String>,
     lang: Option<LangId>,
     kind: Kind,
+    /// A getter/setter or `@property`.
+    accessor: bool,
 }
 
 impl Info {
@@ -475,15 +496,293 @@ fn is_string_kind(k: &str) -> bool {
         )
 }
 
-/// `Some(kind)` for code occurrences, `None` inside comments and strings.
-fn classify(tree: &Tree, data: &[u8], start: usize, end: usize) -> Option<OccKind> {
+/// How a callable's name is used when it is not called: evidence that it
+/// can run later, never that it does.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum ValueUse {
+    /// An argument of a call; the text is that call's callee.
+    PassedTo(String),
+    /// The value of an assignment, initializer or field.
+    Assigned,
+    Returned,
+}
+
+/// What an occurrence is, syntactically.
+struct Class {
+    kind: OccKind,
+    /// Inside a closure nested in the enclosing named symbol.
+    in_closure: bool,
+    /// Set for non-call mentions in a value position.
+    value: Option<ValueUse>,
+}
+
+/// Anonymous functions. Ruby's `block` is one too, but `block` means a plain
+/// statement block in most other grammars.
+fn is_closure_kind(k: &str, lang: Option<LangId>) -> bool {
+    matches!(
+        k,
+        "closure_expression"
+            | "arrow_function"
+            | "function_expression"
+            | "lambda"
+            | "lambda_expression"
+            | "lambda_literal"
+            | "func_literal"
+            | "anonymous_function"
+            | "anonymous_function_creation_expression"
+            | "anonymous_method_expression"
+            | "do_block"
+    ) || (k == "block" && lang == Some(LangId::Ruby))
+}
+
+/// Does `scope` (a parameter list or a declaration's binding side) introduce
+/// `name`?
+fn binds(scope: Node<'_>, data: &[u8], name: &[u8]) -> bool {
+    let mut cur = scope.walk();
+    let mut budget = 400;
+    loop {
+        let n = cur.node();
+        if n.child_count() == 0
+            && !n.kind().contains("type")
+            && data.get(n.byte_range()) == Some(name)
+        {
+            return true;
+        }
+        budget -= 1;
+        if budget == 0 {
+            return false;
+        }
+        // `sizes: Set<name>` mentions a type, it does not bind `name`.
+        let is_type = n != scope && n.kind().contains("type");
+        if !is_type && cur.goto_first_child() {
+            continue;
+        }
+        loop {
+            if cur.node() == scope {
+                return false;
+            }
+            if cur.goto_next_sibling() {
+                break;
+            }
+            if !cur.goto_parent() {
+                return false;
+            }
+        }
+    }
+}
+
+/// A local declaration that binds `name` (not a function definition, whose
+/// name is the thing being traced).
+fn declares(stmt: Node<'_>, data: &[u8], name: &[u8]) -> bool {
+    let mut stack = vec![(stmt, 0)];
+    while let Some((n, depth)) = stack.pop() {
+        let k = n.kind();
+        // Functions define the name being traced; a type's fields and
+        // members are not locals.
+        if n.child_by_field_name("parameters").is_some()
+            || [
+                "function",
+                "field",
+                "struct",
+                "class",
+                "enum",
+                "interface",
+                "trait",
+                "impl",
+                "type",
+            ]
+            .iter()
+            .any(|w| k.contains(w))
+        {
+            continue;
+        }
+        if k.contains("declarat")
+            || k.contains("assignment")
+            || k.starts_with("let")
+            || k.contains("short_var")
+            || k.contains("const")
+        {
+            for field in ["pattern", "name", "left", "declarator"] {
+                if let Some(b) = n.child_by_field_name(field)
+                    && b.child_by_field_name("parameters").is_none()
+                    && binds(b, data, name)
+                {
+                    return true;
+                }
+            }
+        }
+        // `const a = …` wraps its declarators; an expression statement wraps
+        // an assignment.
+        if depth < 2 {
+            let mut c = n.walk();
+            for child in n.named_children(&mut c) {
+                stack.push((child, depth + 1));
+            }
+        }
+    }
+    false
+}
+
+/// Is `name` at `node` a parameter or an earlier local of an enclosing
+/// function, rather than the definition being traced?
+fn bound_locally(node: Node<'_>, data: &[u8], name: &[u8]) -> bool {
+    let mut child = node;
+    let mut cur = node.parent();
+    let mut depth = 0;
+    while let Some(n) = cur {
+        for field in ["parameters", "parameter"] {
+            if let Some(p) = n.child_by_field_name(field)
+                && p.id() != child.id()
+                && binds(p, data, name)
+            {
+                return true;
+            }
+        }
+        // Statements before this one in the same block.
+        let mut c = n.walk();
+        for (seen, sib) in n.named_children(&mut c).enumerate() {
+            if sib.start_byte() >= child.start_byte() || seen > 400 {
+                break;
+            }
+            if declares(sib, data, name) {
+                return true;
+            }
+        }
+        depth += 1;
+        if depth > 48 {
+            break;
+        }
+        child = n;
+        cur = n.parent();
+    }
+    false
+}
+
+/// The callee of `call` as written, on one line, at most 40 bytes; a
+/// method chain keeps its last link (`….map`).
+fn callee_text(call: Node<'_>, data: &[u8]) -> String {
+    let callee = ["function", "method", "name", "macro", "constructor", "type"]
+        .iter()
+        .find_map(|f| call.child_by_field_name(f))
+        .or_else(|| call.named_child(0));
+    let Some(callee) = callee else {
+        return String::new();
+    };
+    // `obj.method(…)` grammars keep the receiver in a separate field.
+    let start = ["object", "receiver"]
+        .iter()
+        .find_map(|f| call.child_by_field_name(f))
+        .map_or(callee.start_byte(), |o| {
+            o.start_byte().min(callee.start_byte())
+        });
+    let text = String::from_utf8_lossy(&data[start..callee.end_byte()]);
+    let mut out = String::new();
+    for word in text.split_whitespace() {
+        out.push_str(word);
+    }
+    // `a.b(c).map`: the chain before the last call is noise.
+    if let Some(i) = out.rfind(')') {
+        out = format!("…{}", &out[i + 1..]);
+    }
+    if out.len() > 40 {
+        let mut cut = 40;
+        while !out.is_char_boundary(cut) {
+            cut -= 1;
+        }
+        out.truncate(cut);
+        out.push('…');
+    }
+    out
+}
+
+/// A non-call mention in a value position: argument, right-hand side, field
+/// value or returned expression.
+fn value_use(node: Node<'_>, data: &[u8], start: usize, end: usize) -> Option<ValueUse> {
+    // `Set<number>`, `x as never`, `T = never`: a type that shares the name.
+    let mut cur = Some(node);
+    for _ in 0..4 {
+        let Some(n) = cur else { break };
+        let k = n.kind();
+        if k.contains("type") {
+            return None;
+        }
+        if k.contains("argument") || CALL_KINDS.contains(&k) {
+            break;
+        }
+        cur = n.parent();
+    }
+    // Climb through wrappers and paths that end with the name (`&f`, `m::f`,
+    // `self.f`).
+    let mut v = node;
+    for _ in 0..6 {
+        let p = v.parent()?;
+        let same = p.start_byte() == v.start_byte() && p.end_byte() == v.end_byte();
+        let path = !CALL_KINDS.contains(&p.kind())
+            && p.end_byte() == end
+            && p.child_count() <= 3
+            && last_ident(data, p.start_byte(), p.end_byte()) == Some((start, end))
+            && !p.kind().contains("argument")
+            && !p.kind().contains("return")
+            && p.child_by_field_name("value")
+                .is_none_or(|x| x.id() != v.id())
+            && p.child_by_field_name("right")
+                .is_none_or(|x| x.id() != v.id());
+        if !(same || path) {
+            break;
+        }
+        v = p;
+    }
+    let p = v.parent()?;
+    let k = p.kind();
+    if k.contains("argument") {
+        let mut cur = Some(p);
+        for _ in 0..3 {
+            let n = cur?;
+            if CALL_KINDS.contains(&n.kind()) {
+                return Some(ValueUse::PassedTo(callee_text(n, data)));
+            }
+            cur = n.parent();
+        }
+        return None;
+    }
+    if matches!(k, "return_statement" | "return_expression") {
+        return Some(ValueUse::Returned);
+    }
+    for field in ["value", "right"] {
+        if p.child_by_field_name(field)
+            .is_some_and(|x| x.id() == v.id())
+        {
+            return Some(ValueUse::Assigned);
+        }
+    }
+    None
+}
+
+/// `Some(class)` for code occurrences, `None` inside comments and strings.
+/// `floor` is the definition row of the enclosing named symbol: a closure
+/// starting at or before it is that symbol, not something nested in it.
+fn classify(
+    tree: &Tree,
+    data: &[u8],
+    start: usize,
+    end: usize,
+    lang: Option<LangId>,
+    floor: Option<u32>,
+) -> Option<Class> {
     let node = tree.root_node().descendant_for_byte_range(start, end)?;
     let mut import = false;
     let mut in_code = false;
+    let mut in_closure = false;
     let mut cur = Some(node);
     let mut depth = 0;
     while let Some(n) = cur {
         let k = n.kind();
+        if is_closure_kind(k, lang)
+            && n.start_byte() < start
+            && floor.is_none_or(|f| n.start_position().row as u32 > f)
+        {
+            in_closure = true;
+        }
         if !in_code {
             if k.contains("comment") {
                 return None;
@@ -503,21 +802,28 @@ fn classify(tree: &Tree, data: &[u8], start: usize, end: usize) -> Option<OccKin
         }
         cur = n.parent();
     }
+    let class = |kind, value| Class {
+        kind,
+        in_closure,
+        value,
+    };
     if import {
-        return Some(OccKind::Import);
+        return Some(class(OccKind::Import, None));
     }
     let mut cur = node.parent();
     for _ in 0..4 {
         let Some(n) = cur else { break };
         if CALL_KINDS.contains(&n.kind()) {
             if callee_ident(n, data) == Some((start, end)) {
-                return Some(OccKind::Call);
+                return Some(class(OccKind::Call, None));
             }
             break;
         }
         cur = n.parent();
     }
-    Some(OccKind::Ref)
+    let value =
+        value_use(node, data, start, end).filter(|_| !bound_locally(node, data, &data[start..end]));
+    Some(class(OccKind::Ref, value))
 }
 
 /// Byte range of the called name: the last identifier of the callee.
@@ -660,6 +966,10 @@ struct Occ {
     col: usize,
     kind: OccKind,
     qualifier: Option<String>,
+    /// The qualifier is a path segment (`m::name`), not a receiver.
+    path: bool,
+    in_closure: bool,
+    value: Option<ValueUse>,
 }
 
 struct FileScan {
@@ -757,21 +1067,40 @@ fn classify_file(e: &Engine, f: &crate::search::FileHits, names: &[String]) -> O
                     continue;
                 }
                 let (start, end) = (base + col, base + col + n.len());
-                let kind = match &tree {
-                    Some(t) => match classify(t, &src.data, start, end) {
-                        Some(OccKind::Ref) if textual_call(text, col + n.len()) => OccKind::Call,
-                        Some(k) => k,
+                let floor = o
+                    .as_deref()
+                    .and_then(|o| enclosing_callable(o, line0).map(|i| o.symbols[i].def));
+                let class = match &tree {
+                    Some(t) => match classify(t, &src.data, start, end, src.lang, floor) {
+                        Some(c) if c.kind == OccKind::Ref && textual_call(text, col + n.len()) => {
+                            Class {
+                                kind: OccKind::Call,
+                                value: None,
+                                ..c
+                            }
+                        }
+                        Some(c) => c,
                         None => continue,
                     },
-                    None if textual_call(text, col + n.len()) => OccKind::Call,
-                    None => OccKind::Ref,
+                    None => Class {
+                        kind: if textual_call(text, col + n.len()) {
+                            OccKind::Call
+                        } else {
+                            OccKind::Ref
+                        },
+                        in_closure: false,
+                        value: None,
+                    },
                 };
                 occs.push(Occ {
                     name: ni,
                     line0,
                     col,
-                    kind,
+                    kind: class.kind,
                     qualifier: qualifier_before(text, col, src.lang),
+                    path: col >= 2 && &text[col - 2..col] == b"::",
+                    in_closure: class.in_closure,
+                    value: class.value,
                 });
             }
         }
@@ -896,7 +1225,7 @@ fn implicit_self(lang: Option<LangId>) -> bool {
     )
 }
 
-fn attribute(occ: &Occ, f: &FileScan, t: &Info, others: &[Info]) -> Attr {
+fn attribute_raw(occ: &Occ, f: &FileScan, t: &Info, others: &[Info]) -> Attr {
     let go = t.lang == Some(LangId::Go) && f.src.lang == Some(LangId::Go);
     let lua = matches!(f.src.lang, Some(LangId::Lua | LangId::Luau));
     // Lua modules are mostly all `M` (or `module`): in a file that defines
@@ -928,7 +1257,7 @@ fn attribute(occ: &Occ, f: &FileScan, t: &Info, others: &[Info]) -> Attr {
         }
     };
     let file_dir = f.src.path.parent().unwrap_or(Path::new(""));
-    let attr = match occ.qualifier.as_deref() {
+    match occ.qualifier.as_deref() {
         Some("self" | "this" | "Self" | "cls" | "static" | "$this") => owner_is(&here),
         Some("super") => Attr::Unknown,
         Some(q) if !q.is_empty() => {
@@ -997,11 +1326,37 @@ fn attribute(occ: &Occ, f: &FileScan, t: &Info, others: &[Info]) -> Attr {
                 Attr::Unknown
             }
         }
+    }
+}
+
+/// Is a non-call mention of `t`'s name here a reference to the callable
+/// itself? `x.name` is a field far more often than a method value, so a
+/// member access counts only when its receiver is known to be the target's
+/// owner, and only where methods and fields share a namespace.
+fn names_callable(occ: &Occ, raw: Attr, f: &FileScan, t: &Info) -> bool {
+    use LangId::*;
+    let Some(lang) = f.src.lang else {
+        return false;
     };
-    if others.is_empty() && attr == Attr::Unknown {
-        Attr::Target
-    } else {
-        attr
+    // A bare name is a call (Ruby, Scala, Bash) or a constant (PHP) there.
+    if !is_callable(t.kind) || t.accessor || matches!(lang, Ruby | Scala | Bash | Php) {
+        return false;
+    }
+    match occ.qualifier {
+        // `m::f`, `Type::method`, `this::method`: a path, never a field.
+        Some(_) if occ.path => true,
+        Some(_) => {
+            raw == Attr::Target
+                && matches!(
+                    lang,
+                    Python | JavaScript | TypeScript | Tsx | Go | CSharp | Swift | Lua | Luau
+                )
+        }
+        // Java and Kotlin need `::` to name a function.
+        None if matches!(lang, Java | Kotlin) => false,
+        // A bare method name is a value only where `this` is implicit and
+        // the enclosing type is the owner.
+        None => !t.is_method() || raw == Attr::Target,
     }
 }
 
@@ -1012,6 +1367,10 @@ struct Site {
     line0: u32,
     kind: OccKind,
     attr: Attr,
+    /// Inside a closure nested in the enclosing symbol (`λ`).
+    in_closure: bool,
+    /// The target's name used as a value, not called (`→ …`).
+    value: Option<ValueUse>,
 }
 
 /// Sites inside one enclosing symbol (or at a file's top level).
@@ -1081,10 +1440,19 @@ fn sites_for(
                 .lang
                 .is_some_and(|l| !l.is_structured_data() && l.grammar().is_some());
             for occ in f.occs.iter().filter(|o| names[o.name] == t.name) {
-                if !refs && (occ.kind != OccKind::Call || !code) {
+                // A callable's name passed, stored or returned: it can run
+                // later.
+                let raw = attribute_raw(occ, f, t, others);
+                let value = occ.value.clone().filter(|_| names_callable(occ, raw, f, t));
+                if !refs && !(code && (occ.kind == OccKind::Call || value.is_some())) {
                     continue;
                 }
-                let attr = attribute(occ, f, t, others);
+                // Nothing else has the name: an unknown receiver is the target's.
+                let attr = if others.is_empty() && raw == Attr::Unknown {
+                    Attr::Target
+                } else {
+                    raw
+                };
                 if attr == Attr::Other {
                     stats.excluded += 1;
                     continue;
@@ -1100,6 +1468,8 @@ fn sites_for(
                     line0: occ.line0,
                     kind: occ.kind,
                     attr,
+                    in_closure: occ.in_closure,
+                    value,
                 };
                 match by_sym.iter_mut().find(|g| g.sym == sym) {
                     Some(g) => {
@@ -1114,6 +1484,12 @@ fn sites_for(
                         sites: vec![site],
                         children: Vec::new(),
                     }),
+                }
+            }
+            if !refs {
+                // Calls first, then value uses (stable: by line within each).
+                for g in &mut by_sym {
+                    g.sites.sort_by_key(|s| s.kind != OccKind::Call);
                 }
             }
             out[k].extend(by_sym);
@@ -1874,6 +2250,16 @@ fn site_line(src: &Source, s: &Site, indent: &str) -> String {
     t.push('\t');
     let line = src.line(s.line0 as usize);
     crate::render::push_text(&mut t, trim_ascii_start(line), 200);
+    if s.in_closure {
+        t.push_str("  λ");
+    }
+    match &s.value {
+        Some(ValueUse::PassedTo(callee)) if callee.is_empty() => t.push_str("  → passed"),
+        Some(ValueUse::PassedTo(callee)) => t.push_str(&format!("  → passed to {callee}")),
+        Some(ValueUse::Assigned) => t.push_str("  → assigned"),
+        Some(ValueUse::Returned) => t.push_str("  → returned"),
+        None => {}
+    }
     t.push('\n');
     t
 }
@@ -1937,6 +2323,12 @@ fn render_groups(out: &mut Out<'_>, groups: &[Group]) {
         }
         render_group(out, g, 0, None);
     }
+}
+
+/// The sites `count_groups` counts: those of the target itself (first
+/// level), not of its callers' callers.
+fn all_sites(gs: &[Group]) -> impl Iterator<Item = &Site> {
+    gs.iter().flat_map(|g| g.sites.iter())
 }
 
 fn count_groups(gs: &[Group]) -> (usize, usize) {
@@ -2165,15 +2557,39 @@ fn trace_request(e: &Engine, req: &TraceRequest) -> String {
                     plural(n, "scope")
                 )
             } else {
-                format!(
-                    "{} in {}",
-                    plural(sites, "call site"),
-                    plural(n, "function")
-                )
+                let values = all_sites(&groups)
+                    .filter(|x| x.value.is_some() && x.kind != OccKind::Call)
+                    .count();
+                let mut t = plural(sites - values, "call site");
+                if values > 0 {
+                    t.push_str(&format!(" + {values} passed as value"));
+                }
+                t.push_str(&format!(" in {}", plural(n, "function")));
+                t
             };
+            let closures = all_sites(&groups).filter(|x| x.in_closure).count();
+            let values = all_sites(&groups).any(|x| x.value.is_some());
             out.text.push_str(&what);
+            if closures > 0 && !refs {
+                out.text.push_str(&format!(
+                    ", {closures} inside {}",
+                    if closures == 1 {
+                        "a closure"
+                    } else {
+                        "closures"
+                    }
+                ));
+            }
             out.text
                 .push_str(" · syntactic: comments, strings and the definition excluded");
+            if closures > 0 {
+                out.text
+                    .push_str("; λ = inside a closure (may run later or never)");
+            }
+            if values {
+                out.text
+                    .push_str("; → = passed, stored or returned, not called here");
+            }
             if !others.is_empty() {
                 out.text.push_str(&format!(
                     "; {} other definition{} named `{}`",
