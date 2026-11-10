@@ -103,7 +103,7 @@ still counts them).
 | Max peak RSS of the unchanged queries | 65.4 MiB (upstream 65.0 MiB) |
 | Binary (`--profile fast`) | 43,764,224 → 44,026,112 bytes over upstream (+0.6%); three new crates |
 | New tests | 10 integration (`tests/fork_ast.rs`) + 5 unit: Rust, TypeScript, TSX, Python, Go; every grammar compiles a call pattern; prefilter on/off equal; macros; nested matches; errors; MCP |
-| Model-facing text | two properties on `search` (`ast`, `lang`), 51 words; descriptions and instructions untouched |
+| Model-facing text | two properties on `search` (`ast`, `lang`), 40 words; descriptions and instructions untouched |
 | Deadline | `--deadline-ms 20` on zod: partial answer ending in `incomplete: stopped after 20 ms …` |
 
 Three shapes against the regex an agent would write (`scripts/fork-ast-eval.py`, lines of
