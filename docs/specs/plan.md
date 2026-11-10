@@ -64,7 +64,7 @@ tests `tests/fork_scopes.rs`, fixtures `tests/fixtures/fork/`.
 
 ### T4 — Relationship kinds (spec 05)
 Files: `src/trace.rs`; tests `tests/fork_trace.rs`.
-- [ ] Failing tests first. - [ ] `OccKind::Value`, `Occ.in_closure`, rendering, summary counts. - [ ] Verify, commit, push.
+- [x] Failing tests first. - [x] `ValueUse` on sites (no `OccKind::Value`, see spec 05 "As shipped"), `in_closure`, rendering, summary counts. - [x] Precision pass against upstream on 120 sampled targets. - [x] Verify, commit, push.
 
 ### T5 — Structural search (spec 04)
 Files: `Cargo.toml`, `src/structural.rs` (new), `src/search.rs`, `src/main.rs`, `src/server.rs`; tests `tests/fork_ast.rs`.

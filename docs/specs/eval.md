@@ -78,3 +78,19 @@ real monorepo — the corpus is synthetic.
 | Model-facing text | one enum value and 11 words in the `output` property description |
 
 Decision: ship as opt-in. Not the default: 5 of 12 queries exceed the 35% overhead bar.
+
+### T4 — relationship kinds (`evals/fork/t4-trace.tsv`)
+
+| Check | Result |
+|---|---|
+| Output of the 15 eval queries | 14 byte-identical; `zod trace #safeParse` differs only by 10 `λ` marks, the `25 inside closures` count and one legend (10,768 → 10,752 bytes: the marks displaced one trailing group within the budget) |
+| Total wall (median of 5) | 1598 ms (T2: 1568 ms; upstream re-run earlier in the session: 1535 ms) |
+| Max peak RSS | 65.3 MiB (upstream 65.0 MiB) |
+| New tests | 7 integration (`tests/fork_trace.rs`): Rust, TypeScript, Go, Python; unchanged output without marks; constants; refs; fields, types and getters |
+| 120 sampled functions/methods (60 ripgrep, 60 zod), `trace` at a 400,000-token budget, fork versus upstream | 0 site lines lost; 77 answers identical; 5 value sites added, 5 of 5 correct by inspection; 395 `λ` marks |
+| First implementation, same sample | 504 value sites, mostly field reads and types — rejected, rules tightened (spec 05 "As shipped") |
+
+Decision: ship as default. Caveat: at a fixed budget, marks and value sites take bytes, so a
+truncated answer can show slightly fewer trailing sites than upstream (the truncation note
+still counts them).
+
