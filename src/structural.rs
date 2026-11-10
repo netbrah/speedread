@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
-use ast_grep_core::matcher::PatternBuilder;
+use ast_grep_core::matcher::{PatternBuilder, PatternNode};
 use ast_grep_core::tree_sitter::{LanguageExt, StrDoc, TSLanguage};
 use ast_grep_core::{AstGrep, Language, Pattern, PatternError};
 use grep_regex::{RegexMatcher, RegexMatcherBuilder};
@@ -23,6 +23,7 @@ use rayon::prelude::*;
 use crate::engine::Engine;
 use crate::lang::LangId;
 use crate::search::{FileHits, Hit, MAX_GROUP_BYTES, MAX_HITS_PER_FILE, Scan, SearchRequest};
+use crate::source::Source;
 use crate::walk::{self, WalkOpts};
 
 /// Longest capture value shown after a hit.
@@ -149,13 +150,82 @@ fn lang_selected(want: LangId, file: LangId) -> bool {
     want == file || (want == LangId::TypeScript && file == LangId::Tsx)
 }
 
-/// The pattern for one language, or why it cannot be used there.
-fn compile(pattern: &str, lang: LangId) -> Result<Pattern, String> {
-    let p = Pattern::try_new(pattern, Sg(lang)).map_err(|e| e.to_string())?;
-    if p.has_error() {
-        return Err("it does not parse as one syntax node".to_string());
+/// The pattern for one language, or why it cannot be used there: every way
+/// it reads as code, as written first.
+fn compile(pattern: &str, lang: LangId) -> Result<Vec<Pattern>, String> {
+    let mut alts = Vec::new();
+    let why = match Pattern::try_new(pattern, Sg(lang)) {
+        Ok(p) if !p.has_error() => {
+            alts.push(p);
+            None
+        }
+        Ok(_) => Some("it does not parse as one syntax node".to_string()),
+        Err(e) => Some(e.to_string()),
+    };
+    if let Some(p) = in_statement(pattern, lang, alts.first()) {
+        alts.push(p);
     }
-    Ok(p)
+    match why {
+        Some(why) if alts.is_empty() => Err(why),
+        _ => Ok(alts),
+    }
+}
+
+/// The node kind a pattern matches at its root, if it is not a metavariable.
+fn root_kind(p: &Pattern) -> Option<u16> {
+    match &p.node {
+        PatternNode::MetaVar { .. } => None,
+        PatternNode::Terminal { kind_id, .. } | PatternNode::Internal { kind_id, .. } => {
+            Some(*kind_id)
+        }
+    }
+}
+
+/// The pattern read as an expression inside a statement, when that is a
+/// different node from the pattern read on its own (`as_is`). On its own, C
+/// and Objective-C read `foo($A)` as a macro type and PHP reads it as text
+/// outside `<?php`: such a pattern would match no call at all.
+fn in_statement(pattern: &str, lang: LangId, as_is: Option<&Pattern>) -> Option<Pattern> {
+    let pat = pattern.trim();
+    if pat.ends_with(';') || pat.ends_with('}') {
+        return None;
+    }
+    let pre = if lang == LangId::Php { "<?php " } else { "" };
+    let sg = Sg(lang);
+    let context = format!("{pre}{pat};");
+    let processed = sg.pre_process_pattern(&context);
+    let tree = crate::outline::parse_tree(lang, processed.as_bytes())?;
+    let (start, end) = (pre.len(), processed.len() - 1);
+    let node = tree.root_node().descendant_for_byte_range(start, end)?;
+    if node.start_byte() != start || node.end_byte() != end || !node.is_named() || node.has_error()
+    {
+        return None;
+    }
+    if as_is.is_some_and(|p| root_kind(p).is_none_or(|k| k == node.kind_id())) {
+        return None;
+    }
+    // The selector takes the first node of the kind: that has to be this one.
+    let mut cursor = tree.walk();
+    let first = loop {
+        let n = cursor.node();
+        if n.kind_id() == node.kind_id() {
+            break n;
+        }
+        if cursor.goto_first_child() {
+            continue;
+        }
+        while !cursor.goto_next_sibling() {
+            if !cursor.goto_parent() {
+                return None;
+            }
+        }
+    };
+    if first.id() != node.id() {
+        return None;
+    }
+    Pattern::contextual(&context, node.kind(), sg)
+        .ok()
+        .filter(|p| !p.has_error())
 }
 
 /// The literal words of a pattern (letters, digits, `_`; at least two bytes)
@@ -264,7 +334,8 @@ pub(crate) struct AstScan {
     /// Candidates too large to parse (not searched).
     pub too_large: usize,
     /// Lines that mention the literal inside macro bodies that have no
-    /// syntax tree to match (Rust), so a match there would go unseen.
+    /// syntax tree to match (Rust `macro_rules!`, C `#define`), so a match
+    /// there would go unseen.
     pub opaque: usize,
     /// The text prefilter, if the pattern has a literal.
     pub literal: Option<String>,
@@ -349,11 +420,11 @@ impl AstScan {
 /// Per-language patterns, compiled on first use.
 struct Patterns<'a> {
     pattern: &'a str,
-    compiled: Mutex<HashMap<LangId, Option<Arc<Pattern>>>>,
+    compiled: Mutex<HashMap<LangId, Option<Arc<Vec<Pattern>>>>>,
 }
 
 impl Patterns<'_> {
-    fn get(&self, lang: LangId) -> Option<Arc<Pattern>> {
+    fn get(&self, lang: LangId) -> Option<Arc<Vec<Pattern>>> {
         let mut map = self.compiled.lock();
         map.entry(lang)
             .or_insert_with(|| compile(self.pattern, lang).ok().map(Arc::new))
@@ -383,9 +454,9 @@ fn candidates(
     lit: Option<&str>,
 ) -> Result<Vec<PathBuf>, String> {
     if let Some(lit) = lit {
+        // Paths only: the lines are matched again on the syntax tree.
         let matcher = literal_matcher(lit)?;
-        let sc = crate::search::scan(e, roots, globs, &matcher, 0, usize::MAX);
-        return Ok(sc.files.into_iter().map(|f| f.path).collect());
+        return Ok(crate::search::files_with(e, roots, globs, &matcher));
     }
     let mut out = Vec::new();
     for root in roots {
@@ -481,7 +552,7 @@ fn trailing(pattern: &str, lit: &str) -> bool {
 /// matched; `found` gets `(file offset, captures)`, `opaque` the file offsets
 /// of mentions in bodies that do not parse (and in `macro_rules!` rules).
 struct Macros<'a> {
-    pat: &'a Pattern,
+    pat: &'a [Pattern],
     names: &'a [(String, bool)],
     word: &'a str,
     trailing: bool,
@@ -570,7 +641,8 @@ impl Macros<'_> {
                 lang: Sg(LangId::Rust),
                 tree: t.clone(),
             });
-            for m in doc.root().find_all(self.pat) {
+            let top = doc.root();
+            for m in self.pat.iter().flat_map(|p| top.find_all(p)) {
                 let r = m.range();
                 if r.start >= within.start && r.end <= within.end {
                     let (at, caps) = shown(&frag, &m, self.names, Some((self.word, self.trailing)));
@@ -658,16 +730,23 @@ pub(crate) fn scan(
         if e.limits.expired() {
             return None;
         }
-        let src = e.load_text(path).ok()?;
+        // Not through the cache: a scan reads far more files than it
+        // shows, and would fill the cache with them and evict what the
+        // session is working on.
+        let size = std::fs::metadata(path).ok()?.len();
+        if size > MAX_GROUP_BYTES as u64 {
+            let lang = crate::lang::detect(path, b"").filter(|l| l.grammar().is_some())?;
+            if want.is_none_or(|w| lang_selected(w, lang)) {
+                too_large.fetch_add(1, Ordering::Relaxed);
+            }
+            return None;
+        }
+        let src = Source::load(path).ok()?;
         let lang = src.lang.filter(|l| l.grammar().is_some())?;
         if want.is_some_and(|w| !lang_selected(w, lang)) {
             return None;
         }
         if src.binary {
-            return None;
-        }
-        if src.data.len() > MAX_GROUP_BYTES {
-            too_large.fetch_add(1, Ordering::Relaxed);
             return None;
         }
         let text = std::str::from_utf8(&src.data).ok()?;
@@ -678,9 +757,10 @@ pub(crate) fn scan(
         {
             return None;
         }
-        // One parse gives the tree to match and the outline rendering wants.
-        let (_, tree) = e.outline_with_tree(&src)?;
-        let tree = tree?;
+        // The tree only: outlines are made for the files that are shown.
+        let tree = std::panic::catch_unwind(|| crate::outline::parse_tree(lang, &src.data))
+            .ok()
+            .flatten()?;
         // A `.lua` file may have been parsed as Luau.
         let lang = if lang == LangId::Lua
             && LangId::Luau
@@ -695,15 +775,17 @@ pub(crate) fn scan(
         parsed.fetch_add(1, Ordering::Relaxed);
         note(&ran, lang);
         let macros = (lang == LangId::Rust).then(|| tree.clone());
+        let defines = matches!(lang, LangId::C | LangId::Cpp | LangId::ObjC).then(|| tree.clone());
         let root = AstGrep::doc(StrDoc {
             src: text.to_string(),
             lang: Sg(lang),
             tree,
         });
         // (file offset shown, captures) per match.
-        let mut found: Vec<(usize, String)> = root
-            .root()
-            .find_all(&*pat)
+        let top = root.root();
+        let mut found: Vec<(usize, String)> = pat
+            .iter()
+            .flat_map(|p| top.find_all(p))
             .map(|m| shown(text, &m, &names, word.map(|w| (w, tail))))
             .collect();
         if let (Some(tree), Some(w)) = (macros, word) {
@@ -720,6 +802,19 @@ pub(crate) fn scan(
             let row = |o: &usize| src.lines.partition_point(|&s| s as usize <= *o);
             let mut lines: Vec<usize> = inside.opaque.iter().map(row).collect();
             lines.sort_unstable();
+            lines.dedup();
+            opaque.fetch_add(lines.len(), Ordering::Relaxed);
+        }
+        if let (Some(tree), Some(w)) = (defines, word) {
+            // The body of a `#define` is raw text to the grammar.
+            let mut lines: Vec<usize> = memchr::memmem::find_iter(&src.data, w.as_bytes())
+                .filter(|&o| {
+                    tree.root_node()
+                        .descendant_for_byte_range(o, o + w.len())
+                        .is_some_and(|n| n.kind() == "preproc_arg")
+                })
+                .map(|o| src.lines.partition_point(|&s| s as usize <= o))
+                .collect();
             lines.dedup();
             opaque.fetch_add(lines.len(), Ordering::Relaxed);
         }
@@ -878,6 +973,111 @@ mod tests {
             }
         }
         assert!(failed.is_empty(), "{failed:?}");
+    }
+
+    /// Distinct places `pattern` matches in `src`.
+    fn count(src: &str, lang: LangId, pattern: &str) -> usize {
+        let alts = compile(pattern, lang).unwrap_or_else(|e| panic!("{}: {e}", lang.name()));
+        let root = AstGrep::new(src, Sg(lang));
+        let top = root.root();
+        let mut at: Vec<usize> = alts
+            .iter()
+            .flat_map(|p| top.find_all(p))
+            .map(|m| m.range().start)
+            .collect();
+        at.sort_unstable();
+        at.dedup();
+        at.len()
+    }
+
+    #[test]
+    fn a_call_pattern_matches_calls_in_every_grammar() {
+        // A call as a statement, in an initializer, in a condition and in a
+        // return. Read on its own, `foo($A)` is a macro type in C and
+        // Objective-C and plain text in PHP: compiling is not matching.
+        let c_like =
+            "int f(void) { foo(1); int x = foo(2); if (foo(3)) { return foo(4); } return x; }";
+        let js = "function f() { foo(1); const x = foo(2); if (foo(3)) { return foo(4); } }";
+        let java = "class C { int f() { foo(1); int x = foo(2); if (foo(3)) { return foo(4); } return x; } }";
+        let lua = "function f() foo(1); local x = foo(2); if foo(3) then return foo(4) end end";
+        let mut wrong = Vec::new();
+        for &lang in CODE_LANGS {
+            use LangId::*;
+            let (src, pattern) = match lang {
+                Rust => (
+                    "fn f() { foo(1); let x = foo(2); if foo(3) { return foo(4); } }",
+                    "foo($A)",
+                ),
+                Python => (
+                    "def f():\n    foo(1)\n    x = foo(2)\n    if foo(3):\n        return foo(4)\n",
+                    "foo($A)",
+                ),
+                JavaScript | TypeScript | Tsx => (js, "foo($A)"),
+                Go => (
+                    "package p\nfunc f() int { foo(1); x := foo(2); if foo(3) { return foo(4) }; return x }",
+                    "foo($A)",
+                ),
+                Java | CSharp => (java, "foo($A)"),
+                C | Cpp | ObjC => (c_like, "foo($A)"),
+                Ruby => (
+                    "def f\n  foo(1)\n  x = foo(2)\n  if foo(3)\n    return foo(4)\n  end\nend\n",
+                    "foo($A)",
+                ),
+                Php => (
+                    "<?php function f() { foo(1); $x = foo(2); if (foo(3)) { return foo(4); } }",
+                    "foo($A)",
+                ),
+                Bash => (
+                    "f() { foo 1; x=$(foo 2); if foo 3; then foo 4; fi; }",
+                    "foo $A",
+                ),
+                Swift => (
+                    "func f() -> Int { foo(1); let x = foo(2); if foo(3) { return foo(4) }; return x }",
+                    "foo($A)",
+                ),
+                Kotlin => (
+                    "fun f(): Int { foo(1); val x = foo(2); if (foo(3)) { return foo(4) }; return x }",
+                    "foo($A)",
+                ),
+                Scala => (
+                    "object O { def f(): Int = { foo(1); val x = foo(2); if (foo(3)) { return foo(4) }; x } }",
+                    "foo($A)",
+                ),
+                Lua | Luau => (lua, "foo($A)"),
+                other => panic!("no sample for {}", other.name()),
+            };
+            let n = count(src, lang, pattern);
+            if n != 4 {
+                wrong.push(format!("{}: {n} of 4", lang.name()));
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:?}");
+    }
+
+    #[test]
+    fn c_patterns_match_expressions_and_statements() {
+        let src = "struct n { struct n *next; int v; };\nint g(struct n *p, int k) {\n    struct n *q = bar(k, 2);\n    p->next = q;\n    if (p->next == NULL) { return -1; }\n    q->v = bar(sizeof(*q), k) + 1;\n    kfree(q), kfree(p);\n    return p->v == NULL ? 0 : k;\n}\n";
+        let mut wrong = Vec::new();
+        for lang in [LangId::C, LangId::Cpp, LangId::ObjC] {
+            for (pattern, want) in [
+                ("kfree($A)", 2),
+                ("bar($A, $B)", 2),
+                ("$P->next", 2),
+                ("$A == NULL", 2),
+                ("$P->$F = $V", 2),
+                ("sizeof($E)", 1),
+                ("$A ? $B : $C", 1),
+                ("return $A;", 2),
+                ("if ($C) { $$$B }", 1),
+                ("struct n *$N = $V;", 1),
+            ] {
+                let n = count(src, lang, pattern);
+                if n != want {
+                    wrong.push(format!("{} `{pattern}`: {n} of {want}", lang.name()));
+                }
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:?}");
     }
 
     #[test]

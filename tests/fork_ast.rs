@@ -470,3 +470,60 @@ fn a_nested_match_is_shown_on_its_own_line() {
         .collect();
     assert_eq!(lines, vec!["1", "3"], "{out}");
 }
+
+const C: &str = "\
+#include <stdlib.h>
+
+#define DROP(p)       \\
+    do {              \\
+        release(p);   \\
+    } while (0)
+
+/* release(x) in a comment is not a call */
+int close_all(struct node *head, int n) {
+    struct node *next = pick(head, n);
+    release(head);
+    release (next);
+    if (pick(next, 0) == NULL)
+        return release(next), -1;
+    return n;
+}
+";
+
+/// C reads a bare `release($A)` as a macro type, not a call: the pattern is
+/// also read as an expression, so calls match wherever they stand. `#define`
+/// bodies are raw text to the grammar and are counted, not dropped.
+#[test]
+fn c_calls_match_as_expressions_and_define_bodies_are_counted() {
+    let fx = Fx::new("c");
+    std::fs::write(fx.dir.join("src/list.c"), C).unwrap();
+    let out = fx.run(&["release($A)", "--lang", "c"]);
+    assert!(
+        out.starts_with(
+            "3 matches in 1 file for structural `release($A)` (c)\n\
+             `release` also appears on 1 line inside macro bodies that do not parse as code; those were not matched (a text search shows them).\n"
+        ),
+        "{out}"
+    );
+    assert_eq!(
+        hits(&out),
+        vec![
+            "11\t    release(head);\t$A=head",
+            // Spacing is not syntax.
+            "12\t    release (next);\t$A=next",
+            // Inside a comma expression in a return.
+            "14\t        return release(next), -1;\t$A=next",
+        ],
+        "{out}"
+    );
+    // In an initializer and in a condition, with two arguments.
+    let out = fx.run(&["pick($A, $B)"]);
+    assert_eq!(
+        hits(&out),
+        vec![
+            "10\t    struct node *next = pick(head, n);\t$A=head\t$B=n",
+            "13\t    if (pick(next, 0) == NULL)\t$A=next\t$B=0",
+        ],
+        "{out}"
+    );
+}

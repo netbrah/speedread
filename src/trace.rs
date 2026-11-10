@@ -336,33 +336,17 @@ fn defs_named(e: &Engine, near: &Path, names: &[String]) -> HashMap<String, Vec<
     if names.is_empty() {
         return out;
     }
-    let Some(matcher) = word_matcher(names) else {
-        return out;
-    };
     let want: HashSet<&str> = names.iter().map(String::as_str).collect();
-    let candidates = parking_lot::Mutex::new(Vec::new());
     let root = e.ws.lookup_root(near);
-    let _ = walk::walk(&root, &e.walk_opts(), |entry| {
-        if entry.dataless
-            || entry.size > crate::source::MAX_PARSE as u64
-            || crate::lang::detect(&entry.path, b"").is_none()
-        {
-            return true;
-        }
-        if file_matches(&matcher, &entry.path) {
-            candidates.lock().push(entry.path);
-        }
-        if candidates.lock().len() >= walk::MAX_CANDIDATES {
-            e.limits.mark(walk::Stop::Candidates);
-            return false;
-        }
-        true
-    });
-    let mut candidates = candidates.into_inner();
-    crate::search::prefilter_definitions(&mut candidates, names);
+    let candidates = crate::search::definition_candidates(e, &root, names);
     let found: Vec<Def> = candidates
         .par_iter()
         .filter_map(|p| {
+            // Parsing is most of the work here, so the deadline is checked
+            // per file, not only while walking.
+            if e.limits.expired() {
+                return None;
+            }
             let src = e.load_text(p).ok()?;
             let o = e.outline(&src)?;
             let defs: Vec<Def> = o
@@ -389,52 +373,12 @@ fn defs_named(e: &Engine, near: &Path, names: &[String]) -> HashMap<String, Vec<
     out
 }
 
-fn file_matches(m: &RegexMatcher, path: &Path) -> bool {
-    let mut found = false;
-    // `sinks::Bytes` requires line numbers.
-    let mut searcher = grep_searcher::SearcherBuilder::new()
-        .line_number(true)
-        .heap_limit(Some(crate::search::MAX_LINE_BYTES))
-        .build();
-    let res = searcher.search_path(
-        m,
-        path,
-        grep_searcher::sinks::Bytes(|_, _| {
-            found = true;
-            Ok(false)
-        }),
-    );
-    // A line too long to search leaves the answer to the parse.
-    found || res.is_err_and(|e| crate::search::line_too_long(&e))
-}
-
 fn is_word(b: u8) -> bool {
     b.is_ascii_alphanumeric() || b == b'_' || b >= 0x80
 }
 
-fn word_pattern(name: &str) -> String {
-    let w = |c: char| c.is_alphanumeric() || c == '_';
-    let mut esc = String::new();
-    for c in name.chars() {
-        if "\\.+*?()|[]{}^$#&-~".contains(c) {
-            esc.push('\\');
-        }
-        esc.push(c);
-    }
-    format!(
-        "{}{}{}",
-        if name.starts_with(w) { r"\b" } else { "" },
-        esc,
-        if name.ends_with(w) { r"\b" } else { "" }
-    )
-}
-
 fn word_matcher(names: &[String]) -> Option<RegexMatcher> {
-    let pat = names
-        .iter()
-        .map(|n| word_pattern(n))
-        .collect::<Vec<_>>()
-        .join("|");
+    let pat = crate::search::word_pattern(names);
     RegexMatcherBuilder::new()
         .line_terminator(Some(b'\n'))
         .build(&pat)
@@ -1018,16 +962,32 @@ fn scan_names(
             rest_lines: 0,
         };
     };
-    let roots = vec![e.ws.lookup_root(near)];
-    let sc = crate::search::scan(e, &roots, &[], &matcher, 0, MAX_SITES);
-    let mut hits = sc.files;
-    if let Some(keep) = keep_line {
-        hits.retain(|f| f.hits.iter().any(|h| h.is_match && keep(&h.text)));
-    }
+    let root = e.ws.lookup_root(near);
+    // The definition lookup for these names has usually walked the tree
+    // already; its complete list of files stands in for a second walk.
+    let known = e
+        .limits
+        .mentions(&root, &crate::search::word_pattern(names))
+        .filter(|m| m.complete);
     let key = |p: &Path| {
         let disp = p.to_string_lossy();
         (is_test_path(&disp), std::cmp::Reverse(proximity(p, near)))
     };
+    let sc = match known {
+        Some(m) => {
+            // Nearest first, so a scan that reaches its line limit has kept
+            // the files the answer would have shown anyway.
+            let mut files: Vec<&PathBuf> = m.files.iter().collect();
+            files.sort_by_cached_key(|p| (key(p), p.as_path()));
+            let files: Vec<PathBuf> = files.into_iter().cloned().collect();
+            crate::search::scan_files(e, &files, &matcher, 0, MAX_SITES)
+        }
+        None => crate::search::scan(e, &[root], &[], &matcher, 0, MAX_SITES),
+    };
+    let mut hits = sc.files;
+    if let Some(keep) = keep_line {
+        hits.retain(|f| f.hits.iter().any(|h| h.is_match && keep(&h.text)));
+    }
     hits.sort_by(|a, b| {
         key(&a.path)
             .cmp(&key(&b.path))
@@ -1047,6 +1007,9 @@ fn scan_names(
 }
 
 fn classify_file(e: &Engine, f: &crate::search::FileHits, names: &[String]) -> Option<FileScan> {
+    if e.limits.expired() {
+        return None;
+    }
     let src = e.load_text(&f.path).ok()?;
     if src.binary {
         return None;
@@ -2621,7 +2584,13 @@ fn trace_request(e: &Engine, req: &TraceRequest) -> String {
             out.text.push('\n');
             out.text.push_str(&alt_note(&alts));
             if groups.is_empty() {
-                out.text.push_str(if refs {
+                out.text.push_str(if matches!(
+                    e.limits.stopped(),
+                    Some(walk::Stop::Deadline | walk::Stop::Cancelled)
+                ) {
+                    // Not evidence of absence: the trace ran out of time.
+                    "None found in the files examined before the trace stopped.\n"
+                } else if refs {
                     "No references found outside the definition.\n"
                 } else {
                     "No call sites found (it may be unused, an entry point, or called dynamically/via an interface; try direction=refs).\n"

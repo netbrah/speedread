@@ -250,9 +250,61 @@ fn the_definition_candidate_cap_is_no_longer_silent() {
         // Mentions the name without defining it.
         std::fs::write(d.join(format!("m{i:05}.rs")), "// popular_name\n").unwrap();
     }
+    // Mentions are searched, not parsed: this many is a complete answer.
+    let (out, _) = fx.run(&["read", "#popular_name"]);
+    assert!(!out.contains("incomplete"), "{out}");
+    // More definition-looking files than are parsed is not.
+    for i in 0..5_200 {
+        let d = fx.dir.join(format!("repo/gen/d{:03}", i / 100));
+        std::fs::write(
+            d.join(format!("m{i:05}.rs")),
+            format!("fn popular_name() -> u32 {{\n    {i}\n}}\n"),
+        )
+        .unwrap();
+    }
     let (out, _) = fx.run(&["read", "#popular_name"]);
     assert!(out.contains("incomplete"), "{out}");
-    assert!(out.contains("5,000"), "{out}");
+    assert!(out.contains("5,000 parsed"), "{out}");
+}
+
+#[test]
+fn a_trace_that_ran_out_of_time_does_not_claim_there_are_no_callers() {
+    let fx = Fx::new("trace-deadline", 0);
+    // Large enough that parsing it alone outlasts a 1 ms deadline.
+    let mut big = String::from("pub fn big_target() -> u32 {\n    7\n}\n");
+    for i in 0..20_000 {
+        big.push_str(&format!("pub fn filler_{i}() -> u32 {{\n    {i}\n}}\n"));
+    }
+    std::fs::write(fx.dir.join("repo/src/big.rs"), big).unwrap();
+    std::fs::write(
+        fx.dir.join("repo/src/user.rs"),
+        "pub fn user() -> u32 {\n    crate::big::big_target()\n}\n",
+    )
+    .unwrap();
+    let (out, _) = fx.run(&["--deadline-ms", "1", "trace", "src/big.rs#big_target"]);
+    assert!(out.contains("incomplete: stopped after 1 ms"), "{out}");
+    assert!(!out.contains("it may be unused"), "{out}");
+    assert!(out.contains("before the trace stopped"), "{out}");
+    // With time to finish, the caller is there.
+    let (out, _) = fx.run(&["trace", "src/big.rs#big_target"]);
+    assert!(out.contains("user") && !out.contains("incomplete"), "{out}");
+}
+
+#[test]
+fn a_trace_reads_the_tree_once_per_level() {
+    let fx = Fx::new("trace-walks", 300);
+    std::fs::write(
+        fx.dir.join("repo/src/outer.rs"),
+        "pub fn outer() -> u32 {\n    crate::core::tracked_caller()\n}\n",
+    )
+    .unwrap();
+    // The definition, its namesakes and its call sites: one walk, not three.
+    let (out, err) = fx.run(&["trace", "tracked_fn"]);
+    assert!(out.contains("tracked_caller"), "{out}");
+    assert_eq!(stat(&err, "walks"), 1, "{err}");
+    let (out, err) = fx.run(&["trace", "tracked_fn", "--depth", "2"]);
+    assert!(out.contains("outer"), "{out}");
+    assert_eq!(stat(&err, "walks"), 2, "{err}");
 }
 
 struct Client {

@@ -103,6 +103,24 @@ pub struct Limits {
     long_lines: AtomicU64,
     /// The first of them in path order, to name one.
     long_first: parking_lot::Mutex<Option<PathBuf>>,
+    /// Times a limit was reached, whether or not it became the reported one.
+    events: AtomicU64,
+    /// Files found to mention a name, by root and pattern: a trace asks the
+    /// same question of the same tree several times, and one walk answers it.
+    mentions: parking_lot::Mutex<Vec<(MentionKey, Mentions)>>,
+}
+
+type MentionKey = (PathBuf, String);
+
+/// Upper bound on files remembered as mentioning a name.
+pub const MAX_MENTIONS: usize = 20_000;
+
+/// The files of a tree with a line matching a pattern, in path order.
+#[derive(Clone, Debug)]
+pub struct Mentions {
+    pub files: std::sync::Arc<Vec<PathBuf>>,
+    /// False when the walk stopped early (a limit, or [`MAX_MENTIONS`]).
+    pub complete: bool,
 }
 
 impl Limits {
@@ -117,6 +135,30 @@ impl Limits {
             examined: AtomicU64::new(0),
             long_lines: AtomicU64::new(0),
             long_first: parking_lot::Mutex::new(None),
+            events: AtomicU64::new(0),
+            mentions: parking_lot::Mutex::new(Vec::new()),
+        }
+    }
+
+    /// How many times a limit has been reached so far; unchanged across a
+    /// walk means the walk saw everything.
+    pub(crate) fn events(&self) -> u64 {
+        self.events.load(Ordering::Relaxed)
+    }
+
+    pub(crate) fn mentions(&self, root: &Path, pattern: &str) -> Option<Mentions> {
+        self.mentions
+            .lock()
+            .iter()
+            .find(|((r, p), _)| r == root && p == pattern)
+            .map(|(_, m)| m.clone())
+    }
+
+    pub(crate) fn remember_mentions(&self, root: &Path, pattern: &str, m: Mentions) {
+        const KEPT: usize = 16;
+        let mut all = self.mentions.lock();
+        if all.len() < KEPT {
+            all.push(((root.to_path_buf(), pattern.to_string()), m));
         }
     }
 
@@ -137,11 +179,25 @@ impl Limits {
             Stop::Cancelled => 3,
             Stop::Candidates => 4,
         };
-        if self
-            .stop
-            .compare_exchange(0, code, Ordering::Relaxed, Ordering::Relaxed)
-            .is_ok()
-        {
+        // The first cause is the one reported, except that running out of
+        // time (or being cancelled) outranks a count limit: after it nothing
+        // more was examined, whatever limit was hit before.
+        let hard = matches!(why, Stop::Deadline | Stop::Cancelled);
+        self.events.fetch_add(1, Ordering::Relaxed);
+        let mut cur = self.stop.load(Ordering::Relaxed);
+        let first = loop {
+            if !(cur == 0 || (hard && matches!(cur, 1 | 4))) {
+                return;
+            }
+            match self
+                .stop
+                .compare_exchange_weak(cur, code, Ordering::Relaxed, Ordering::Relaxed)
+            {
+                Ok(_) => break cur == 0,
+                Err(now) => cur = now,
+            }
+        };
+        if first {
             match why {
                 Stop::Cancelled => STATS.cancelled.fetch_add(1, Ordering::Relaxed),
                 _ => STATS.stopped.fetch_add(1, Ordering::Relaxed),
@@ -237,7 +293,8 @@ impl Limits {
             ),
             Stop::Cancelled => format!("incomplete: cancelled ({n} files examined)."),
             Stop::Candidates => format!(
-                "incomplete: more than {} files mention the name and only that many were examined. Qualify it (path#Name) or narrow with a path.",
+                "incomplete: the name is in more files than a lookup examines (at most {} searched, {} parsed); definitions may be missing. Qualify it (path#Name) or narrow with a path.",
+                crate::util::thousands(MAX_MENTIONS),
                 crate::util::thousands(MAX_CANDIDATES)
             ),
         })
@@ -871,6 +928,24 @@ pub fn sort_by_path(v: &mut [Entry]) {
 mod tests {
     use super::*;
     use std::fs;
+
+    #[test]
+    fn running_out_of_time_outranks_a_count_limit() {
+        let l = Limits::unlimited();
+        l.mark(Stop::Candidates);
+        assert_eq!(l.stopped(), Some(Stop::Candidates));
+        l.mark(Stop::Entries);
+        assert_eq!(
+            l.stopped(),
+            Some(Stop::Candidates),
+            "first count limit wins"
+        );
+        l.mark(Stop::Deadline);
+        assert_eq!(l.stopped(), Some(Stop::Deadline));
+        l.mark(Stop::Candidates);
+        l.mark(Stop::Cancelled);
+        assert_eq!(l.stopped(), Some(Stop::Deadline), "a hard stop is final");
+    }
 
     #[test]
     fn walks_respecting_gitignore_and_globs() {

@@ -94,8 +94,8 @@ impl Default for Config {
             max_budget: 10000,
             bytes_per_token: 2.6,
             max_walk: 1_000_000,
-            deadline: Some(Duration::from_secs(30)),
-            cache_bytes: 512 << 20,
+            deadline: Some(Duration::from_secs(10)),
+            cache_bytes: 256 << 20,
         }
     }
 }

@@ -41,11 +41,11 @@ struct Cli {
     #[arg(long, global = true, value_name = "FILES")]
     max_walk: Option<u64>,
     /// Time limit for a request's file discovery, in milliseconds (0: unlimited; also
-    /// SPEEDREAD_DEADLINE_MS). Default: 30000.
+    /// SPEEDREAD_DEADLINE_MS). Default: 10000.
     #[arg(long, global = true, value_name = "MS")]
     deadline_ms: Option<u64>,
     /// Memory ceiling for cached file contents and outlines, in MiB (also
-    /// SPEEDREAD_CACHE_MB). Changes memory use and speed, not answers. Default: 512.
+    /// SPEEDREAD_CACHE_MB). Changes memory use and speed, not answers. Default: 256.
     #[arg(long, global = true, value_name = "MIB")]
     cache_mb: Option<usize>,
     /// Default token budget per call (map defaults to 3000).

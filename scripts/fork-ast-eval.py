@@ -21,6 +21,10 @@ SHAPES = [
     ("unwrap", "ripgrep", "*.rs", "$V.unwrap()", r"\.unwrap\(\)", ".unwrap()"),
     ("expect-tobe", "zod", "*.ts", "expect($A).toBe($B)", r"expect\(.*\)\.toBe\(", "expect("),
     ("console-log", "zod", "*.{ts,tsx,js,mjs}", "console.log($$$A)", r"console\.log\(", "console.log("),
+    # C, on a large tree (optional: git clone --depth 1 https://github.com/torvalds/linux target/eval-repos/linux).
+    ("c-kfree", "linux", "fs/**/*.c", "kfree($A)", r"\bkfree\(", "kfree("),
+    ("c-kmalloc", "linux", "drivers/net/**/*.c", "kmalloc($S, $F)", r"\bkmalloc\(", "kmalloc("),
+    ("c-field-null", "linux", "mm/**/*.c", "$P->$F == NULL", r"->\w+ == NULL", "== NULL"),
 ]
 
 
@@ -36,7 +40,7 @@ def ast_hits(binary, repo, glob, pattern):
         except ValueError:
             continue
         if "path" in row and "line" in row:
-            found[(row["path"], row["line"])] = row.get("text", "").split("\t")[0]
+            found[(row["path"], row["line"])] = re.split(r"\t\$\w+=", row.get("text", ""))[0]
     return found
 
 
@@ -44,11 +48,12 @@ def regex_hits(repo, glob, regex):
     """(path, line) -> text for every line of a tracked file the regex matches."""
     root = os.path.join(REPOS, repo)
     files = subprocess.run(["git", "-C", root, "ls-files"], capture_output=True, text=True).stdout.split("\n")
-    exts = tuple("." + e for e in glob.split(".", 1)[1].strip("{}").split(","))
+    exts = tuple("." + e for e in glob.rsplit(".", 1)[1].strip("{}").split(","))
+    under = glob.split("*", 1)[0]
     rx = re.compile(regex)
     found = {}
     for f in files:
-        if not f.endswith(exts):
+        if not f.endswith(exts) or not f.startswith(under):
             continue
         try:
             text = open(os.path.join(root, f), encoding="utf-8").read()
@@ -123,6 +128,9 @@ def main():
     binary = os.path.abspath(args[0]) if args else os.path.join(ROOT, "target", "fast", "speedread")
     print("shape\trepo\tregex_lines\tast_lines\tboth\tregex_only\tcomment\tstring\tmacro_def\tother\tast_only\tast_ms\tliteral_ms\tgrouped_ms")
     for sid, repo, glob, pattern, regex, literal in SHAPES:
+        if not os.path.isdir(os.path.join(REPOS, repo)):
+            print(f"{sid}\t{repo}\t(repository not cloned; skipped)")
+            continue
         rx = regex_hits(repo, glob, regex)
         ast = ast_hits(binary, repo, glob, pattern)
         # JSON output stops at 400 hits a file: compare such a file only up
