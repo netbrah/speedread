@@ -1,6 +1,6 @@
 # 01 — Path and scope contract (CWD independence)
 
-Status: implementing. Invariants: 3, 7.
+Status: shipped (T1). Invariants: 3, 7.
 
 ## Problem
 
@@ -17,16 +17,21 @@ Terms:
 - **base** — where relative paths resolve and what a path-less `search`/`map` covers.
   `base_dir` (request) → else the primary root (`--root`, `$CLAUDE_PROJECT_DIR`, client roots,
   CWD unless disabled).
-- **lookup root** — the tree searched for definitions/usages of a target: the configured
-  root containing the target (longest match) → else the nearest ancestor holding `.git`
-  (directory *or* file, so worktrees and submodules work) → else the target's directory.
+- **lookup root** — the tree searched for definitions/usages of a target, first match wins:
+  1. the configured root containing the target (longest match);
+  2. for a target in a dependency cache (cargo registry, Go modules, SDKs): the base, so
+     "who in my project uses this dependency symbol" keeps working as upstream does;
+  3. the nearest ancestor holding `.git` (directory *or* file, so worktrees and submodules
+     work) that passes the access policy and is neither `/` nor the home directory;
+  4. the base, when it contains the target;
+  5. the target's own directory.
   For a path-less target (`#Name`) the target is the base.
 - **access policy** — unchanged: configured roots, dependency caches, or `--unrestricted`.
 
 Rules:
 
 1. Absolute paths work from anywhere the access policy allows; they never consult the CWD.
-2. Every tool accepts `base_dir` (alias `cwd`); the CLI accepts `-C/--base-dir`. It must be
+2. Every tool accepts `base_dir` (alias `cwd`); the CLI accepts `--base-dir` (alias `--cwd`; `-C` is already `search --context`). It must be
    absolute (or `~/…`), exist, be a directory and pass the access policy; otherwise the call
    fails with a message naming the rule. No guessing.
 3. With `--no-cwd-root` (or `SPEEDREAD_NO_CWD_ROOT=1`) the CWD is never a root. Without
@@ -62,13 +67,15 @@ Rules:
   and counters live in `Shared`, so a scoped engine is two `Arc` clones.
 - `find_definitions(e, query, limit)` → takes the lookup root; `trace::scan_names` and
   `defs_named` take it from the resolved target (`Def.src.path`).
-- `Engine::file_list()` → `file_list(root)`, cached per root.
-- MCP: `base_dir` on all four tools. CLI: global `-C/--base-dir`, `--no-cwd-root`.
+- `Engine::file_list()` lists the base (for "did you mean") and is empty without one.
+- `PathError::NoBase(msg)` is returned for a relative path with no base, before any
+  filesystem access; every tool turns it into its own one-line message.
+- MCP: `base_dir` on all four tools. CLI: global `--base-dir`, `--no-cwd-root`.
 
 ## Tests (must fail before, pass after)
 
 - CLI run from an unrelated CWD with absolute targets under `--unrestricted --no-cwd-root`:
-  output identical to a run from inside the repo with `-C <repo>` (modulo display rule 8).
+  output identical to a run from inside the repo with `--base-dir <repo>` (modulo display rule 8).
 - Two sibling repos each defining `fn target()`; `trace /b/src/lib.rs#target` reports callers
   from `b`, never from `a` (the CWD/primary root).
 - Two worktrees with the same relative file and different content: reads return each
@@ -81,3 +88,15 @@ Rules:
 ## Non-goals
 
 Inferring roots from file contents, monorepo package boundaries, or build metadata.
+
+## As shipped
+
+- Evidence that the old behaviour was wrong, not just different: from CWD `a`, upstream
+  `trace /b/src/lib.rs#b_caller -d callees` resolved the callee to **`a`'s** `target`, and
+  `trace /b/src/lib.rs#target` reported 0 call sites ("1 site attributed to them left out").
+  Both are covered by `tests/fork_paths.rs`.
+- Trace prints `(searched <root>)` under the header when the lookup root differs from the base.
+- Multi-root workspaces search the root containing the target only. Searching every
+  configured root for usages is a possible follow-up (06-backlog).
+- Unchanged-command check: all 15 baseline queries produce byte-identical output
+  (`evals/fork/t1-paths.tsv`).

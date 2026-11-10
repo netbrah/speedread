@@ -304,7 +304,12 @@ pub(crate) fn scan(
 
 pub(crate) fn resolve_roots(e: &Engine, paths: &[String]) -> Result<Vec<PathBuf>, String> {
     if paths.is_empty() {
-        return Ok(vec![e.ws.primary().to_path_buf()]);
+        // The base exactly: never widened to its repository, never `/`.
+        return e
+            .ws
+            .require_base()
+            .map(|b| vec![b])
+            .map_err(|msg| format!("search: {msg}\n"));
     }
     let mut roots = Vec::new();
     for p in paths {
@@ -323,6 +328,7 @@ pub(crate) fn resolve_roots(e: &Engine, paths: &[String]) -> Result<Vec<PathBuf>
             Err(PathError::Outside(r)) => {
                 return Err(format!("Path outside the workspace: {}\n", r.display()));
             }
+            Err(PathError::NoBase(msg)) => return Err(format!("search {p}: {msg}\n")),
         }
     }
     Ok(roots)
@@ -598,10 +604,16 @@ pub fn search(e: &Engine, req: &SearchRequest) -> String {
     out
 }
 
-/// Find definitions named `query` (optionally qualified) anywhere in the
-/// workspace: a fast word search narrows candidate files, then outlines are
-/// parsed in parallel. Returns up to `limit` hits and the total count.
-pub fn find_definitions(e: &Engine, query: &str, limit: usize) -> (Vec<DefHit>, usize) {
+/// Find definitions named `query` (optionally qualified) anywhere under
+/// `root` (see `Workspace::lookup_root`): a fast word search narrows
+/// candidate files, then outlines are parsed in parallel. Returns up to
+/// `limit` hits and the total count.
+pub fn find_definitions(
+    e: &Engine,
+    root: &Path,
+    query: &str,
+    limit: usize,
+) -> (Vec<DefHit>, usize) {
     let segs = split_segments(query.trim_end_matches("()"));
     let Some(last) = segs.last() else {
         return (Vec::new(), 0);
@@ -633,7 +645,7 @@ pub fn find_definitions(e: &Engine, query: &str, limit: usize) -> (Vec<DefHit>, 
         return (Vec::new(), 0);
     };
     let candidates = Mutex::new(Vec::new());
-    for root in e.ws.roots().iter().take(1) {
+    {
         let _ = walk::walk(root, &WalkOpts::default(), |entry| {
             if entry.dataless || entry.size > crate::source::MAX_PARSE as u64 {
                 return true;

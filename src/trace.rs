@@ -218,6 +218,7 @@ fn load_outline(e: &Engine, p: &str) -> Result<(Arc<Source>, Arc<Outline>), Stri
         Err(PathError::Outside(r)) => {
             return Err(format!("Outside the workspace: {}", r.display()));
         }
+        Err(PathError::NoBase(msg)) => return Err(format!("{p}: {msg}")),
     };
     let src = e.load_text(&path).map_err(|x| format!("{p}: {x}"))?;
     let o = e
@@ -285,7 +286,10 @@ fn resolve_target(e: &Engine, raw: &str) -> Result<(Def, Vec<Def>), String> {
 }
 
 fn lookup(e: &Engine, name: &str) -> Result<(Def, Vec<Def>), String> {
-    let (hits, _) = crate::search::find_definitions(e, name, 60);
+    // A bare name is looked up in the tree the base belongs to.
+    let base = e.ws.require_base().map_err(|msg| format!("trace: {msg}"))?;
+    let root = e.ws.lookup_root(&base);
+    let (hits, _) = crate::search::find_definitions(e, &root, name, 60);
     let mut defs: Vec<Def> = hits
         .into_iter()
         .map(|(src, o, i)| Def { src, o, i })
@@ -299,9 +303,9 @@ fn lookup(e: &Engine, name: &str) -> Result<(Def, Vec<Def>), String> {
     Ok((first, defs))
 }
 
-/// All definitions whose name is exactly one of `names`, found with one
-/// workspace scan. Keys are the names.
-fn defs_named(e: &Engine, names: &[String]) -> HashMap<String, Vec<Def>> {
+/// All definitions whose name is exactly one of `names`, found with one scan
+/// of the tree `near` belongs to. Keys are the names.
+fn defs_named(e: &Engine, near: &Path, names: &[String]) -> HashMap<String, Vec<Def>> {
     let mut out: HashMap<String, Vec<Def>> = HashMap::new();
     if names.is_empty() {
         return out;
@@ -311,7 +315,7 @@ fn defs_named(e: &Engine, names: &[String]) -> HashMap<String, Vec<Def>> {
     };
     let want: HashSet<&str> = names.iter().map(String::as_str).collect();
     let candidates = parking_lot::Mutex::new(Vec::new());
-    let root = e.ws.primary();
+    let root = e.ws.lookup_root(near);
     let _ = walk::walk(&root, &WalkOpts::default(), |entry| {
         if entry.dataless
             || entry.size > crate::source::MAX_PARSE as u64
@@ -693,7 +697,7 @@ fn scan_names(
             rest_lines: 0,
         };
     };
-    let roots = vec![e.ws.primary()];
+    let roots = vec![e.ws.lookup_root(near)];
     let sc = crate::search::scan(e, &roots, &[], &matcher, 0, MAX_SITES);
     let mut hits = sc.files;
     if let Some(keep) = keep_line {
@@ -1174,7 +1178,7 @@ fn caller_tree(
             break;
         }
         let names: Vec<String> = defs.iter().map(|(_, d)| d.sym().name.clone()).collect();
-        let all = defs_named(e, &names);
+        let all = defs_named(e, &near, &names);
         let targets: Vec<(Info, Vec<Info>)> =
             defs.iter().map(|(_, d)| with_others(d, &all)).collect();
         let results = sites_for(e, &targets, false, &near, max_files, stats);
@@ -1359,7 +1363,7 @@ fn callee_tree(e: &Engine, root: &Def, depth: usize) -> (Vec<CalleeNode>, Vec<St
             .collect();
         names.sort();
         names.dedup();
-        let all = defs_named(e, &names);
+        let all = defs_named(e, &root.src.path, &names);
         let mut next = Vec::new();
         for (path, caller, cs) in calls {
             let mut nodes = Vec::new();
@@ -1658,7 +1662,7 @@ fn go_implementers(e: &Engine, iface: &Def) -> Vec<Def> {
     if methods.is_empty() {
         return Vec::new();
     }
-    let defs = defs_named(e, &methods);
+    let defs = defs_named(e, &iface.src.path, &methods);
     // receiver type (dir, name) → method names it defines
     let mut sets: HashMap<(PathBuf, String), HashSet<String>> = HashMap::new();
     for (name, ds) in &defs {
@@ -1686,7 +1690,7 @@ fn go_implementers(e: &Engine, iface: &Def) -> Vec<Def> {
         .collect();
     types.sort();
     let type_names: Vec<String> = types.iter().map(|(_, n)| n.clone()).collect();
-    let tdefs = defs_named(e, &type_names);
+    let tdefs = defs_named(e, &iface.src.path, &type_names);
     let mut out = Vec::new();
     for (dir, name) in types {
         if let Some(d) = tdefs.get(&name).and_then(|v| {
@@ -1723,7 +1727,7 @@ fn method_in(e: &Engine, ty: &Def, name: &str) -> Option<Def> {
     if ty.src.lang == Some(LangId::Go) {
         let tname = type_base_name(&ty.sym().name);
         let dir = ty.src.path.parent()?.to_path_buf();
-        let defs = defs_named(e, &[name.to_string()]);
+        let defs = defs_named(e, &ty.src.path, &[name.to_string()]);
         return defs
             .get(name)?
             .iter()
@@ -2076,6 +2080,13 @@ pub fn trace(e: &Engine, req: &TraceRequest) -> String {
         s.end + 1,
         s.label
     ));
+    // Usages are searched in the tree the target belongs to, which is not
+    // necessarily where relative paths resolve.
+    let searched = e.ws.lookup_root(&target.src.path);
+    if e.ws.base().as_deref() != Some(searched.as_path()) {
+        out.text
+            .push_str(&format!("(searched {})\n", e.ws.display(&searched)));
+    }
     let alt_note = |alts: &[Def]| -> String {
         if alts.is_empty() {
             return String::new();
@@ -2101,7 +2112,7 @@ pub fn trace(e: &Engine, req: &TraceRequest) -> String {
     match req.direction {
         Direction::Callers | Direction::Refs => {
             let refs = req.direction == Direction::Refs;
-            let all = defs_named(e, std::slice::from_ref(&s.name));
+            let all = defs_named(e, &target.src.path, std::slice::from_ref(&s.name));
             let (_, others) = with_others(&target, &all);
             let mut stats = SiteStats {
                 excluded: 0,

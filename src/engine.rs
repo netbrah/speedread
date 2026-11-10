@@ -16,6 +16,7 @@ use crate::source::{BigFile, MAX_IN_MEMORY, MAX_PARSE, Source, Stamp};
 use crate::walk::{self, WalkOpts};
 use crate::workspace::Workspace;
 
+#[derive(Clone)]
 pub struct Config {
     pub default_budget: usize,
     pub max_budget: usize,
@@ -154,9 +155,8 @@ pub struct BigSnap {
 /// Cached relative file list of the primary root: (taken at, root, paths).
 type FileListCache = Option<(Instant, PathBuf, Arc<Vec<String>>)>;
 
-pub struct Engine {
-    pub ws: Workspace,
-    pub cfg: Config,
+/// Caches and calibration shared by every per-request view of an engine.
+struct Shared {
     bpt: AtomicU32,
     /// Converts content-aware estimates to the client's tokenizer.
     token_scale: AtomicU32,
@@ -169,35 +169,64 @@ pub struct Engine {
     files: Mutex<FileListCache>,
 }
 
+/// A workspace view plus shared state. [`Engine::scoped`] makes a view with a
+/// different base directory for one request; caches are keyed by canonical
+/// path and content, so views never see each other's files by mistake.
+pub struct Engine {
+    pub ws: Workspace,
+    pub cfg: Config,
+    shared: Arc<Shared>,
+}
+
 impl Engine {
     pub fn new(ws: Workspace, cfg: Config) -> Engine {
-        Engine {
-            ws,
+        let shared = Shared {
             bpt: AtomicU32::new(cfg.bytes_per_token.to_bits()),
             token_scale: AtomicU32::new(1.0f32.to_bits()),
             tokenizer_pinned: std::sync::atomic::AtomicBool::new(false),
-            cfg,
             sources: Mutex::new(Lru::new(512 << 20)),
             outlines: Mutex::new(Lru::new(8192)),
             snapshots: Mutex::new(Lru::new(256 << 20)),
             bigs: Mutex::new(Lru::new(64)),
             big_snaps: Mutex::new(Lru::new(1024)),
             files: Mutex::new(None),
+        };
+        Engine {
+            ws,
+            cfg,
+            shared: Arc::new(shared),
         }
     }
 
+    /// The same engine with `base_dir` as the base for one request (`None`
+    /// keeps the default). Fails when the directory is not usable; the base
+    /// is never guessed from the process working directory.
+    pub fn scoped(&self, base_dir: Option<&str>) -> Result<Engine, String> {
+        let ws = match base_dir.map(str::trim).filter(|d| !d.is_empty()) {
+            Some(dir) => self.ws.with_base(dir)?,
+            None => self.ws.clone(),
+        };
+        Ok(Engine {
+            ws,
+            cfg: self.cfg.clone(),
+            shared: self.shared.clone(),
+        })
+    }
+
     fn bpt(&self) -> f32 {
-        f32::from_bits(self.bpt.load(Ordering::Relaxed))
+        f32::from_bits(self.shared.bpt.load(Ordering::Relaxed))
     }
 
     pub fn token_scale(&self) -> f32 {
-        f32::from_bits(self.token_scale.load(Ordering::Relaxed))
+        f32::from_bits(self.shared.token_scale.load(Ordering::Relaxed))
     }
 
     /// OpenAI tokenizers (o200k) need fewer tokens than the estimate's
     /// Claude-calibrated fit.
     pub fn set_token_scale(&self, v: f32) {
-        self.token_scale.store(v.to_bits(), Ordering::Relaxed);
+        self.shared
+            .token_scale
+            .store(v.to_bits(), Ordering::Relaxed);
     }
 
     /// Content-aware token estimate of rendered text.
@@ -233,19 +262,19 @@ impl Engine {
     /// Calibrate budgets to a tokenizer family. Ignored once pinned (e.g. by
     /// `SPEEDREAD_TOKENIZER`), so client detection can't override the user.
     pub fn set_tokenizer(&self, t: Tokenizer, pin: bool) {
-        if self.tokenizer_pinned.load(Ordering::Relaxed) && !pin {
+        if self.shared.tokenizer_pinned.load(Ordering::Relaxed) && !pin {
             return;
         }
         let (bpt, scale) = t.params();
         self.set_bytes_per_token(bpt);
         self.set_token_scale(scale);
         if pin {
-            self.tokenizer_pinned.store(true, Ordering::Relaxed);
+            self.shared.tokenizer_pinned.store(true, Ordering::Relaxed);
         }
     }
 
     pub fn set_bytes_per_token(&self, v: f32) {
-        self.bpt.store(v.to_bits(), Ordering::Relaxed);
+        self.shared.bpt.store(v.to_bits(), Ordering::Relaxed);
     }
 
     pub fn tokens(&self, bytes: usize) -> usize {
@@ -280,23 +309,27 @@ impl Engine {
         }
         let stamp = Stamp::of(&meta);
         if meta.len() > MAX_IN_MEMORY {
-            if let Some(b) = self.bigs.lock().get(&path.to_path_buf())
+            if let Some(b) = self.shared.bigs.lock().get(&path.to_path_buf())
                 && b.stamp == stamp
             {
                 return Ok(Loaded::Big(b));
             }
             let b = Arc::new(BigFile::scan(path)?);
-            self.bigs.lock().insert(path.to_path_buf(), b.clone(), 1);
+            self.shared
+                .bigs
+                .lock()
+                .insert(path.to_path_buf(), b.clone(), 1);
             return Ok(Loaded::Big(b));
         }
-        if let Some(s) = self.sources.lock().get(&path.to_path_buf())
+        if let Some(s) = self.shared.sources.lock().get(&path.to_path_buf())
             && s.stamp == stamp
         {
             return Ok(Loaded::Text(s));
         }
         let s = Arc::new(Source::load(path)?);
         let cost = s.data.len() + s.lines.len() * 4 + 256;
-        self.sources
+        self.shared
+            .sources
             .lock()
             .insert(path.to_path_buf(), s.clone(), cost);
         Ok(Loaded::Text(s))
@@ -316,7 +349,7 @@ impl Engine {
             return None;
         }
         let key = (src.hash, lang);
-        if let Some(o) = self.outlines.lock().get(&key) {
+        if let Some(o) = self.shared.outlines.lock().get(&key) {
             return Some(o);
         }
         // A parser bug on one odd file must not fail a whole batch.
@@ -326,18 +359,21 @@ impl Engine {
         .ok()
         .flatten()?;
         let o = Arc::new(parsed);
-        self.outlines.lock().insert(key, o.clone(), 1);
+        self.shared.outlines.lock().insert(key, o.clone(), 1);
         Some(o)
     }
 
     /// Remember content returned to the agent so `path@etag` can diff later.
     pub fn remember(&self, src: &Arc<Source>) {
         let cost = src.data.len() + 64;
-        self.snapshots.lock().insert(src.etag(), src.clone(), cost);
+        self.shared
+            .snapshots
+            .lock()
+            .insert(src.etag(), src.clone(), cost);
     }
 
     pub fn snapshot(&self, etag: u64) -> Option<Arc<Source>> {
-        self.snapshots.lock().get(&etag)
+        self.shared.snapshots.lock().get(&etag)
     }
 
     pub fn remember_big(&self, b: &BigFile) {
@@ -347,18 +383,21 @@ impl Engine {
             lines: b.lines,
             ends_nl: b.ends_nl,
         };
-        self.big_snaps.lock().insert(b.etag(), snap, 1);
+        self.shared.big_snaps.lock().insert(b.etag(), snap, 1);
     }
 
     pub fn big_snapshot(&self, etag: u64) -> Option<BigSnap> {
-        self.big_snaps.lock().get(&etag)
+        self.shared.big_snaps.lock().get(&etag)
     }
 
-    /// Relative paths of all files in the primary root (cached briefly).
+    /// Relative paths of all files under the base (cached briefly), for
+    /// "did you mean" suggestions. Empty without a base: `/` is never walked.
     pub fn file_list(&self) -> Arc<Vec<String>> {
-        let root = self.ws.primary().to_path_buf();
+        let Some(root) = self.ws.base() else {
+            return Arc::new(Vec::new());
+        };
         {
-            let g = self.files.lock();
+            let g = self.shared.files.lock();
             if let Some((t, r, v)) = g.as_ref()
                 && *r == root
                 && t.elapsed() < Duration::from_secs(3)
@@ -379,7 +418,7 @@ impl Engine {
             })
             .unwrap_or_default();
         let list = Arc::new(list);
-        *self.files.lock() = Some((Instant::now(), root, list.clone()));
+        *self.shared.files.lock() = Some((Instant::now(), root, list.clone()));
         list
     }
 }

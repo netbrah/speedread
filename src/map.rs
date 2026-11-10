@@ -56,9 +56,13 @@ pub fn map(e: &Engine, req: &MapRequest) -> String {
             .unwrap_or(DEFAULT_MAP_BUDGET.min(e.cfg.default_budget)),
     ));
     let path = match &req.path {
-        None => e.ws.primary().to_path_buf(),
+        None => match e.ws.require_base() {
+            Ok(p) => p,
+            Err(msg) => return format!("map: {msg}\n"),
+        },
         Some(p) => match e.ws.resolve(p) {
             Ok(p) => p,
+            Err(PathError::NoBase(msg)) => return format!("map {p}: {msg}\n"),
             Err(PathError::NotFound(_)) => {
                 let sugg = crate::workspace::suggest(p, &e.file_list(), 3);
                 return if sugg.is_empty() {

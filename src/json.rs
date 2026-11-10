@@ -47,6 +47,7 @@ fn resolve(e: &Engine, p: &str) -> Result<PathBuf, String> {
     match e.ws.resolve(p) {
         Ok(r) => Ok(r),
         Err(PathError::NotFound(_)) => Err(format!("not found: {p}")),
+        Err(PathError::NoBase(msg)) => Err(format!("{p}: {msg}")),
         Err(PathError::Outside(r)) => Err(format!("outside the workspace: {}", r.display())),
     }
 }
@@ -68,7 +69,7 @@ fn expand(e: &Engine, targets: &[String]) -> Result<Vec<PathBuf>, String> {
             Ok(p) => (p, Vec::new()),
             Err(err) if is_glob(t) => {
                 let _ = err;
-                (e.ws.primary().to_path_buf(), vec![t.clone()])
+                (e.ws.require_base()?, vec![t.clone()])
             }
             Err(err) => return Err(err),
         };
@@ -245,7 +246,7 @@ pub fn files(
     w: &mut impl Write,
 ) -> Result<usize, String> {
     let root = match path {
-        None => e.ws.primary().to_path_buf(),
+        None => e.ws.require_base()?,
         Some(p) => resolve(e, p)?,
     };
     let opts = WalkOpts {

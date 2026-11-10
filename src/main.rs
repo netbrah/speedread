@@ -22,6 +22,14 @@ struct Cli {
     /// Workspace root (repeatable). Default: $CLAUDE_PROJECT_DIR, else the current directory.
     #[arg(long = "root", global = true, value_name = "DIR")]
     roots: Vec<PathBuf>,
+    /// Directory that relative paths and path-less search/map resolve against (absolute).
+    /// Default: the primary root. MCP calls can override it per call with `base_dir`.
+    #[arg(long = "base-dir", alias = "cwd", global = true, value_name = "DIR")]
+    base_dir: Option<String>,
+    /// Never treat the current directory as a root (also SPEEDREAD_NO_CWD_ROOT=1): without
+    /// --root or client roots, requests need absolute paths or a base directory.
+    #[arg(long, global = true)]
+    no_cwd_root: bool,
     /// Allow reading anywhere, not just inside the roots.
     #[arg(long, global = true)]
     unrestricted: bool,
@@ -146,6 +154,16 @@ enum Cmd {
 }
 
 fn main() -> anyhow::Result<()> {
+    let result = run();
+    // Discovery counters for tests and measurements.
+    if std::env::var_os("SPEEDREAD_STATS").is_some() {
+        let (walks, entries) = speedread::walk::STATS.snapshot();
+        eprintln!("speedread-stats walks={walks} entries={entries}");
+    }
+    result
+}
+
+fn run() -> anyhow::Result<()> {
     speedread::macos::tune_process();
     speedread::macos::init_thread_pool();
     let mut cli = Cli::parse();
@@ -156,13 +174,19 @@ fn main() -> anyhow::Result<()> {
     {
         roots.push(PathBuf::from(dir));
     }
-    let ws = Workspace::new(roots, cli.unrestricted, !cli.no_deps)?;
+    let no_cwd_root = cli.no_cwd_root
+        || std::env::var("SPEEDREAD_NO_CWD_ROOT")
+            .is_ok_and(|v| matches!(v.trim(), "1" | "true" | "yes"));
+    let ws = Workspace::with_options(roots, cli.unrestricted, !cli.no_deps, !no_cwd_root)?;
     let cfg = Config {
         default_budget: cli.budget,
         max_budget: cli.max_budget.max(cli.budget),
         ..Config::default()
     };
-    let engine = Arc::new(Engine::new(ws, cfg));
+    let engine = Engine::new(ws, cfg)
+        .scoped(cli.base_dir.as_deref())
+        .map_err(anyhow::Error::msg)?;
+    let engine = Arc::new(engine);
     // SPEEDREAD_TOKENIZER=claude|openai|legacy pins the budget calibration
     // (default: detect from the MCP client, else legacy).
     if let Some(t) = std::env::var("SPEEDREAD_TOKENIZER")

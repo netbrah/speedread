@@ -29,23 +29,23 @@ cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test --a
 
 ### T0 — Foundations
 - [x] Fork, branch, specs committed.
-- [ ] Gate macOS-only walker helpers (`IgnoreNode`, `is_ignored`, `load_matcher`, `global_node`,
+- [x] Gate macOS-only walker helpers (`IgnoreNode`, `is_ignored`, `load_matcher`, `global_node`,
       `initial_stack` in `src/walk.rs`) behind `#[cfg(target_os = "macos")]` so clippy `-D warnings` passes on Linux.
-- [ ] `scripts/fork-eval.py`: clone pinned reference repos (Rust: `BurntSushi/ripgrep`; TS: `colinhacks/zod`)
+- [x] `scripts/fork-eval.py`: clone pinned reference repos (Rust: `BurntSushi/ripgrep`; TS: `colinhacks/zod`)
       into `target/eval-repos`, run the query set, record wall time, peak RSS (`/usr/bin/time -v`), output bytes
       to `evals/fork/<label>.tsv`. Record baseline (`evals/fork/baseline-37abea2.tsv`).
 
 ### T1 — Path and scope contract (spec 01)
 Files: `src/workspace.rs`, `src/engine.rs`, `src/search.rs`, `src/trace.rs`, `src/read.rs`, `src/map.rs`,
 `src/json.rs`, `src/server.rs`, `src/main.rs`; tests `tests/fork_paths.rs`.
-- [ ] Failing tests first (list in spec 01 → Tests).
-- [ ] `Workspace { base, cwd_root }`, `with_base`, `require_base`, `lookup_root`; unit tests for `.git` dir/file discovery.
-- [ ] `Engine { ws, cfg, shared: Arc<Shared> }`, `Engine::scoped(base_dir)`; `file_list(root)` cached per root.
-- [ ] Lookups use the target's lookup root: `find_definitions(e, root, query, limit)`,
+- [x] Failing tests first (list in spec 01 → Tests).
+- [x] `Workspace { base, cwd_root }`, `with_base`, `require_base`, `lookup_root`; unit tests for `.git` dir/file discovery.
+- [x] `Engine { ws, cfg, shared: Arc<Shared> }`, `Engine::scoped(base_dir)`; `file_list(root)` cached per root.
+- [x] Lookups use the target's lookup root: `find_definitions(e, root, query, limit)`,
       `trace::{defs_named, scan_names}`.
-- [ ] Rootless guard for path-less `search`/`map`/`#Name`/`trace`.
-- [ ] CLI `-C/--base-dir`, `--no-cwd-root`; MCP `base_dir` on all tools.
-- [ ] Verify, commit, push.
+- [x] Rootless guard for path-less `search`/`map`/`#Name`/`trace`.
+- [x] CLI `--base-dir`, `--no-cwd-root`; MCP `base_dir` on all tools.
+- [x] Verify, commit, push.
 
 ### T2 — Bounded discovery and residency (spec 02)
 Files: `src/walk.rs`, `src/engine.rs`, `src/search.rs`, `src/trace.rs`, `src/map.rs`, `src/read.rs`, `src/main.rs`;

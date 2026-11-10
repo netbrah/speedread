@@ -12,7 +12,7 @@
 use std::path::{Path, PathBuf};
 #[cfg(target_os = "macos")]
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 #[cfg(target_os = "macos")]
 use ignore::Match;
@@ -81,6 +81,29 @@ pub fn build_overrides(root: &Path, globs: &[String]) -> anyhow::Result<Option<O
     Ok(Some(b.build()?))
 }
 
+/// Process-wide discovery counters. They make "this request did not walk"
+/// a testable property (`SPEEDREAD_STATS=1` prints them on exit).
+pub struct Stats {
+    /// Directory walks started.
+    pub walks: AtomicU64,
+    /// Entries delivered to callers.
+    pub entries: AtomicU64,
+}
+
+pub static STATS: Stats = Stats {
+    walks: AtomicU64::new(0),
+    entries: AtomicU64::new(0),
+};
+
+impl Stats {
+    pub fn snapshot(&self) -> (u64, u64) {
+        (
+            self.walks.load(Ordering::Relaxed),
+            self.entries.load(Ordering::Relaxed),
+        )
+    }
+}
+
 /// Walk `root` in parallel; `f` is called for every file (and directory when
 /// `include_dirs`), from multiple threads. Returning `false` stops the walk.
 pub fn walk<F>(root: &Path, opts: &WalkOpts, f: F) -> anyhow::Result<()>
@@ -97,6 +120,13 @@ where
     F: Fn(Vec<Entry>) -> bool + Sync,
 {
     let overrides = build_overrides(root, &opts.globs)?;
+    STATS.walks.fetch_add(1, Ordering::Relaxed);
+    let f = |batch: Vec<Entry>| {
+        STATS
+            .entries
+            .fetch_add(batch.len() as u64, Ordering::Relaxed);
+        f(batch)
+    };
     #[cfg(target_os = "macos")]
     if !use_portable() {
         fast::walk(root, opts, overrides, &f);

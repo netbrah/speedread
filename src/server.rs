@@ -129,6 +129,10 @@ pub struct ReadArgs {
     pub budget: Option<usize>,
     #[serde(default, deserialize_with = "lenient_bool")]
     pub line_numbers: Option<bool>,
+    /// Absolute directory that relative paths and the default scope resolve
+    /// against for this call.
+    #[serde(default, alias = "cwd")]
+    pub base_dir: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -156,6 +160,10 @@ pub struct SearchArgs {
     pub output: Option<Output>,
     #[serde(default, deserialize_with = "lenient_usize")]
     pub budget: Option<usize>,
+    /// Absolute directory that relative paths and the default scope resolve
+    /// against for this call.
+    #[serde(default, alias = "cwd")]
+    pub base_dir: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -170,6 +178,10 @@ pub struct MapArgs {
     pub globs: Option<Vec<String>>,
     #[serde(default, deserialize_with = "lenient_usize")]
     pub budget: Option<usize>,
+    /// Absolute directory that relative paths and the default scope resolve
+    /// against for this call.
+    #[serde(default, alias = "cwd")]
+    pub base_dir: Option<String>,
 }
 
 fn lenient_direction<'de, D: Deserializer<'de>>(
@@ -200,6 +212,10 @@ pub struct TraceArgs {
     pub depth: Option<usize>,
     #[serde(default, deserialize_with = "lenient_usize")]
     pub budget: Option<usize>,
+    /// Absolute directory that relative paths and the default scope resolve
+    /// against for this call.
+    #[serde(default, alias = "cwd")]
+    pub base_dir: Option<String>,
 }
 
 impl JsonSchema for TraceArgs {
@@ -213,7 +229,8 @@ impl JsonSchema for TraceArgs {
                 "target": {"type": "string", "description": "`#Name`, `Type.method`, `path#Name` or `path:LINE`."},
                 "direction": {"type": "string", "enum": ["callers", "callees", "refs", "impls"], "description": "Default callers."},
                 "depth": {"type": "integer", "description": "Levels to follow, 1-3 (default 1)."},
-                "budget": {"type": "integer", "description": "Max response tokens (default 4000)."}
+                "budget": {"type": "integer", "description": "Max response tokens (default 4000)."},
+                "base_dir": {"type": "string", "description": "Absolute directory that relative paths and the default scope resolve against (default: workspace root)."}
             },
             "required": ["target"]
         })
@@ -231,7 +248,8 @@ impl JsonSchema for ReadArgs {
                 "targets": {"type": "array", "items": {"type": "string"}, "description": "Everything to read, in one call (syntax above)."},
                 "mode": {"type": "string", "enum": ["auto", "full", "skeleton", "outline"], "description": "auto (default): full if it fits, else skeleton, else outline. full: never collapse (paginates). skeleton|outline: structure only."},
                 "budget": {"type": "integer", "description": "Max response tokens (default 8000)."},
-                "line_numbers": {"type": "boolean", "description": "Default true."}
+                "line_numbers": {"type": "boolean", "description": "Default true."},
+                "base_dir": {"type": "string", "description": "Absolute directory that relative paths and the default scope resolve against (default: workspace root)."}
             },
             "required": ["targets"]
         })
@@ -254,7 +272,8 @@ impl JsonSchema for SearchArgs {
                 "case": {"type": "string", "enum": ["smart", "sensitive", "insensitive"], "description": "smart (default): insensitive unless the pattern has uppercase."},
                 "context": {"type": "integer", "description": "Context lines per hit (default 0)."},
                 "output": {"type": "string", "enum": ["matches", "symbols", "files"], "description": "matches (default) | symbols: full source of each enclosing symbol | files: paths + counts."},
-                "budget": {"type": "integer", "description": "Max response tokens (default 8000)."}
+                "budget": {"type": "integer", "description": "Max response tokens (default 8000)."},
+                "base_dir": {"type": "string", "description": "Absolute directory that relative paths and the default scope resolve against (default: workspace root)."}
             },
             "required": ["pattern"]
         })
@@ -273,7 +292,8 @@ impl JsonSchema for MapArgs {
                 "symbols": {"type": "boolean", "description": "Add each file's top-level definitions."},
                 "depth": {"type": "integer", "description": "Max depth to expand (default: as far as the budget allows)."},
                 "globs": {"type": "array", "items": {"type": "string"}, "description": "Include/exclude globs, e.g. [\"*.swift\"]."},
-                "budget": {"type": "integer", "description": "Max response tokens (default 3000)."}
+                "budget": {"type": "integer", "description": "Max response tokens (default 3000)."},
+                "base_dir": {"type": "string", "description": "Absolute directory that relative paths and the default scope resolve against (default: workspace root)."}
             }
         })
     }
@@ -295,6 +315,10 @@ pub struct Server {
     roots: Arc<RootsState>,
     #[allow(dead_code)]
     tool_router: ToolRouter<Server>,
+}
+
+fn text_result(text: String) -> CallToolResult {
+    CallToolResult::success(vec![ContentBlock::text(text)])
 }
 
 async fn blocking<F>(f: F) -> Result<CallToolResult, McpError>
@@ -362,7 +386,10 @@ impl Server {
         peer: Peer<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
         self.ensure_roots(&peer).await;
-        let engine = self.engine.clone();
+        let engine = match self.engine.scoped(args.base_dir.as_deref()) {
+            Ok(e) => e,
+            Err(msg) => return Ok(text_result(format!("{msg}\n"))),
+        };
         let req = ReadRequest {
             targets: args.targets,
             mode: args.mode.unwrap_or_default(),
@@ -383,7 +410,10 @@ impl Server {
         peer: Peer<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
         self.ensure_roots(&peer).await;
-        let engine = self.engine.clone();
+        let engine = match self.engine.scoped(args.base_dir.as_deref()) {
+            Ok(e) => e,
+            Err(msg) => return Ok(text_result(format!("{msg}\n"))),
+        };
         let req = SearchRequest {
             pattern: args.pattern,
             paths: args.paths.unwrap_or_default(),
@@ -410,7 +440,10 @@ impl Server {
         peer: Peer<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
         self.ensure_roots(&peer).await;
-        let engine = self.engine.clone();
+        let engine = match self.engine.scoped(args.base_dir.as_deref()) {
+            Ok(e) => e,
+            Err(msg) => return Ok(text_result(format!("{msg}\n"))),
+        };
         let req = crate::map::MapRequest {
             path: args.path,
             depth: args.depth,
@@ -432,7 +465,10 @@ impl Server {
         peer: Peer<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
         self.ensure_roots(&peer).await;
-        let engine = self.engine.clone();
+        let engine = match self.engine.scoped(args.base_dir.as_deref()) {
+            Ok(e) => e,
+            Err(msg) => return Ok(text_result(format!("{msg}\n"))),
+        };
         let req = crate::trace::TraceRequest {
             target: args.target,
             direction: args.direction.unwrap_or_default(),

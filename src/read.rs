@@ -864,12 +864,10 @@ fn io_message(err: &std::io::Error) -> String {
 fn resolve_or_suggest(e: &Engine, raw: &str) -> Result<(PathBuf, Option<String>), String> {
     match e.ws.resolve(raw) {
         Ok(p) => Ok((p, None)),
-        Err(PathError::Outside(_)) if e.ws.rootless() => Err(format!(
-            "==> {raw}: no workspace root (speedread was started in / without --root); add `--root <project dir>` to its MCP config\n"
-        )),
-        Err(PathError::Outside(_)) if e.ws.rootless() => Err(format!(
-            "==> {raw}: no workspace root (speedread was started in / without --root); add `--root <project dir>` to its MCP config\n"
-        )),
+        Err(PathError::NoBase(msg)) => Err(format!("==> {raw}: {msg}\n")),
+        Err(PathError::Outside(_)) if e.ws.rootless() && e.ws.base().is_none() => {
+            Err(format!("==> {raw}: {}\n", e.ws.no_base()))
+        }
         Err(PathError::Outside(p)) => Err(format!(
             "==> {raw}: outside the workspace ({}); start speedread with --root <dir> (or --unrestricted)\n",
             p.display()
@@ -922,6 +920,9 @@ fn resolve_or_suggest(e: &Engine, raw: &str) -> Result<(PathBuf, Option<String>)
 
 /// Expand a glob relative to the primary root (or an absolute base).
 fn expand_glob(e: &Engine, pat: &str) -> Result<(Vec<PathBuf>, usize), String> {
+    if e.ws.needs_base(pat) {
+        return Err(format!("==> {pat}: {}\n", e.ws.no_base()));
+    }
     let full = e.ws.join(pat);
     let s = full.to_string_lossy().into_owned();
     let mut base = PathBuf::new();
@@ -1101,12 +1102,17 @@ pub fn read(e: &Engine, req: &ReadRequest) -> String {
 
 fn workspace_symbol(ctx: &Ctx<'_>, name: &str) -> Vec<Item> {
     let e = ctx.e;
-    let (hits, total) = crate::search::find_definitions(e, name, 12);
+    // A path-less symbol is looked up in the tree the base belongs to.
+    let root = match e.ws.require_base() {
+        Ok(base) => e.ws.lookup_root(&base),
+        Err(msg) => return vec![Item::text(format!("==> #{name}: {msg}\n"), 2)],
+    };
+    let (hits, total) = crate::search::find_definitions(e, &root, name, 12);
     if hits.is_empty() {
         return vec![Item::text(
             format!(
                 "==> #{name}: no definition found in {} (try search)\n",
-                e.ws.display(&e.ws.primary())
+                e.ws.display(&root)
             ),
             2,
         )];
