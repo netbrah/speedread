@@ -79,7 +79,7 @@ fn expand(e: &Engine, targets: &[String]) -> Result<Vec<PathBuf>, String> {
         }
         let opts = WalkOpts {
             globs,
-            ..Default::default()
+            ..e.walk_opts()
         };
         let (files, _) = walk::list_files(&root, &opts, 400_000).map_err(|x| x.to_string())?;
         out.extend(files.into_iter().map(|f| f.path));
@@ -253,7 +253,7 @@ pub fn files(
         globs: globs.to_vec(),
         max_depth,
         include_symlinks: true,
-        ..Default::default()
+        ..e.walk_opts()
     };
     let (list, _) = if root.is_file() {
         let md = std::fs::metadata(&root).map_err(|x| x.to_string())?;

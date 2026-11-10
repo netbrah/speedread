@@ -22,7 +22,7 @@ use crate::lang::LangId;
 use crate::outline::{Kind, Outline, Symbol};
 use crate::source::Source;
 use crate::util::plural;
-use crate::walk::{self, WalkOpts};
+use crate::walk;
 use crate::workspace::PathError;
 
 pub const DEFAULT_TRACE_BUDGET: usize = 4000;
@@ -294,6 +294,11 @@ fn lookup(e: &Engine, name: &str) -> Result<(Def, Vec<Def>), String> {
         .into_iter()
         .map(|(src, o, i)| Def { src, o, i })
         .collect();
+    if defs.is_empty() && e.limits.stopped().is_some() {
+        return Err(format!(
+            "`{name}` is not defined in the files examined before discovery stopped (trace needs a definition; pass path#Name)"
+        ));
+    }
     if defs.is_empty() {
         return Err(format!(
             "No definition of `{name}` found in the workspace (trace needs a definition; try search)"
@@ -316,7 +321,7 @@ fn defs_named(e: &Engine, near: &Path, names: &[String]) -> HashMap<String, Vec<
     let want: HashSet<&str> = names.iter().map(String::as_str).collect();
     let candidates = parking_lot::Mutex::new(Vec::new());
     let root = e.ws.lookup_root(near);
-    let _ = walk::walk(&root, &WalkOpts::default(), |entry| {
+    let _ = walk::walk(&root, &e.walk_opts(), |entry| {
         if entry.dataless
             || entry.size > crate::source::MAX_PARSE as u64
             || crate::lang::detect(&entry.path, b"").is_none()
@@ -326,7 +331,11 @@ fn defs_named(e: &Engine, near: &Path, names: &[String]) -> HashMap<String, Vec<
         if file_matches(&matcher, &entry.path) {
             candidates.lock().push(entry.path);
         }
-        candidates.lock().len() < 5000
+        if candidates.lock().len() >= walk::MAX_CANDIDATES {
+            e.limits.mark(walk::Stop::Candidates);
+            return false;
+        }
+        true
     });
     let mut candidates = candidates.into_inner();
     crate::search::prefilter_definitions(&mut candidates, names);
@@ -2037,6 +2046,12 @@ fn finish(out: &mut Out<'_>, hint: &str) {
 // ---------------------------------------------------------------------------
 
 pub fn trace(e: &Engine, req: &TraceRequest) -> String {
+    let mut out = trace_request(e, req);
+    e.note_incomplete(&mut out);
+    out
+}
+
+fn trace_request(e: &Engine, req: &TraceRequest) -> String {
     let budget = e.budget(Some(
         req.budget
             .unwrap_or(DEFAULT_TRACE_BUDGET.min(e.cfg.default_budget)),

@@ -945,7 +945,7 @@ fn expand_glob(e: &Engine, pat: &str) -> Result<(Vec<PathBuf>, usize), String> {
     let glob = format!("/{}", rest.join("/"));
     let opts = WalkOpts {
         globs: vec![glob],
-        ..Default::default()
+        ..e.walk_opts()
     };
     let (files, _) =
         walk::list_files(&base, &opts, 5000).map_err(|err| format!("==> {pat}: {err}\n"))?;
@@ -956,6 +956,12 @@ fn expand_glob(e: &Engine, pat: &str) -> Result<(Vec<PathBuf>, usize), String> {
 const MAX_GLOB_FILES: usize = 200;
 
 pub fn read(e: &Engine, req: &ReadRequest) -> String {
+    let mut out = read_request(e, req);
+    e.note_incomplete(&mut out);
+    out
+}
+
+fn read_request(e: &Engine, req: &ReadRequest) -> String {
     let budget = e.budget(req.budget);
     let numbers = req.numbers;
     let ctx = Ctx { e, mode: req.mode };
@@ -1108,6 +1114,16 @@ fn workspace_symbol(ctx: &Ctx<'_>, name: &str) -> Vec<Item> {
         Err(msg) => return vec![Item::text(format!("==> #{name}: {msg}\n"), 2)],
     };
     let (hits, total) = crate::search::find_definitions(e, &root, name, 12);
+    if hits.is_empty() && e.limits.stopped().is_some() {
+        // Not "no definition": the lookup did not see every file.
+        return vec![Item::text(
+            format!(
+                "==> #{name}: not defined in the files examined in {} before discovery stopped (try path#{name})\n",
+                e.ws.display(&root)
+            ),
+            2,
+        )];
+    }
     if hits.is_empty() {
         return vec![Item::text(
             format!(

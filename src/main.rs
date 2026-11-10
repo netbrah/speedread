@@ -36,6 +36,18 @@ struct Cli {
     /// Don't allow read-only access to dependency caches (cargo registry, SwiftPM checkouts, SDKs, Go modules).
     #[arg(long, global = true)]
     no_deps: bool,
+    /// Files one directory walk may visit before it stops and the answer says it is
+    /// incomplete (0: unlimited; also SPEEDREAD_MAX_WALK). Default: 1000000.
+    #[arg(long, global = true, value_name = "FILES")]
+    max_walk: Option<u64>,
+    /// Time limit for a request's file discovery, in milliseconds (0: unlimited; also
+    /// SPEEDREAD_DEADLINE_MS). Default: 30000.
+    #[arg(long, global = true, value_name = "MS")]
+    deadline_ms: Option<u64>,
+    /// Memory ceiling for cached file contents, in MiB (also SPEEDREAD_CACHE_MB).
+    /// Changes memory use and speed, not answers. Default: 512.
+    #[arg(long, global = true, value_name = "MIB")]
+    cache_mb: Option<usize>,
     /// Default token budget per call (map defaults to 3000).
     #[arg(long, global = true, default_value_t = 8000)]
     budget: usize,
@@ -157,8 +169,7 @@ fn main() -> anyhow::Result<()> {
     let result = run();
     // Discovery counters for tests and measurements.
     if std::env::var_os("SPEEDREAD_STATS").is_some() {
-        let (walks, entries) = speedread::walk::STATS.snapshot();
-        eprintln!("speedread-stats walks={walks} entries={entries}");
+        eprintln!("speedread-stats {}", speedread::walk::STATS.line());
     }
     result
 }
@@ -178,10 +189,19 @@ fn run() -> anyhow::Result<()> {
         || std::env::var("SPEEDREAD_NO_CWD_ROOT")
             .is_ok_and(|v| matches!(v.trim(), "1" | "true" | "yes"));
     let ws = Workspace::with_options(roots, cli.unrestricted, !cli.no_deps, !no_cwd_root)?;
+    let defaults = Config::default();
     let cfg = Config {
         default_budget: cli.budget,
         max_budget: cli.max_budget.max(cli.budget),
-        ..Config::default()
+        max_walk: setting(cli.max_walk, "SPEEDREAD_MAX_WALK")?.unwrap_or(defaults.max_walk),
+        deadline: match setting(cli.deadline_ms, "SPEEDREAD_DEADLINE_MS")? {
+            Some(ms) => (ms > 0).then(|| std::time::Duration::from_millis(ms)),
+            None => defaults.deadline,
+        },
+        cache_bytes: setting(cli.cache_mb, "SPEEDREAD_CACHE_MB")?
+            .map(|mb: usize| mb.max(1) << 20)
+            .unwrap_or(defaults.cache_bytes),
+        ..defaults
     };
     let engine = Engine::new(ws, cfg)
         .scoped(cli.base_dir.as_deref())
@@ -278,7 +298,7 @@ fn run() -> anyhow::Result<()> {
                     max_matches: max,
                     ..req
                 };
-                emit(|w| speedread::json::search(&engine, &req, w))?;
+                emit(&engine, |w| speedread::json::search(&engine, &req, w))?;
             } else {
                 print!("{}", speedread::search::search(&engine, &req));
             }
@@ -291,7 +311,7 @@ fn run() -> anyhow::Result<()> {
             json,
         } => {
             if json {
-                return emit(|w| {
+                return emit(&engine, |w| {
                     speedread::json::files(&engine, path.as_deref(), &globs, depth, w)
                 });
             }
@@ -326,7 +346,7 @@ fn run() -> anyhow::Result<()> {
         }
         Cmd::Symbols { targets, json } => {
             if json {
-                return emit(|w| speedread::json::symbols(&engine, &targets, w));
+                return emit(&engine, |w| speedread::json::symbols(&engine, &targets, w));
             }
             let records =
                 speedread::json::symbol_records(&engine, &targets).map_err(anyhow::Error::msg)?;
@@ -348,6 +368,7 @@ fn run() -> anyhow::Result<()> {
                 }
             }
             let _ = out.flush();
+            note_stderr(&engine);
         }
         Cmd::BenchWalk { path } => {
             let t = std::time::Instant::now();
@@ -366,12 +387,37 @@ fn run() -> anyhow::Result<()> {
 }
 
 /// Stream JSON Lines to stdout; a closed pipe (`| head`) is not an error.
+/// A flag, else its environment variable, else `None` (the built-in default).
+fn setting<T: std::str::FromStr>(flag: Option<T>, var: &str) -> anyhow::Result<Option<T>> {
+    if flag.is_some() {
+        return Ok(flag);
+    }
+    match std::env::var(var) {
+        Ok(v) if !v.trim().is_empty() => match v.trim().parse() {
+            Ok(n) => Ok(Some(n)),
+            Err(_) => anyhow::bail!("{var}={v}: expected a non-negative whole number"),
+        },
+        _ => Ok(None),
+    }
+}
+
+/// Machine-readable output keeps stdout clean: the incomplete note goes to
+/// stderr.
+fn note_stderr(engine: &Engine) {
+    if let Some(note) = engine.limits.note() {
+        eprintln!("{note}");
+    }
+}
+
 fn emit(
+    engine: &Engine,
     f: impl FnOnce(&mut std::io::BufWriter<std::io::StdoutLock<'static>>) -> Result<usize, String>,
 ) -> anyhow::Result<()> {
     use std::io::Write;
     let mut w = std::io::BufWriter::with_capacity(1 << 16, std::io::stdout().lock());
-    match f(&mut w) {
+    let result = f(&mut w);
+    note_stderr(engine);
+    match result {
         Ok(_) => {}
         Err(e) if e.contains("Broken pipe") => return Ok(()),
         Err(e) => anyhow::bail!(e),

@@ -274,7 +274,7 @@ pub(crate) fn scan(
         }
         let opts = WalkOpts {
             globs: globs.to_vec(),
-            ..Default::default()
+            ..e.walk_opts()
         };
         let _ = walk::walk(root, &opts, |entry| {
             if entry.dataless
@@ -286,7 +286,6 @@ pub(crate) fn scan(
             visit(&entry.path)
         });
     }
-    let _ = e;
     let mut files = out.into_inner();
     files.sort_unstable_by(|a, b| {
         use std::os::unix::ffi::OsStrExt;
@@ -471,6 +470,12 @@ fn render_file(
 }
 
 pub fn search(e: &Engine, req: &SearchRequest) -> String {
+    let mut out = search_request(e, req);
+    e.note_incomplete(&mut out);
+    out
+}
+
+fn search_request(e: &Engine, req: &SearchRequest) -> String {
     let budget = e.budget(req.budget);
     let max_bytes = e.bytes_for(budget);
     let matcher = match build_matcher(req) {
@@ -501,11 +506,20 @@ pub fn search(e: &Engine, req: &SearchRequest) -> String {
         .collect::<Vec<_>>()
         .join(", ");
     if sc.files.is_empty() {
-        let mut t = format!(
-            "No matches for /{}/ in {scope} ({} searched; .gitignored files skipped).",
-            req.pattern,
-            plural(sc.searched, "file")
-        );
+        // Absence is only claimed when the whole scope was searched.
+        let mut t = if e.limits.stopped().is_some() {
+            format!(
+                "Nothing matched /{}/ in the {} searched in {scope} before discovery stopped.",
+                req.pattern,
+                plural(sc.searched, "file")
+            )
+        } else {
+            format!(
+                "No matches for /{}/ in {scope} ({} searched; .gitignored files skipped).",
+                req.pattern,
+                plural(sc.searched, "file")
+            )
+        };
         if req.case == Case::Sensitive
             || (req.case == Case::Smart && req.pattern.chars().any(|c| c.is_uppercase()))
         {
@@ -646,7 +660,7 @@ pub fn find_definitions(
     };
     let candidates = Mutex::new(Vec::new());
     {
-        let _ = walk::walk(root, &WalkOpts::default(), |entry| {
+        let _ = walk::walk(root, &e.walk_opts(), |entry| {
             if entry.dataless || entry.size > crate::source::MAX_PARSE as u64 {
                 return true;
             }
@@ -667,7 +681,11 @@ pub fn find_definitions(
             if found {
                 candidates.lock().push(entry.path);
             }
-            candidates.lock().len() < 5000
+            if candidates.lock().len() >= walk::MAX_CANDIDATES {
+                e.limits.mark(walk::Stop::Candidates);
+                return false;
+            }
+            true
         });
     }
     let mut candidates = candidates.into_inner();

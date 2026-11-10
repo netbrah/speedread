@@ -10,9 +10,9 @@
 //! Other platforms fall back to `ignore::WalkParallel`.
 
 use std::path::{Path, PathBuf};
-#[cfg(target_os = "macos")]
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 
 #[cfg(target_os = "macos")]
 use ignore::Match;
@@ -64,6 +64,148 @@ pub struct WalkOpts {
     pub include_dirs: bool,
     /// Report symlinks as entries (for listings). Walks never follow them.
     pub include_symlinks: bool,
+    /// The request's discovery limits (`None`: unbounded).
+    pub limits: Option<Arc<Limits>>,
+}
+
+/// Which limit stopped discovery.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Stop {
+    /// A walk delivered `max_entries` files.
+    Entries,
+    /// The request ran past its deadline.
+    Deadline,
+    /// The client cancelled the request.
+    Cancelled,
+    /// More files mention a name than a definition lookup examines.
+    Candidates,
+}
+
+/// Upper bound on files that mention a name and are parsed to find its
+/// definitions.
+pub const MAX_CANDIDATES: usize = 5000;
+
+/// Discovery limits of one request, shared by every walk it performs.
+///
+/// The entry limit applies to each walk (a trace walks the same tree several
+/// times); the deadline and cancellation apply to the request as a whole.
+/// When a limit fires the walk stops and [`Limits::stopped`] says why, so the
+/// answer can state that it is incomplete instead of claiming absence.
+#[derive(Debug)]
+pub struct Limits {
+    max_entries: u64,
+    budget: Option<Duration>,
+    started: Instant,
+    cancel: AtomicBool,
+    stop: AtomicU8,
+    examined: AtomicU64,
+}
+
+impl Limits {
+    /// `max_entries` per walk and `deadline` per request; 0 / `None` disable.
+    pub fn new(max_entries: u64, deadline: Option<Duration>) -> Limits {
+        Limits {
+            max_entries,
+            budget: deadline.filter(|d| !d.is_zero()),
+            started: Instant::now(),
+            cancel: AtomicBool::new(false),
+            stop: AtomicU8::new(0),
+            examined: AtomicU64::new(0),
+        }
+    }
+
+    pub fn unlimited() -> Limits {
+        Limits::new(0, None)
+    }
+
+    /// Stop this request's walks at their next entry.
+    pub fn cancel(&self) {
+        self.cancel.store(true, Ordering::Relaxed);
+    }
+
+    /// Record that discovery was cut short. The first reason is kept.
+    pub fn mark(&self, why: Stop) {
+        let code = match why {
+            Stop::Entries => 1,
+            Stop::Deadline => 2,
+            Stop::Cancelled => 3,
+            Stop::Candidates => 4,
+        };
+        if self
+            .stop
+            .compare_exchange(0, code, Ordering::Relaxed, Ordering::Relaxed)
+            .is_ok()
+        {
+            match why {
+                Stop::Cancelled => STATS.cancelled.fetch_add(1, Ordering::Relaxed),
+                _ => STATS.stopped.fetch_add(1, Ordering::Relaxed),
+            };
+        }
+    }
+
+    pub fn stopped(&self) -> Option<Stop> {
+        match self.stop.load(Ordering::Relaxed) {
+            1 => Some(Stop::Entries),
+            2 => Some(Stop::Deadline),
+            3 => Some(Stop::Cancelled),
+            4 => Some(Stop::Candidates),
+            _ => None,
+        }
+    }
+
+    /// Files delivered to this request so far, over all its walks.
+    pub fn examined(&self) -> u64 {
+        self.examined.load(Ordering::Relaxed)
+    }
+
+    /// Deadline or cancellation reached (checked for every entry seen, also
+    /// ones a glob filters out).
+    fn expired(&self) -> bool {
+        if self.cancel.load(Ordering::Relaxed) {
+            self.mark(Stop::Cancelled);
+            return true;
+        }
+        if let Some(b) = self.budget
+            && self.started.elapsed() >= b
+        {
+            self.mark(Stop::Deadline);
+            return true;
+        }
+        false
+    }
+
+    /// May a walk that has delivered `seen` entries deliver `n` more?
+    fn admit(&self, seen: u64, n: u64) -> bool {
+        if self.expired() {
+            return false;
+        }
+        if self.max_entries > 0 && seen + n > self.max_entries {
+            self.mark(Stop::Entries);
+            return false;
+        }
+        self.examined.fetch_add(n, Ordering::Relaxed);
+        true
+    }
+
+    /// One line for the end of a response, when discovery was cut short.
+    pub fn note(&self) -> Option<String> {
+        let n = crate::util::thousands(self.examined() as usize);
+        Some(match self.stopped()? {
+            Stop::Entries => format!(
+                "incomplete: a walk stopped at its limit of {} files; results may be missing. Narrow with a path or glob.",
+                crate::util::thousands(self.max_entries as usize)
+            ),
+            Stop::Deadline => format!(
+                "incomplete: stopped after {} ms ({n} files examined); results may be missing. Narrow with a path or glob.",
+                self.budget.map(|b| b.as_millis()).unwrap_or(0)
+            ),
+            Stop::Cancelled => format!("incomplete: cancelled ({n} files examined)."),
+            Stop::Candidates => format!(
+                "incomplete: more than {} files mention the name and only that many were examined. Qualify it (path#Name) or narrow with a path.",
+                crate::util::thousands(MAX_CANDIDATES)
+            ),
+        })
+    }
 }
 
 pub fn build_overrides(root: &Path, globs: &[String]) -> anyhow::Result<Option<Override>> {
@@ -88,18 +230,28 @@ pub struct Stats {
     pub walks: AtomicU64,
     /// Entries delivered to callers.
     pub entries: AtomicU64,
+    /// Requests whose discovery hit a limit.
+    pub stopped: AtomicU64,
+    /// Requests cancelled by the client.
+    pub cancelled: AtomicU64,
 }
 
 pub static STATS: Stats = Stats {
     walks: AtomicU64::new(0),
     entries: AtomicU64::new(0),
+    stopped: AtomicU64::new(0),
+    cancelled: AtomicU64::new(0),
 };
 
 impl Stats {
-    pub fn snapshot(&self) -> (u64, u64) {
-        (
+    /// `walks=… entries=… stopped=… cancelled=…`
+    pub fn line(&self) -> String {
+        format!(
+            "walks={} entries={} stopped={} cancelled={}",
             self.walks.load(Ordering::Relaxed),
             self.entries.load(Ordering::Relaxed),
+            self.stopped.load(Ordering::Relaxed),
+            self.cancelled.load(Ordering::Relaxed)
         )
     }
 }
@@ -121,10 +273,20 @@ where
 {
     let overrides = build_overrides(root, &opts.globs)?;
     STATS.walks.fetch_add(1, Ordering::Relaxed);
+    let limits = opts.limits.as_deref();
+    if limits.is_some_and(|l| l.expired()) {
+        return Ok(());
+    }
+    // Entries this walk has delivered (the entry limit is per walk).
+    let seen = AtomicU64::new(0);
     let f = |batch: Vec<Entry>| {
-        STATS
-            .entries
-            .fetch_add(batch.len() as u64, Ordering::Relaxed);
+        let n = batch.len() as u64;
+        if let Some(l) = limits
+            && !l.admit(seen.fetch_add(n, Ordering::Relaxed), n)
+        {
+            return false;
+        }
+        STATS.entries.fetch_add(n, Ordering::Relaxed);
         f(batch)
     };
     #[cfg(target_os = "macos")]
@@ -583,10 +745,13 @@ mod portable {
         let stop = AtomicBool::new(false);
         let include_dirs = opts.include_dirs;
         let include_symlinks = opts.include_symlinks;
+        let limits = opts.limits.as_deref();
         b.build_parallel().run(|| {
             let stop = &stop;
             Box::new(move |res| {
-                if stop.load(Ordering::Relaxed) {
+                // Checked for every entry, so a glob that filters everything
+                // out cannot outrun the deadline or a cancellation.
+                if stop.load(Ordering::Relaxed) || limits.is_some_and(|l| l.expired()) {
                     return ignore::WalkState::Quit;
                 }
                 let Ok(e) = res else {

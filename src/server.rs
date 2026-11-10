@@ -20,6 +20,7 @@ use serde::{Deserialize, Deserializer};
 use crate::engine::Engine;
 use crate::read::{Mode, ReadRequest};
 use crate::search::{Case, Output, SearchRequest};
+use crate::walk::Limits;
 
 pub const INSTRUCTIONS: &str = "speedread: fast, token-budgeted code reading. Prefer its tools over shell cat/sed/head/grep/find/ls and over one-file-at-a-time reads. Batch every file, range and symbol you need into ONE `read` call (`path`, `path:A-B`, `path#Symbol`, `#Symbol`, globs); oversized files come back as skeletons you expand by symbol instead of being cut off. `search` hits show their enclosing function/class; `trace` follows callers, callees, references and implementations; `map` orients you in a repo. After editing a file, read `path@etag` (etag from the `==>` header) to see only what changed.";
 
@@ -321,12 +322,37 @@ fn text_result(text: String) -> CallToolResult {
     CallToolResult::success(vec![ContentBlock::text(text)])
 }
 
-async fn blocking<F>(f: F) -> Result<CallToolResult, McpError>
+/// Stops a request's walks when the handler is dropped (the client went
+/// away) so abandoned work does not keep reading the disk.
+struct CancelOnDrop(Arc<Limits>);
+
+impl Drop for CancelOnDrop {
+    fn drop(&mut self) {
+        self.0.cancel();
+    }
+}
+
+/// Run a request on the blocking pool. A `notifications/cancelled` for it
+/// stops its walks at their next entry; the partial answer is discarded by
+/// the client, the point is to stop the work.
+async fn blocking<F>(
+    ctx: RequestContext<RoleServer>,
+    limits: Arc<Limits>,
+    f: F,
+) -> Result<CallToolResult, McpError>
 where
     F: FnOnce() -> String + Send + 'static,
 {
-    let text = tokio::task::spawn_blocking(f)
-        .await
+    let _guard = CancelOnDrop(limits.clone());
+    let mut work = tokio::task::spawn_blocking(f);
+    let joined = tokio::select! {
+        r = &mut work => r,
+        _ = ctx.ct.cancelled() => {
+            limits.cancel();
+            work.await
+        }
+    };
+    let text = joined
         .map_err(|e| McpError::internal_error(format!("speedread worker failed: {e}"), None))?;
     Ok(CallToolResult::success(vec![ContentBlock::text(text)]))
 }
@@ -383,9 +409,9 @@ impl Server {
     async fn read(
         &self,
         Parameters(args): Parameters<ReadArgs>,
-        peer: Peer<RoleServer>,
+        ctx: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        self.ensure_roots(&peer).await;
+        self.ensure_roots(&ctx.peer).await;
         let engine = match self.engine.scoped(args.base_dir.as_deref()) {
             Ok(e) => e,
             Err(msg) => return Ok(text_result(format!("{msg}\n"))),
@@ -396,7 +422,8 @@ impl Server {
             budget: args.budget,
             numbers: args.line_numbers.unwrap_or(true),
         };
-        blocking(move || crate::read::read(&engine, &req)).await
+        let limits = engine.limits.clone();
+        blocking(ctx, limits, move || crate::read::read(&engine, &req)).await
     }
 
     #[tool(
@@ -407,9 +434,9 @@ impl Server {
     async fn search(
         &self,
         Parameters(args): Parameters<SearchArgs>,
-        peer: Peer<RoleServer>,
+        ctx: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        self.ensure_roots(&peer).await;
+        self.ensure_roots(&ctx.peer).await;
         let engine = match self.engine.scoped(args.base_dir.as_deref()) {
             Ok(e) => e,
             Err(msg) => return Ok(text_result(format!("{msg}\n"))),
@@ -426,7 +453,8 @@ impl Server {
             budget: args.budget,
             max_matches: 5000,
         };
-        blocking(move || crate::search::search(&engine, &req)).await
+        let limits = engine.limits.clone();
+        blocking(ctx, limits, move || crate::search::search(&engine, &req)).await
     }
 
     #[tool(
@@ -437,9 +465,9 @@ impl Server {
     async fn map(
         &self,
         Parameters(args): Parameters<MapArgs>,
-        peer: Peer<RoleServer>,
+        ctx: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        self.ensure_roots(&peer).await;
+        self.ensure_roots(&ctx.peer).await;
         let engine = match self.engine.scoped(args.base_dir.as_deref()) {
             Ok(e) => e,
             Err(msg) => return Ok(text_result(format!("{msg}\n"))),
@@ -451,7 +479,8 @@ impl Server {
             globs: args.globs.unwrap_or_default(),
             budget: args.budget,
         };
-        blocking(move || crate::map::map(&engine, &req)).await
+        let limits = engine.limits.clone();
+        blocking(ctx, limits, move || crate::map::map(&engine, &req)).await
     }
 
     #[tool(
@@ -462,9 +491,9 @@ impl Server {
     async fn trace(
         &self,
         Parameters(args): Parameters<TraceArgs>,
-        peer: Peer<RoleServer>,
+        ctx: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        self.ensure_roots(&peer).await;
+        self.ensure_roots(&ctx.peer).await;
         let engine = match self.engine.scoped(args.base_dir.as_deref()) {
             Ok(e) => e,
             Err(msg) => return Ok(text_result(format!("{msg}\n"))),
@@ -475,7 +504,8 @@ impl Server {
             depth: args.depth.unwrap_or(1),
             budget: args.budget,
         };
-        blocking(move || crate::trace::trace(&engine, &req)).await
+        let limits = engine.limits.clone();
+        blocking(ctx, limits, move || crate::trace::trace(&engine, &req)).await
     }
 }
 

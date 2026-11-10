@@ -13,7 +13,7 @@ use parking_lot::Mutex;
 use crate::lang::LangId;
 use crate::outline::{self, Outline};
 use crate::source::{BigFile, MAX_IN_MEMORY, MAX_PARSE, Source, Stamp};
-use crate::walk::{self, WalkOpts};
+use crate::walk::{self, Limits, WalkOpts};
 use crate::workspace::Workspace;
 
 #[derive(Clone)]
@@ -23,6 +23,14 @@ pub struct Config {
     /// Bytes per token for byte-based sizing before the content-aware
     /// estimate (`tokens`) checks the result. See `Tokenizer`.
     pub bytes_per_token: f32,
+    /// Files one walk may deliver before it stops and the answer is marked
+    /// incomplete (0: unlimited).
+    pub max_walk: u64,
+    /// Wall-clock bound on a request's discovery (`None`: unlimited).
+    pub deadline: Option<Duration>,
+    /// Ceiling of the source cache; the snapshot cache gets half of it.
+    /// Residency only: answers do not depend on it.
+    pub cache_bytes: usize,
 }
 
 /// Which tokenizer family budgets are calibrated to.
@@ -83,6 +91,9 @@ impl Default for Config {
             // file; Claude Code warns above 10k tokens).
             max_budget: 10000,
             bytes_per_token: 2.6,
+            max_walk: 1_000_000,
+            deadline: Some(Duration::from_secs(30)),
+            cache_bytes: 512 << 20,
         }
     }
 }
@@ -175,6 +186,8 @@ struct Shared {
 pub struct Engine {
     pub ws: Workspace,
     pub cfg: Config,
+    /// Discovery limits of the request this view serves.
+    pub limits: Arc<Limits>,
     shared: Arc<Shared>,
 }
 
@@ -184,17 +197,40 @@ impl Engine {
             bpt: AtomicU32::new(cfg.bytes_per_token.to_bits()),
             token_scale: AtomicU32::new(1.0f32.to_bits()),
             tokenizer_pinned: std::sync::atomic::AtomicBool::new(false),
-            sources: Mutex::new(Lru::new(512 << 20)),
+            sources: Mutex::new(Lru::new(cfg.cache_bytes.max(1 << 20))),
             outlines: Mutex::new(Lru::new(8192)),
-            snapshots: Mutex::new(Lru::new(256 << 20)),
+            snapshots: Mutex::new(Lru::new(cfg.cache_bytes.max(1 << 20) / 2)),
             bigs: Mutex::new(Lru::new(64)),
             big_snaps: Mutex::new(Lru::new(1024)),
             files: Mutex::new(None),
         };
         Engine {
             ws,
+            limits: Arc::new(Limits::new(cfg.max_walk, cfg.deadline)),
             cfg,
             shared: Arc::new(shared),
+        }
+    }
+
+    /// Walk options carrying this request's limits.
+    pub fn walk_opts(&self) -> WalkOpts {
+        WalkOpts {
+            limits: Some(self.limits.clone()),
+            ..Default::default()
+        }
+    }
+
+    /// Append the one-line reason when this request's discovery was cut
+    /// short, so a partial answer is never mistaken for a complete one.
+    pub fn note_incomplete(&self, out: &mut String) {
+        if let Some(note) = self.limits.note()
+            && !out.contains("incomplete: ")
+        {
+            if !out.is_empty() && !out.ends_with('\n') {
+                out.push('\n');
+            }
+            out.push_str(&note);
+            out.push('\n');
         }
     }
 
@@ -208,6 +244,8 @@ impl Engine {
         };
         Ok(Engine {
             ws,
+            // A fresh request: its own deadline, counters and cancel flag.
+            limits: Arc::new(Limits::new(self.cfg.max_walk, self.cfg.deadline)),
             cfg: self.cfg.clone(),
             shared: self.shared.clone(),
         })
@@ -405,7 +443,7 @@ impl Engine {
                 return v.clone();
             }
         }
-        let list = walk::list_files(&root, &WalkOpts::default(), 250_000)
+        let list = walk::list_files(&root, &self.walk_opts(), 250_000)
             .map(|(v, _)| {
                 v.into_iter()
                     .filter_map(|e| {
