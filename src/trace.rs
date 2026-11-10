@@ -968,7 +968,7 @@ fn scan_names(
     let known = e
         .limits
         .mentions(&root, &crate::search::word_pattern(names))
-        .filter(|m| m.complete);
+        .filter(|m| m.complete && !m.code_only);
     let key = |p: &Path| {
         let disp = p.to_string_lossy();
         (is_test_path(&disp), std::cmp::Reverse(proximity(p, near)))
@@ -2409,6 +2409,11 @@ pub fn trace(e: &Engine, req: &TraceRequest) -> String {
 }
 
 fn trace_request(e: &Engine, req: &TraceRequest) -> String {
+    // Everything but a callee tree goes on to read occurrences from the
+    // files that mention the name.
+    if req.direction != Direction::Callees {
+        e.limits.want_all_mentions();
+    }
     let budget = e.budget(Some(
         req.budget
             .unwrap_or(DEFAULT_TRACE_BUDGET.min(e.cfg.default_budget)),

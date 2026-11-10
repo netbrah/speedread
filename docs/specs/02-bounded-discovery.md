@@ -69,20 +69,21 @@ Rules:
 | Stage | Control | Default | Override |
 |---|---|---|---|
 | Discovery | files delivered **per walk** | 1,000,000 | `--max-walk`, `SPEEDREAD_MAX_WALK` (0: unlimited) |
-| Discovery | wall-clock **per request** | 30 s | `--deadline-ms`, `SPEEDREAD_DEADLINE_MS` (0: unlimited) |
+| Discovery, parsing | wall-clock **per request** | 10 s | `--deadline-ms`, `SPEEDREAD_DEADLINE_MS` (0: unlimited) |
 | Discovery | client cancellation per request | on (MCP `notifications/cancelled`, or the handler being dropped) | — |
-| Discovery | definition candidates | 5,000 (unchanged) | — (now reported) |
-| Retention | cached content in total | 512 MiB: 1/2 file contents, 1/4 outlines, 1/4 `path@etag` snapshots | `--cache-mb`, `SPEEDREAD_CACHE_MB` |
+| Discovery | files remembered as mentioning a name | 20,000 per name set | — (reported) |
+| Discovery | definition candidates parsed | 5,000, counted after the definition-line prefilter | — (reported) |
+| Reading | longest line a text search buffers | 4 MiB | — (reported) |
+| Retention | cached content in total | 256 MiB: 1/2 file contents, 1/4 outlines, 1/4 `path@etag` snapshots | `--cache-mb`, `SPEEDREAD_CACHE_MB` |
 
 Differences from the design above, and why:
 
 - **The entry limit is per walk, not per request.** A depth-2 trace walks the same tree
-  several times; a shared counter made the limit depend on the tool rather than on the tree.
+  more than once; a shared counter made the limit depend on the tool rather than on the tree.
   The deadline and cancellation are per request (one `Limits` per `Engine::scoped` view).
-- **Defaults are 1,000,000 files and 30 s**, not 200,000 and 15 s. Upstream's own caps
-  (400,000 listed files for `map`) are above 200,000, and a default must not turn a complete
-  answer on a large monorepo into an incomplete one. The defaults are a backstop against
-  runaway work; tighten them per deployment.
+- **The entry default is 1,000,000 files**, not 200,000. Upstream's own caps (400,000 listed
+  files for `map`) are above 200,000, and a default must not turn a complete answer on a
+  large monorepo into an incomplete one.
 - **The outline cache is now bounded by bytes.** Upstream bounds it by count (8,192 outlines
   of any size). On the hostile corpus of `scripts/fork-rss.py` that held roughly 800 MiB of outlines
   for ~250 MiB of source. `--cache-mb` is therefore one total for all three caches.
@@ -93,9 +94,67 @@ Differences from the design above, and why:
 - **Wording.** The line is `incomplete: <reason>; results may be missing. Narrow with a path
   or glob.` Absence claims change to "Nothing matched … in the N files searched … before
   discovery stopped" (`search`), "not defined in the files examined … before discovery
-  stopped" (`read #Name`, `trace`). JSON Lines output keeps stdout clean and prints the line
-  on stderr.
+  stopped" (`read #Name`, `trace`), "None found in the files examined before the trace
+  stopped" (`trace` with a definition but no time left for its call sites). JSON Lines output
+  keeps stdout clean and prints the line on stderr.
 - **Cancellation is wired** (rmcp 3.4.1 hands tool handlers the request's token).
+
+### Defaults (revised after measuring on the Linux kernel and Chromium)
+
+The first shipped defaults were 30 s and 512 MiB. Both were chosen as backstops without a
+large tree to measure on. `evals/fork/big-*.txt` (see eval.md, "Large trees") is that
+measurement, on 2 vCPUs:
+
+- **Deadline 10 s.** With a warm page cache a whole-tree text search takes 0.4–1.6 s on the
+  kernel (97k files) and 2.7–3.3 s on Chromium (474k files), which is what ripgrep itself
+  takes there (2.8 s). A depth-1 trace takes 2–3.5 s and 5–7 s. Nothing ordinary needs 30 s;
+  what does run that long is a depth-2 trace of a name that thousands of files use, and its
+  first 10 s already fill the output budget. With a cold page cache the same search of
+  Chromium is I/O-bound (ripgrep: 56 s on this disk) and is cut at 10 s with the note; the
+  retry reads from cache. Set `--deadline-ms 30000` to wait instead.
+- **The deadline bounds the request, not only its walks.** It was checked per walked file,
+  but most of the time of a definition lookup or a trace is spent parsing afterwards
+  (tree-sitter C: about 4 MB/s per core). `trace mutex_lock --depth 2` on the kernel ran
+  26 s under a 10 s deadline and then answered "No call sites found (it may be unused …)"
+  because the call-site walk was refused. The parse loops of `find_definitions`, `defs_named`
+  and `classify_file` now stop at the deadline too, and running out of time outranks a count
+  limit in the note (`Limits::mark`).
+- **Cache 256 MiB.** On the hostile corpus the default resident size follows the ceiling
+  (512 → 511 MiB, 256 → see eval.md); on the kernel and Chromium sessions the working set
+  of hundreds of symbol reads stays under it. `--cache-mb 4096` was never a default: it is the
+  setting that reproduces upstream's unbounded outline cache for comparison.
+
+### One walk per question
+
+A trace asked the same question of the tree three times: which files mention the name, to
+find its definition (`find_definitions`), its namesakes (`defs_named`) and its call sites
+(`scan`). On Chromium each walk is about 3 s. `search::mentions` now answers it once per
+request and name set and keeps the list with the request (`walk::Mentions`, on `Limits`,
+at most 20,000 files and 16 name sets; gone when the request ends, so there is nothing to
+keep fresh):
+
+- `trace NAME`: 3 walks → 1; `--depth 2`: 5 → 2 (test `a_trace_reads_the_tree_once_per_level`).
+- A lookup of definitions alone (`read #Name`, callee trees) still reads only files in a
+  known language; a trace that will also read call sites lists every searchable file.
+- When the list is complete, call sites are searched from it nearest-first (non-test, then
+  path proximity to the definition) in whole chunks of 256 files until the 20,000-line limit.
+  A limited scan therefore keeps the files the answer would show anyway, and the same ones on
+  every run; the walk-based scan kept whichever files it reached first, so the same request
+  could return different sites.
+- The 5,000-candidate limit now counts files left after the definition-line prefilter, not
+  files that merely mention the name: 5,200 mentions with no definition is a complete "not
+  found", not an incomplete one. The prefilter no longer treats a statement call
+  (`name(args);`) as a definition-looking line; in C that kept every caller as a candidate.
+
+### Long lines
+
+A text search buffers whole lines. One 200 MiB line (a bundle, a data file) made a single
+`search` peak at 1 GiB and left an MCP server at 1.0–1.3 GiB resident, upstream and fork
+alike. The searcher's line buffer is now limited to 4 MiB (`MAX_LINE_BYTES`); a file with a
+longer line is searched up to that line, counts as a candidate for definition lookup, and the
+answer says `not fully searched: N files have a line longer than 4 MiB and were read only up
+to it, e.g. <path>`. Matched lines are kept as a 4 KiB window around the match. After:
+28 MiB peak, 39 MiB resident (`scripts/fork-longline-rss.py`). Chromium has three such files.
 
 Known gaps:
 
@@ -103,7 +162,9 @@ Known gaps:
   when it delivers a batch, so entry limit, deadline and cancellation all work, but a walk
   whose glob filters out every file has no delivery and runs to the end. The portable walker
   (Linux, and macOS with `SPEEDREAD_PORTABLE_WALK`) checks every entry.
-- A working set larger than the ceiling is re-parsed on every access (LRU). On the hostile
-  corpus, re-reading 1,200 symbols takes 0.5 s when everything is cached (`--cache-mb 4096`,
-  1.1 GiB resident, same as upstream) and 27 s when it is not (default, 0.5 GiB resident).
-  That is the trade the flag controls; ordinary repositories fit either way.
+- A working set larger than the ceiling is re-parsed on every access (LRU). That is the trade
+  `--cache-mb` controls; see eval.md for the hostile corpus at each setting.
+- Content after a line longer than 4 MiB is not searched (disclosed per request).
+- A depth-2 trace on a Chromium-sized tree does not finish in 10 s on 2 cores: the second
+  level looks up every caller's name, and common ones are defined in thousands of files.
+  It returns the first level and what it reached of the second, with the note.

@@ -332,6 +332,11 @@ fn text_result(text: String) -> CallToolResult {
 
 /// Stops a request's walks when the handler is dropped (the client went
 /// away) so abandoned work does not keep reading the disk.
+/// Run after every tool call, when set: the binary uses it to hand memory a
+/// request freed back to the system, so a long-lived server's resident size
+/// follows what it holds rather than the largest request it ever served.
+pub static AFTER_REQUEST: std::sync::OnceLock<fn()> = std::sync::OnceLock::new();
+
 struct CancelOnDrop(Arc<Limits>);
 
 impl Drop for CancelOnDrop {
@@ -352,7 +357,13 @@ where
     F: FnOnce() -> String + Send + 'static,
 {
     let _guard = CancelOnDrop(limits.clone());
-    let mut work = tokio::task::spawn_blocking(f);
+    let mut work = tokio::task::spawn_blocking(move || {
+        let text = f();
+        if let Some(release) = AFTER_REQUEST.get() {
+            release();
+        }
+        text
+    });
     let joined = tokio::select! {
         r = &mut work => r,
         _ = ctx.ct.cancelled() => {

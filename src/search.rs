@@ -191,9 +191,13 @@ pub(crate) fn line_too_long(err: &io::Error) -> bool {
     err.to_string().contains("allocation limit")
 }
 
-/// Could `path` have a line matching `m`? Used to pick the files worth
-/// parsing, so a file with a line too long to search counts as a yes: it
-/// is small enough to parse, and parsing decides.
+/// Does `path` have a line matching `m`? Used to pick the files worth
+/// parsing, so a line too long for the line-by-line search must not hide
+/// what follows it: a file small enough to parse is then matched whole,
+/// which costs its size once and no more. (Calling every such file a
+/// match instead had each symbol lookup parse every minified bundle and
+/// one-line data file in the tree, whatever the name.) A larger one counts
+/// as a match; the search that reads it says where it stopped.
 pub(crate) fn file_has(m: &RegexMatcher, path: &Path) -> bool {
     let mut found = false;
     // `sinks::Bytes` requires line numbers.
@@ -207,7 +211,17 @@ pub(crate) fn file_has(m: &RegexMatcher, path: &Path) -> bool {
             }),
         )
     });
-    found || res.is_err_and(|e| line_too_long(&e))
+    if found || !res.is_err_and(|e| line_too_long(&e)) {
+        return found;
+    }
+    let parseable =
+        std::fs::metadata(path).is_ok_and(|md| md.len() <= crate::source::MAX_PARSE as u64);
+    if !parseable {
+        return true;
+    }
+    // The pattern cannot match across a line break, so the whole file is
+    // as good a haystack as its lines.
+    std::fs::read(path).is_ok_and(|data| !matches!(m.find(&data), Ok(None)))
 }
 
 fn trim_cr(b: &[u8]) -> &[u8] {
@@ -392,9 +406,19 @@ pub(crate) fn word_pattern(names: &[String]) -> String {
 /// files (or at a limit) and then says it is not complete.
 pub(crate) fn mentions(e: &Engine, root: &Path, names: &[String]) -> Option<walk::Mentions> {
     let pattern = word_pattern(names);
-    if let Some(m) = e.limits.mentions(root, &pattern) {
+    // A lookup of definitions alone reads only files that can hold one.
+    let code_only = !e.limits.wants_all_mentions();
+    if let Some(m) = e.limits.mentions(root, &pattern)
+        && (code_only || !m.code_only)
+    {
         return Some(m);
     }
+    let wanted = |entry: &walk::Entry| {
+        searchable(entry)
+            && (!code_only
+                || (entry.size <= crate::source::MAX_PARSE as u64
+                    && crate::lang::detect(&entry.path, b"").is_some()))
+    };
     let matcher = RegexMatcherBuilder::new()
         .line_terminator(Some(b'\n'))
         .build(&pattern)
@@ -408,7 +432,7 @@ pub(crate) fn mentions(e: &Engine, root: &Path, names: &[String]) -> Option<walk
         }
     } else {
         let _ = walk::walk(root, &e.walk_opts(), |entry| {
-            if !searchable(&entry) || !file_has(&matcher, &entry.path) {
+            if !wanted(&entry) || !file_has(&matcher, &entry.path) {
                 return true;
             }
             let mut found = out.lock();
@@ -428,6 +452,7 @@ pub(crate) fn mentions(e: &Engine, root: &Path, names: &[String]) -> Option<walk
     let m = walk::Mentions {
         files: Arc::new(files),
         complete: !full.load(Ordering::Relaxed) && e.limits.events() == before,
+        code_only,
     };
     e.limits.remember_mentions(root, &pattern, m.clone());
     Some(m)
@@ -1150,6 +1175,34 @@ fn regex_escape(s: &str) -> String {
 mod tests {
     use super::*;
     use grep_matcher::Matcher;
+
+    /// A line too long to buffer must neither hide a name behind it nor
+    /// make the file a candidate for every name.
+    #[test]
+    fn a_very_long_line_neither_hides_a_name_nor_matches_every_name() {
+        let dir = std::env::temp_dir().join(format!("speedread-file-has-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("bundle.min.js");
+        let mut data = b"var early = 1;\n".to_vec();
+        data.extend(std::iter::repeat_n(b'x', MAX_LINE_BYTES + (1 << 20)));
+        data.extend_from_slice(b" on_the_long_line \nfunction after_long() {}\n");
+        std::fs::write(&path, data).unwrap();
+        let has = |name: &str| {
+            let m = RegexMatcherBuilder::new()
+                .line_terminator(Some(b'\n'))
+                .build(&word_pattern(&[name.to_string()]))
+                .unwrap();
+            file_has(&m, &path)
+        };
+        let seen = [
+            has("early"),
+            has("on_the_long_line"),
+            has("after_long"),
+            has("not_in_the_file"),
+        ];
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(seen, [true, true, true, false]);
+    }
 
     #[test]
     fn a_statement_call_is_not_a_definition_looking_line() {

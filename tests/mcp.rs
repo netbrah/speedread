@@ -490,3 +490,63 @@ fn line_targets_outside_symbols_read_the_enclosing_block() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A server that parsed something large must not stay that large: what a
+/// request freed goes back to the system when the request ends.
+#[cfg(target_os = "linux")]
+#[test]
+fn memory_a_request_freed_is_returned_to_the_system() {
+    let dir = std::env::temp_dir().join(format!("speedread-release-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    // About 6 MiB of source: its syntax tree takes several times that.
+    let mut big = String::new();
+    for i in 0..60_000 {
+        big.push_str(&format!(
+            "pub fn generated_{i}(a: u64, b: u64) -> u64 {{\n    let c = a.wrapping_mul({i}) ^ b;\n    c.rotate_left(7) + {i}\n}}\n"
+        ));
+    }
+    std::fs::write(dir.join("src/big.rs"), big).unwrap();
+
+    let mut c = Client::spawn(
+        &["--root", dir.to_str().unwrap(), "--cache-mb", "1", "mcp"],
+        None,
+    );
+    c.rpc(
+        "initialize",
+        json!({"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+    c.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+    let out = c.call("read", json!({"targets": ["src/big.rs#generated_31337"]}));
+    assert!(out.contains("pub fn generated_31337("), "{out}");
+
+    let mib = |status: &str, key: &str| -> u64 {
+        let line = status.lines().find(|l| l.starts_with(key)).expect(key);
+        line.split_whitespace()
+            .nth(1)
+            .unwrap()
+            .parse::<u64>()
+            .unwrap()
+            >> 10
+    };
+    let read = || std::fs::read_to_string(format!("/proc/{}/status", c.child.id())).unwrap();
+    let (mut now, mut peak) = (0, 0);
+    // The pool's threads give their share back just after the answer.
+    for _ in 0..30 {
+        let status = read();
+        (now, peak) = (mib(&status, "VmRSS:"), mib(&status, "VmHWM:"));
+        if now + 24 <= peak {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        peak >= 40,
+        "the request was meant to be large: peak {peak} MiB"
+    );
+    assert!(
+        now + 24 <= peak,
+        "resident {now} MiB after a request that peaked at {peak} MiB"
+    );
+}

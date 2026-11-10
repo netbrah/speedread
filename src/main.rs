@@ -1,3 +1,4 @@
+use std::ffi::c_void;
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -175,7 +176,86 @@ enum Cmd {
     },
 }
 
+unsafe extern "C" {
+    fn mi_malloc(size: usize) -> *mut c_void;
+    fn mi_calloc(count: usize, size: usize) -> *mut c_void;
+    fn mi_realloc(p: *mut c_void, size: usize) -> *mut c_void;
+    fn mi_free(p: *mut c_void);
+    /// Free what the calling thread's heap no longer uses; with `force`,
+    /// return it to the system now rather than after a delay.
+    fn mi_collect(force: bool);
+}
+
+// Tree-sitter aborts when its allocator returns null; so do these.
+unsafe extern "C" fn ts_malloc(size: usize) -> *mut c_void {
+    // SAFETY: plain allocation; the result is checked.
+    let p = unsafe { mi_malloc(size) };
+    if p.is_null() && size > 0 {
+        std::process::abort();
+    }
+    p
+}
+
+unsafe extern "C" fn ts_calloc(count: usize, size: usize) -> *mut c_void {
+    // SAFETY: as above; mimalloc checks the multiplication.
+    let p = unsafe { mi_calloc(count, size) };
+    if p.is_null() && count > 0 && size > 0 {
+        std::process::abort();
+    }
+    p
+}
+
+unsafe extern "C" fn ts_realloc(old: *mut c_void, size: usize) -> *mut c_void {
+    // SAFETY: `old` is null or came from this family, as tree-sitter
+    // guarantees for the allocator it was given.
+    let p = unsafe { mi_realloc(old, size) };
+    if p.is_null() && size > 0 {
+        std::process::abort();
+    }
+    p
+}
+
+unsafe extern "C" fn ts_free(p: *mut c_void) {
+    // SAFETY: as for `ts_realloc`.
+    unsafe { mi_free(p) }
+}
+
+/// Give tree-sitter the allocator the rest of the program uses. Its C
+/// library otherwise calls the system `malloc`, whose freed memory glibc
+/// keeps with the thread that used it: a server that once parsed a 7 MiB
+/// file stayed 330 MiB larger for good, whatever the cache ceiling. Must
+/// run before anything is parsed.
+fn share_allocator_with_tree_sitter() {
+    // SAFETY: one allocator family, aborting rather than returning null,
+    // with `malloc` alignment; called first thing in `main`, before any
+    // other tree-sitter call and before other threads exist.
+    unsafe {
+        tree_sitter::set_allocator(Some(tree_sitter::Allocator {
+            malloc: ts_malloc,
+            calloc: ts_calloc,
+            realloc: ts_realloc,
+            free: ts_free,
+        }));
+    }
+}
+
+/// Return memory freed by the request that just finished. A syntax tree is
+/// tens of times the size of its source for the moment it exists; the
+/// allocator otherwise keeps those pages with whichever thread used them,
+/// and a server that once parsed something big stays that big.
+fn release_memory() {
+    // Every pool thread has its own heap.
+    rayon::spawn_broadcast(|_| {
+        // SAFETY: mimalloc is this binary's global allocator; `mi_collect`
+        // takes no pointers and may be called from any thread.
+        unsafe { mi_collect(true) }
+    });
+    // SAFETY: as above.
+    unsafe { mi_collect(true) };
+}
+
 fn main() -> anyhow::Result<()> {
+    share_allocator_with_tree_sitter();
     let result = run();
     // Discovery counters for tests and measurements.
     if std::env::var_os("SPEEDREAD_STATS").is_some() {
@@ -243,6 +323,7 @@ fn run() -> anyhow::Result<()> {
                 .on_thread_start(speedread::macos::set_thread_qos)
                 .enable_all()
                 .build()?;
+            let _ = speedread::server::AFTER_REQUEST.set(release_memory);
             rt.block_on(speedread::server::serve(engine))?;
         }
         Cmd::Read {

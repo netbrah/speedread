@@ -108,6 +108,9 @@ pub struct Limits {
     /// Files found to mention a name, by root and pattern: a trace asks the
     /// same question of the same tree several times, and one walk answers it.
     mentions: parking_lot::Mutex<Vec<(MentionKey, Mentions)>>,
+    /// Whether those lists should cover every searchable file (a trace also
+    /// reads call sites from them) or only files that can hold a definition.
+    all_mentions: AtomicBool,
 }
 
 type MentionKey = (PathBuf, String);
@@ -121,6 +124,8 @@ pub struct Mentions {
     pub files: std::sync::Arc<Vec<PathBuf>>,
     /// False when the walk stopped early (a limit, or [`MAX_MENTIONS`]).
     pub complete: bool,
+    /// Only files in a known language and of a parseable size were read.
+    pub code_only: bool,
 }
 
 impl Limits {
@@ -137,7 +142,17 @@ impl Limits {
             long_first: parking_lot::Mutex::new(None),
             events: AtomicU64::new(0),
             mentions: parking_lot::Mutex::new(Vec::new()),
+            all_mentions: AtomicBool::new(false),
         }
+    }
+
+    /// This request will look for occurrences as well as definitions.
+    pub(crate) fn want_all_mentions(&self) {
+        self.all_mentions.store(true, Ordering::Relaxed);
+    }
+
+    pub(crate) fn wants_all_mentions(&self) -> bool {
+        self.all_mentions.load(Ordering::Relaxed)
     }
 
     /// How many times a limit has been reached so far; unchanged across a

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Cost of ordinary and worst-case requests on very large trees (spec 02, "Defaults").
 
-usage: scripts/fork-big-eval.py REPO BINARY [EXTRA_ARGS...] [--session]
+usage: scripts/fork-big-eval.py REPO BINARY [EXTRA_ARGS...] [--session [--reads N]]
        e.g. ... linux target/fast/speedread --cache-mb 512
 
 REPO is one of:
@@ -12,8 +12,8 @@ REPO is one of:
             files, 4.5 GB without images, media, fonts and archives; C++, Java, TS, Python)
 
 Without --session: wall time (first run and best of three), CPU time and peak memory of each CLI
-request. With --session: one MCP server answering 400 symbol reads, 40 searches and 20 traces
-twice over; resident memory and the time of each pass.
+request. With --session: one MCP server answering N symbol reads (default 400), N/10 searches
+and N/20 traces twice over; resident memory and the time of each pass.
 """
 import json, os, re, resource, subprocess, sys, time
 
@@ -60,6 +60,7 @@ REPOS = {
     },
 }
 D = None
+READS = 400
 
 
 def cli(binary, extra, queries):
@@ -87,8 +88,8 @@ def session(binary, extra, names):
     found = subprocess.run(["rg", "-oNI", "--no-heading", "-t", kind, "-r", "$1", pattern, *dirs],
                            cwd=D, capture_output=True, text=True).stdout.split("\n")
     found = sorted({n for n in found if n})
-    step = max(1, len(found) // 400)
-    reads = found[::step][:400]
+    step = max(1, len(found) // READS)
+    reads = found[::step][:READS]
     p = subprocess.Popen([binary, *extra, "--root", D, "mcp"], cwd="/",
                          stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     n = 0
@@ -146,6 +147,11 @@ def main():
     repo = REPOS[args[0]]
     do_session = "--session" in args
     args = [a for a in args[1:] if a != "--session"]
+    if "--reads" in args:
+        global READS
+        i = args.index("--reads")
+        READS = int(args[i + 1])
+        del args[i:i + 2]
     binary, extra = os.path.abspath(args[0]), args[1:]
     if do_session:
         session(binary, extra, repo["names"])
