@@ -15,6 +15,7 @@ pub mod render;
 pub mod search;
 pub mod server;
 pub mod source;
+pub mod structural;
 pub mod structured;
 pub mod tokens;
 pub mod trace;

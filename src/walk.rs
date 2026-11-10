@@ -160,7 +160,7 @@ impl Limits {
 
     /// Deadline or cancellation reached (checked for every entry seen, also
     /// ones a glob filters out).
-    fn expired(&self) -> bool {
+    pub(crate) fn expired(&self) -> bool {
         if self.cancel.load(Ordering::Relaxed) {
             self.mark(Stop::Cancelled);
             return true;

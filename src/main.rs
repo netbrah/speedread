@@ -120,6 +120,14 @@ enum Cmd {
         /// Emit JSON Lines (unbudgeted) for scripts: one record per match/symbol/file.
         #[arg(long)]
         json: bool,
+        /// PATTERN is code with metavariables, matched against syntax trees:
+        /// `$X` is one node, `$$$ARGS` zero or more, e.g. '$X.unwrap()'.
+        #[arg(long)]
+        ast: bool,
+        /// Language of an --ast pattern (name or extension). Default: every
+        /// language in scope that parses it.
+        #[arg(long, value_name = "LANG", requires = "ast")]
+        lang: Option<String>,
     },
     /// Directory overview with line counts (and top-level symbols with --symbols).
     Map {
@@ -267,6 +275,8 @@ fn run() -> anyhow::Result<()> {
             context,
             output,
             json,
+            ast,
+            lang,
         } => {
             let req = SearchRequest {
                 pattern,
@@ -290,6 +300,8 @@ fn run() -> anyhow::Result<()> {
                 },
                 budget,
                 max_matches: 5000,
+                ast,
+                lang,
             };
             if json {
                 let max = if req.max_matches == 5000 {

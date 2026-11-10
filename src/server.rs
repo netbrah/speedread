@@ -161,6 +161,12 @@ pub struct SearchArgs {
     pub output: Option<Output>,
     #[serde(default, deserialize_with = "lenient_usize")]
     pub budget: Option<usize>,
+    /// `pattern` is code with metavariables, matched against syntax trees.
+    #[serde(default, deserialize_with = "lenient_bool", alias = "structural")]
+    pub ast: Option<bool>,
+    /// Grammar of an `ast` pattern.
+    #[serde(default, alias = "language")]
+    pub lang: Option<String>,
     /// Absolute directory that relative paths and the default scope resolve
     /// against for this call.
     #[serde(default, alias = "cwd")]
@@ -274,6 +280,8 @@ impl JsonSchema for SearchArgs {
                 "context": {"type": "integer", "description": "Context lines per hit (default 0)."},
                 "output": {"type": "string", "enum": ["matches", "symbols", "files", "scopes"], "description": "matches (default) | symbols: full source of each enclosing symbol | files: paths + counts | scopes: matches plus the enclosing loop/condition/branch header lines."},
                 "budget": {"type": "integer", "description": "Max response tokens (default 8000)."},
+                "ast": {"type": "boolean", "description": "Pattern is code matched against syntax, not text: `$X` is any one node, `$$$ARGS` any number, e.g. `$X.unwrap()` or `router.$METHOD($$$ARGS)`. Skips comments and strings."},
+                "lang": {"type": "string", "description": "Language of an ast pattern, e.g. rust, ts (default: every language in scope that parses it)."},
                 "base_dir": {"type": "string", "description": "Absolute directory that relative paths and the default scope resolve against (default: workspace root)."}
             },
             "required": ["pattern"]
@@ -452,6 +460,8 @@ impl Server {
             output: args.output.unwrap_or_default(),
             budget: args.budget,
             max_matches: 5000,
+            ast: args.ast.unwrap_or(false),
+            lang: args.lang,
         };
         let limits = engine.limits.clone();
         blocking(ctx, limits, move || crate::search::search(&engine, &req)).await

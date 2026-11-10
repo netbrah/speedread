@@ -141,21 +141,27 @@ fn clip(text: &[u8]) -> (String, bool) {
 /// - `symbols`: `{path, symbol, matches, lines}` per enclosing symbol.
 /// - `files`: `{path, matches}` per file.
 pub fn search(e: &Engine, req: &SearchRequest, w: &mut impl Write) -> Result<usize, String> {
-    let matcher = search::build_matcher(req)?;
+    let matcher = search::line_matcher(req).map_err(|m| m.trim_end().to_string())?;
     let roots = search::resolve_roots(e, &req.paths).map_err(|m| m.trim_end().to_string())?;
     let context = if req.output == Output::Files {
         0
     } else {
         req.context.min(10)
     };
-    let sc = search::scan(
-        e,
-        &roots,
-        &req.globs,
-        &matcher,
-        context,
-        req.max_matches.max(1),
-    );
+    let sc = if req.ast {
+        crate::structural::scan(e, &roots, req, context)
+            .map_err(|m| m.trim_end().to_string())?
+            .scan
+    } else {
+        search::scan(
+            e,
+            &roots,
+            &req.globs,
+            &matcher,
+            context,
+            req.max_matches.max(1),
+        )
+    };
     let need_outline = req.output != Output::Files;
     let outlines: Vec<Option<std::sync::Arc<Outline>>> = sc
         .files

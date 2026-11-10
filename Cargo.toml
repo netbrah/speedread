@@ -55,6 +55,7 @@ tree-sitter-scala = "0.26"
 tree-sitter-swift = "0.7"
 tree-sitter-typescript = "0.23"
 tree-sitter-objc = "3"
+ast-grep-core = { version = "0.51", default-features = false, features = ["tree-sitter"] }
 
 [profile.release]
 opt-level = 3

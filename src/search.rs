@@ -71,6 +71,11 @@ pub struct SearchRequest {
     pub output: Output,
     pub budget: Option<usize>,
     pub max_matches: usize,
+    /// `pattern` is code with metavariables, matched against syntax trees.
+    pub ast: bool,
+    /// Grammar for a structural search (name or extension); all that parse
+    /// the pattern when absent.
+    pub lang: Option<String>,
 }
 
 #[derive(Clone)]
@@ -86,7 +91,7 @@ pub(crate) struct FileHits {
     pub(crate) matches: usize,
 }
 
-const MAX_HITS_PER_FILE: usize = 400;
+pub(crate) const MAX_HITS_PER_FILE: usize = 400;
 /// Larger files are shown without enclosing-symbol grouping.
 pub(crate) const MAX_GROUP_BYTES: usize = 1 << 20;
 
@@ -234,6 +239,16 @@ pub(crate) fn build_matcher(req: &SearchRequest) -> Result<RegexMatcher, String>
             req.pattern
         )
     })
+}
+
+/// The matcher that windows long hit lines: the regex itself, or for a
+/// structural search its literal word (the pattern is not a regex).
+pub(crate) fn line_matcher(req: &SearchRequest) -> Result<RegexMatcher, String> {
+    if !req.ast {
+        return build_matcher(req);
+    }
+    let lit = crate::structural::literal(&req.pattern).unwrap_or(&req.pattern);
+    crate::structural::literal_matcher(lit).map_err(|e| format!("{e}\n"))
 }
 
 pub(crate) struct Scan {
@@ -511,7 +526,7 @@ pub fn search(e: &Engine, req: &SearchRequest) -> String {
 fn search_request(e: &Engine, req: &SearchRequest) -> String {
     let budget = e.budget(req.budget);
     let max_bytes = e.bytes_for(budget);
-    let matcher = match build_matcher(req) {
+    let matcher = match line_matcher(req) {
         Ok(m) => m,
         Err(msg) => return msg,
     };
@@ -524,20 +539,42 @@ fn search_request(e: &Engine, req: &SearchRequest) -> String {
     } else {
         req.context.min(10)
     };
-    let sc = scan(
-        e,
-        &roots,
-        &req.globs,
-        &matcher,
-        context,
-        req.max_matches.max(1),
-    );
+    let mut ast: Option<crate::structural::AstScan> = None;
+    let sc = if req.ast {
+        match crate::structural::scan(e, &roots, req, context) {
+            Ok(mut a) => {
+                let sc = std::mem::replace(
+                    &mut a.scan,
+                    Scan {
+                        files: Vec::new(),
+                        searched: 0,
+                        stopped: false,
+                    },
+                );
+                ast = Some(a);
+                sc
+            }
+            Err(msg) => return msg,
+        }
+    } else {
+        scan(
+            e,
+            &roots,
+            &req.globs,
+            &matcher,
+            context,
+            req.max_matches.max(1),
+        )
+    };
     let total: usize = sc.files.iter().map(|f| f.matches).sum();
     let scope = roots
         .iter()
         .map(|r| e.ws.display(r))
         .collect::<Vec<_>>()
         .join(", ");
+    if let (Some(a), true) = (&ast, sc.files.is_empty()) {
+        return a.nothing(e, &req.pattern, &scope);
+    }
     if sc.files.is_empty() {
         // Absence is only claimed when the whole scope was searched.
         let mut t = if e.limits.stopped().is_some() {
@@ -569,10 +606,13 @@ fn search_request(e: &Engine, req: &SearchRequest) -> String {
         return t;
     }
     let mut out = format!(
-        "{} in {} for /{}/{}\n",
+        "{} in {} for {}{}\n",
         plural(total, "match"),
         plural(sc.files.len(), "file"),
-        req.pattern,
+        match &ast {
+            Some(a) => a.title(&req.pattern),
+            None => format!("/{}/", req.pattern),
+        },
         if sc.stopped {
             format!(
                 " (stopped at {}; narrow with path/glob)",
