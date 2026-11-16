@@ -88,6 +88,11 @@ Fork releases are versioned `<upstream minor + 1>.0-netbrah.N` (`speedread --ver
 MCP server info and the bundle agree). They are not listed in the MCP Registry, which holds
 upstream's `io.github.brennengreen/speedread`.
 
+With Actions enabled on the fork, pushing a `v*` tag builds and publishes the bundle on a
+macOS runner (`.github/workflows/ci.yml`). Without them, `scripts/fork-mcpb.sh TAG`
+cross-compiles the same bundle from Linux; a bundle built that way has not been run and its
+release notes must say so.
+
 ## Not changed
 
 - The MCP tool descriptions and server instructions (model-facing text) are untouched apart
