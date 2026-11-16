@@ -76,12 +76,25 @@ speedread mcp --no-cwd-root            # roots come from the client, or each cal
 speedread --base-dir /repo/services/api search 'TODO'   # relative scope without cd
 ```
 
+## Install the fork in Claude Desktop
+
+Download `speedread-aarch64-apple-darwin.mcpb` from the fork's
+[releases](https://github.com/netbrah/speedread/releases) and open it. Claude Desktop asks
+which folder speedread may read. The bundle installs as `speedread (netbrah fork)`, beside
+upstream's bundle rather than over it; both offer tools named `map`, `read`, `search` and
+`trace`, so enable one at a time. Apple Silicon only; the binary is not notarized.
+
+Fork releases are versioned `<upstream minor + 1>.0-netbrah.N` (`speedread --version`, the
+MCP server info and the bundle agree). They are not listed in the MCP Registry, which holds
+upstream's `io.github.brennengreen/speedread`.
+
 ## Not changed
 
 - The MCP tool descriptions and server instructions (model-facing text) are untouched apart
   from the new argument descriptions. The bundled skill is untouched. Whether models pick
   the new arguments unprompted is not measured; upstream's agent evals need API keys.
-- The macOS fast walker compiles with the limits but was not run (Linux sandbox only).
+- The macOS fast walker compiles and lints clean for `aarch64-apple-darwin` with the limits
+  (cross-compiled), but has not been run: development and every measurement were on Linux.
 
 ## Relationship to upstream
 

@@ -73,7 +73,8 @@ jobs:
 
   mcp-registry:
     name: MCP Registry
-    if: startsWith(github.ref, 'refs/tags/v')
+    # The registry entry is upstream's name; a fork's release must not try to claim it.
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'brennengreen/speedread'
     needs: release
     permissions:
       contents: read

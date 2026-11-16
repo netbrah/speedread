@@ -1,21 +1,20 @@
 {
   "manifest_version": "0.3",
-  "name": "speedread",
-  "display_name": "speedread",
+  "name": "speedread-netbrah",
+  "display_name": "speedread (netbrah fork)",
   "version": "0.0.0",
   "description": "Token-efficient code reading for AI coding agents: symbol-aware, budgeted, diff-aware reads.",
-  "long_description": "speedread gives the agent the part of a codebase a question needs, within a token budget: the function around each search hit, a large file's skeleton, a symbol's callers and implementations, or only what changed since the last read. Read-only by construction: paths must lie inside the folder you choose. Built for macOS on Apple Silicon.",
+  "long_description": "A fork of speedread by Brennen Green (https://github.com/brennengreen/speedread, MIT). speedread gives the agent the part of a codebase a question needs, within a token budget: the function around each search hit, a large file's skeleton, a symbol's callers and implementations, or only what changed since the last read. The fork adds request deadlines and cancellation, bounded memory for long-lived sessions, structural search and ancestor context, and says so when an answer is incomplete. Read-only by construction: paths must lie inside the folder you choose. Built for macOS on Apple Silicon.",
   "author": {
-    "name": "Brennen Green",
-    "url": "https://github.com/brennengreen"
+    "name": "netbrah",
+    "url": "https://github.com/netbrah"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/brennengreen/speedread"
+    "url": "https://github.com/netbrah/speedread"
   },
-  "homepage": "https://github.com/brennengreen/speedread",
-  "documentation": "https://github.com/brennengreen/speedread#readme",
-  "support": "https://github.com/brennengreen/speedread/issues",
+  "homepage": "https://github.com/netbrah/speedread",
+  "documentation": "https://github.com/netbrah/speedread/blob/main/docs/FORK.md",
   "icon": "icon.png",
   "server": {
     "type": "binary",
@@ -40,11 +39,11 @@
     },
     {
       "name": "search",
-      "description": "Text search with each hit grouped under its enclosing function or class."
+      "description": "Text search with each hit grouped under its enclosing function or class; structural (syntax-tree) patterns and enclosing scopes on request."
     },
     {
       "name": "trace",
-      "description": "Callers, callees, references and implementations of a symbol, up to three levels deep."
+      "description": "Callers, callees, references and implementations of a symbol, up to three levels deep; marks call sites inside closures and places a function is passed as a value."
     }
   ],
   "keywords": [
