@@ -1,0 +1,4 @@
+shape	repo	regex_lines	ast_lines	both	regex_only	comment	string	macro_def	other	ast_only	ast_ms	literal_ms	grouped_ms
+unwrap	ripgrep	1043	1020	1020	23	12	0	11	0	0	194	76	170
+expect-tobe	zod	2192	2160	2121	71	37	0	0	34	39	207	18	150
+console-log	zod	419	394	394	25	18	7	0	0	0	84	39	76

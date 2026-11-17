@@ -1,0 +1,16 @@
+id	repo	args	exit	wall_ms	peak_rss_kb	out_bytes	out_sha
+rg-search	ripgrep	search Searcher	0	49.9	39924	20019	174fa9c9573a
+rg-search-files	ripgrep	search fn new --output files	0	10.4	33004	2332	d7f270a6ce0e
+rg-search-symbols	ripgrep	search line_terminator --output symbols	0	37.0	32328	11599	145fb3693f6d
+rg-read-symbol	ripgrep	read #SearcherBuilder	0	37.3	32604	13039	ceb342da5ff7
+rg-read-file	ripgrep	read crates/searcher/src/searcher/mod.rs	0	7.1	18584	17341	98acccdcba25
+rg-trace-callers	ripgrep	trace #search_path	0	26.7	26996	1322	e43f63c6f6f8
+rg-trace-callees	ripgrep	trace #search_path -d callees	0	22.5	26936	658	fc1e7090bb2f
+rg-trace-refs	ripgrep	trace #Sink -d refs	0	67.9	38924	4283	80277e27e8c7
+rg-map	ripgrep	map --symbols	0	196.8	61868	6311	d6a9a3ae45d5
+zod-search	zod	search safeParse	0	28.9	32064	19189	7994e506bbfc
+zod-search-symbols	zod	search addIssue --output symbols	0	52.9	41452	18725	c55c3ddc9f6c
+zod-read-symbol	zod	read #ZodType	0	164.9	54140	15505	5575eaf55417
+zod-trace-callers	zod	trace #safeParse	0	300.1	64256	10768	01a76b0e26fb
+zod-trace-impls	zod	trace #ZodType -d impls	0	421.9	68764	10547	a02b9fb2264c
+zod-map	zod	map --symbols	0	144.2	62712	6957	bbb1657c9004

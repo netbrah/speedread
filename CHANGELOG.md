@@ -2,6 +2,27 @@
 
 Notable changes by release. Before 1.0, minor versions may change tool arguments and output formats.
 
+## Fork (`netbrah/speedread`, on upstream `37abea2`) — 0.2.0-netbrah.2
+
+Pre-release notes: [docs/releases/v0.2.0-netbrah.2.md](docs/releases/v0.2.0-netbrah.2.md). Install and publishing guide: [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).
+
+- No folder to configure. The Claude Desktop bundle no longer asks for one; it and every plugin start `speedread mcp --unrestricted --no-cwd-root`, which reads by absolute path or `base_dir` anywhere the account can read and refuses a path-less call rather than searching the launch directory. Started that way, the server instructions say how to address it.
+- One plugin, `plugins/speedread-netbrah/`, for Claude Code, Claude Cowork, Cursor, Grok Build and Perplexity Computer, with marketplace catalogs at the repository root. The plugin is text; its launcher downloads the release binary for the machine once and checks its SHA-256.
+- Binaries for macOS (arm64, x86_64) and Linux (x86_64, arm64; static musl). `scripts/fork-release.sh` builds all of them; `scripts/test-launcher.sh` tests the launcher.
+
+## Fork (`netbrah/speedread`, on upstream `37abea2`) — 0.2.0-netbrah.1
+
+Not part of an upstream release. Pre-release notes: [docs/releases/v0.2.0-netbrah.1.md](docs/releases/v0.2.0-netbrah.1.md). Details and measurements: [docs/FORK.md](docs/FORK.md), [docs/specs/](docs/specs/README.md).
+
+- Paths: `--base-dir`, `--no-cwd-root` (`SPEEDREAD_NO_CWD_ROOT=1`) and MCP `base_dir` on every tool. Relative paths and path-less `search`/`map` resolve against a stated base, never an assumed working directory; a server with no root refuses path-less requests instead of walking from `/`. Definition and usage lookups run in the root that contains the target.
+- Limits: `--max-walk`, `--deadline-ms` (`SPEEDREAD_MAX_WALK`, `SPEEDREAD_DEADLINE_MS`; 1,000,000 files, 10 s), and MCP `notifications/cancelled` stops the request. The deadline covers parsing as well as walking. An answer cut short ends with `incomplete: …`; silent caps are reported. Reading a named file never walks the tree.
+- Memory: `--cache-mb` (`SPEEDREAD_CACHE_MB`, default 256) bounds cached contents and outlines by bytes; the outline cache was bounded by count. A text search stops reading a file at a line longer than 4 MiB and says so (`not fully searched: …`) instead of buffering it. A server hands memory back when a request ends: tree-sitter now shares the program's allocator (its C library used the system `malloc`, whose freed memory glibc kept, so one parse of a 7 MiB file left a server 330 MiB larger for good).
+- `trace` finds the files that mention a name once per level and reuses the list for the definition, its namesakes and its call sites (one walk instead of three). A scan that reaches its line limit keeps the files nearest the definition, deterministically. A statement call no longer counts as a definition-looking line when prefiltering candidates.
+- `search output=scopes`: hits plus the header lines of the enclosing loops, conditions and branches.
+- `search ast=true` (`--ast`, `--lang`): structural patterns with metavariables (`$X.unwrap()`, `router.$METHOD($$$ARGS)`), through `ast-grep-core`. Opt-in; parses every candidate file.
+- `trace`: call sites inside closures are marked `λ`; places a function is passed, assigned or returned as a value are listed with `→`.
+- Linux: clippy passes with `-D warnings` (macOS-only code gated).
+
 ## Unreleased
 
 - Luau: outlines, `path#Symbol`, function-grouped `search` hits and `trace` for `.luau` files, and for `.lua` files that use Luau syntax (recognized by a `--!strict` directive, type aliases or annotations, or because only Luau parses them). Covers type aliases, attributes such as `@native`, and functions in table constructors.

@@ -13,15 +13,26 @@ use parking_lot::Mutex;
 use crate::lang::LangId;
 use crate::outline::{self, Outline};
 use crate::source::{BigFile, MAX_IN_MEMORY, MAX_PARSE, Source, Stamp};
-use crate::walk::{self, WalkOpts};
+use crate::walk::{self, Limits, WalkOpts};
 use crate::workspace::Workspace;
 
+#[derive(Clone)]
 pub struct Config {
     pub default_budget: usize,
     pub max_budget: usize,
     /// Bytes per token for byte-based sizing before the content-aware
     /// estimate (`tokens`) checks the result. See `Tokenizer`.
     pub bytes_per_token: f32,
+    /// Files one walk may deliver before it stops and the answer is marked
+    /// incomplete (0: unlimited).
+    pub max_walk: u64,
+    /// Wall-clock bound on a request's discovery (`None`: unlimited).
+    pub deadline: Option<Duration>,
+    /// Ceiling for cached content in total: half for file contents, a quarter
+    /// each for outlines and for `path@etag` snapshots. Residency only: files
+    /// and outlines are re-read on a miss, so search/read/trace/map answers do
+    /// not depend on it (an evicted snapshot turns a diff into a full read).
+    pub cache_bytes: usize,
 }
 
 /// Which tokenizer family budgets are calibrated to.
@@ -82,6 +93,9 @@ impl Default for Config {
             // file; Claude Code warns above 10k tokens).
             max_budget: 10000,
             bytes_per_token: 2.6,
+            max_walk: 1_000_000,
+            deadline: Some(Duration::from_secs(10)),
+            cache_bytes: 256 << 20,
         }
     }
 }
@@ -154,9 +168,8 @@ pub struct BigSnap {
 /// Cached relative file list of the primary root: (taken at, root, paths).
 type FileListCache = Option<(Instant, PathBuf, Arc<Vec<String>>)>;
 
-pub struct Engine {
-    pub ws: Workspace,
-    pub cfg: Config,
+/// Caches and calibration shared by every per-request view of an engine.
+struct Shared {
     bpt: AtomicU32,
     /// Converts content-aware estimates to the client's tokenizer.
     token_scale: AtomicU32,
@@ -169,35 +182,102 @@ pub struct Engine {
     files: Mutex<FileListCache>,
 }
 
+/// A workspace view plus shared state. [`Engine::scoped`] makes a view with a
+/// different base directory for one request; caches are keyed by canonical
+/// path and content, so views never see each other's files by mistake.
+pub struct Engine {
+    pub ws: Workspace,
+    pub cfg: Config,
+    /// Discovery limits of the request this view serves.
+    pub limits: Arc<Limits>,
+    shared: Arc<Shared>,
+}
+
 impl Engine {
     pub fn new(ws: Workspace, cfg: Config) -> Engine {
-        Engine {
-            ws,
+        let total = cfg.cache_bytes.max(1 << 20);
+        let shared = Shared {
             bpt: AtomicU32::new(cfg.bytes_per_token.to_bits()),
             token_scale: AtomicU32::new(1.0f32.to_bits()),
             tokenizer_pinned: std::sync::atomic::AtomicBool::new(false),
-            cfg,
-            sources: Mutex::new(Lru::new(512 << 20)),
-            outlines: Mutex::new(Lru::new(8192)),
-            snapshots: Mutex::new(Lru::new(256 << 20)),
+            sources: Mutex::new(Lru::new(total / 2)),
+            // Bounded by bytes: a count bound let generated files with
+            // thousands of symbols each hold over a gigabyte.
+            outlines: Mutex::new(Lru::new(total / 4)),
+            snapshots: Mutex::new(Lru::new(total / 4)),
             bigs: Mutex::new(Lru::new(64)),
             big_snaps: Mutex::new(Lru::new(1024)),
             files: Mutex::new(None),
+        };
+        Engine {
+            ws,
+            limits: Arc::new(Limits::new(cfg.max_walk, cfg.deadline)),
+            cfg,
+            shared: Arc::new(shared),
         }
     }
 
+    /// Walk options carrying this request's limits.
+    pub fn walk_opts(&self) -> WalkOpts {
+        WalkOpts {
+            limits: Some(self.limits.clone()),
+            ..Default::default()
+        }
+    }
+
+    /// Append the one-line reasons when this request's answer is partial
+    /// (discovery cut short, files not read to their end), so a partial
+    /// answer is never mistaken for a complete one.
+    pub fn note_incomplete(&self, out: &mut String) {
+        if let Some(note) = self.limits.note()
+            && !out.contains("incomplete: ")
+        {
+            push_note(out, &note);
+        }
+        if let Some(note) = self.long_note()
+            && !out.ends_with(&format!("{note}\n"))
+        {
+            push_note(out, &note);
+        }
+    }
+
+    /// The note for files a text search read only up to a line too long
+    /// to buffer, if there were any in this request.
+    pub fn long_note(&self) -> Option<String> {
+        self.limits.long_note(|p| self.ws.display(p))
+    }
+
+    /// The same engine with `base_dir` as the base for one request (`None`
+    /// keeps the default). Fails when the directory is not usable; the base
+    /// is never guessed from the process working directory.
+    pub fn scoped(&self, base_dir: Option<&str>) -> Result<Engine, String> {
+        let ws = match base_dir.map(str::trim).filter(|d| !d.is_empty()) {
+            Some(dir) => self.ws.with_base(dir)?,
+            None => self.ws.clone(),
+        };
+        Ok(Engine {
+            ws,
+            // A fresh request: its own deadline, counters and cancel flag.
+            limits: Arc::new(Limits::new(self.cfg.max_walk, self.cfg.deadline)),
+            cfg: self.cfg.clone(),
+            shared: self.shared.clone(),
+        })
+    }
+
     fn bpt(&self) -> f32 {
-        f32::from_bits(self.bpt.load(Ordering::Relaxed))
+        f32::from_bits(self.shared.bpt.load(Ordering::Relaxed))
     }
 
     pub fn token_scale(&self) -> f32 {
-        f32::from_bits(self.token_scale.load(Ordering::Relaxed))
+        f32::from_bits(self.shared.token_scale.load(Ordering::Relaxed))
     }
 
     /// OpenAI tokenizers (o200k) need fewer tokens than the estimate's
     /// Claude-calibrated fit.
     pub fn set_token_scale(&self, v: f32) {
-        self.token_scale.store(v.to_bits(), Ordering::Relaxed);
+        self.shared
+            .token_scale
+            .store(v.to_bits(), Ordering::Relaxed);
     }
 
     /// Content-aware token estimate of rendered text.
@@ -233,19 +313,19 @@ impl Engine {
     /// Calibrate budgets to a tokenizer family. Ignored once pinned (e.g. by
     /// `SPEEDREAD_TOKENIZER`), so client detection can't override the user.
     pub fn set_tokenizer(&self, t: Tokenizer, pin: bool) {
-        if self.tokenizer_pinned.load(Ordering::Relaxed) && !pin {
+        if self.shared.tokenizer_pinned.load(Ordering::Relaxed) && !pin {
             return;
         }
         let (bpt, scale) = t.params();
         self.set_bytes_per_token(bpt);
         self.set_token_scale(scale);
         if pin {
-            self.tokenizer_pinned.store(true, Ordering::Relaxed);
+            self.shared.tokenizer_pinned.store(true, Ordering::Relaxed);
         }
     }
 
     pub fn set_bytes_per_token(&self, v: f32) {
-        self.bpt.store(v.to_bits(), Ordering::Relaxed);
+        self.shared.bpt.store(v.to_bits(), Ordering::Relaxed);
     }
 
     pub fn tokens(&self, bytes: usize) -> usize {
@@ -280,23 +360,27 @@ impl Engine {
         }
         let stamp = Stamp::of(&meta);
         if meta.len() > MAX_IN_MEMORY {
-            if let Some(b) = self.bigs.lock().get(&path.to_path_buf())
+            if let Some(b) = self.shared.bigs.lock().get(&path.to_path_buf())
                 && b.stamp == stamp
             {
                 return Ok(Loaded::Big(b));
             }
             let b = Arc::new(BigFile::scan(path)?);
-            self.bigs.lock().insert(path.to_path_buf(), b.clone(), 1);
+            self.shared
+                .bigs
+                .lock()
+                .insert(path.to_path_buf(), b.clone(), 1);
             return Ok(Loaded::Big(b));
         }
-        if let Some(s) = self.sources.lock().get(&path.to_path_buf())
+        if let Some(s) = self.shared.sources.lock().get(&path.to_path_buf())
             && s.stamp == stamp
         {
             return Ok(Loaded::Text(s));
         }
         let s = Arc::new(Source::load(path)?);
         let cost = s.data.len() + s.lines.len() * 4 + 256;
-        self.sources
+        self.shared
+            .sources
             .lock()
             .insert(path.to_path_buf(), s.clone(), cost);
         Ok(Loaded::Text(s))
@@ -309,6 +393,34 @@ impl Engine {
         }
     }
 
+    /// Outline plus the syntax tree, parsing once when the outline is not
+    /// cached. The tree is not cached (trees are large; outlines are small).
+    pub fn outline_with_tree(
+        &self,
+        src: &Source,
+    ) -> Option<(Arc<Outline>, Option<tree_sitter::Tree>)> {
+        let lang = src.lang?;
+        if src.binary || src.data.len() > MAX_PARSE {
+            return None;
+        }
+        let key = (src.hash, lang);
+        if let Some(o) = self.shared.outlines.lock().get(&key) {
+            let tree = std::panic::catch_unwind(|| outline::parse_tree(lang, &src.data))
+                .ok()
+                .flatten();
+            return Some((o, tree));
+        }
+        let (parsed, tree) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            outline::parse_outline_with_tree(lang, &src.data, &src.lines)
+        }))
+        .ok()
+        .flatten()?;
+        let o = Arc::new(parsed);
+        let cost = o.heap_bytes();
+        self.shared.outlines.lock().insert(key, o.clone(), cost);
+        Some((o, tree))
+    }
+
     /// Outline for a source (cached by content hash).
     pub fn outline(&self, src: &Source) -> Option<Arc<Outline>> {
         let lang = src.lang?;
@@ -316,7 +428,7 @@ impl Engine {
             return None;
         }
         let key = (src.hash, lang);
-        if let Some(o) = self.outlines.lock().get(&key) {
+        if let Some(o) = self.shared.outlines.lock().get(&key) {
             return Some(o);
         }
         // A parser bug on one odd file must not fail a whole batch.
@@ -326,18 +438,22 @@ impl Engine {
         .ok()
         .flatten()?;
         let o = Arc::new(parsed);
-        self.outlines.lock().insert(key, o.clone(), 1);
+        let cost = o.heap_bytes();
+        self.shared.outlines.lock().insert(key, o.clone(), cost);
         Some(o)
     }
 
     /// Remember content returned to the agent so `path@etag` can diff later.
     pub fn remember(&self, src: &Arc<Source>) {
         let cost = src.data.len() + 64;
-        self.snapshots.lock().insert(src.etag(), src.clone(), cost);
+        self.shared
+            .snapshots
+            .lock()
+            .insert(src.etag(), src.clone(), cost);
     }
 
     pub fn snapshot(&self, etag: u64) -> Option<Arc<Source>> {
-        self.snapshots.lock().get(&etag)
+        self.shared.snapshots.lock().get(&etag)
     }
 
     pub fn remember_big(&self, b: &BigFile) {
@@ -347,18 +463,21 @@ impl Engine {
             lines: b.lines,
             ends_nl: b.ends_nl,
         };
-        self.big_snaps.lock().insert(b.etag(), snap, 1);
+        self.shared.big_snaps.lock().insert(b.etag(), snap, 1);
     }
 
     pub fn big_snapshot(&self, etag: u64) -> Option<BigSnap> {
-        self.big_snaps.lock().get(&etag)
+        self.shared.big_snaps.lock().get(&etag)
     }
 
-    /// Relative paths of all files in the primary root (cached briefly).
+    /// Relative paths of all files under the base (cached briefly), for
+    /// "did you mean" suggestions. Empty without a base: `/` is never walked.
     pub fn file_list(&self) -> Arc<Vec<String>> {
-        let root = self.ws.primary().to_path_buf();
+        let Some(root) = self.ws.base() else {
+            return Arc::new(Vec::new());
+        };
         {
-            let g = self.files.lock();
+            let g = self.shared.files.lock();
             if let Some((t, r, v)) = g.as_ref()
                 && *r == root
                 && t.elapsed() < Duration::from_secs(3)
@@ -366,7 +485,7 @@ impl Engine {
                 return v.clone();
             }
         }
-        let list = walk::list_files(&root, &WalkOpts::default(), 250_000)
+        let list = walk::list_files(&root, &self.walk_opts(), 250_000)
             .map(|(v, _)| {
                 v.into_iter()
                     .filter_map(|e| {
@@ -379,9 +498,17 @@ impl Engine {
             })
             .unwrap_or_default();
         let list = Arc::new(list);
-        *self.files.lock() = Some((Instant::now(), root, list.clone()));
+        *self.shared.files.lock() = Some((Instant::now(), root, list.clone()));
         list
     }
+}
+
+fn push_note(out: &mut String, note: &str) {
+    if !out.is_empty() && !out.ends_with('\n') {
+        out.push('\n');
+    }
+    out.push_str(note);
+    out.push('\n');
 }
 
 #[cfg(test)]

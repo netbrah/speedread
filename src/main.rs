@@ -1,3 +1,4 @@
+use std::ffi::c_void;
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -22,12 +23,32 @@ struct Cli {
     /// Workspace root (repeatable). Default: $CLAUDE_PROJECT_DIR, else the current directory.
     #[arg(long = "root", global = true, value_name = "DIR")]
     roots: Vec<PathBuf>,
+    /// Directory that relative paths and path-less search/map resolve against (absolute).
+    /// Default: the primary root. MCP calls can override it per call with `base_dir`.
+    #[arg(long = "base-dir", alias = "cwd", global = true, value_name = "DIR")]
+    base_dir: Option<String>,
+    /// Never treat the current directory as a root (also SPEEDREAD_NO_CWD_ROOT=1): without
+    /// --root or client roots, requests need absolute paths or a base directory.
+    #[arg(long, global = true)]
+    no_cwd_root: bool,
     /// Allow reading anywhere, not just inside the roots.
     #[arg(long, global = true)]
     unrestricted: bool,
     /// Don't allow read-only access to dependency caches (cargo registry, SwiftPM checkouts, SDKs, Go modules).
     #[arg(long, global = true)]
     no_deps: bool,
+    /// Files one directory walk may visit before it stops and the answer says it is
+    /// incomplete (0: unlimited; also SPEEDREAD_MAX_WALK). Default: 1000000.
+    #[arg(long, global = true, value_name = "FILES")]
+    max_walk: Option<u64>,
+    /// Time limit for a request's file discovery, in milliseconds (0: unlimited; also
+    /// SPEEDREAD_DEADLINE_MS). Default: 10000.
+    #[arg(long, global = true, value_name = "MS")]
+    deadline_ms: Option<u64>,
+    /// Memory ceiling for cached file contents and outlines, in MiB (also
+    /// SPEEDREAD_CACHE_MB). Changes memory use and speed, not answers. Default: 256.
+    #[arg(long, global = true, value_name = "MIB")]
+    cache_mb: Option<usize>,
     /// Default token budget per call (map defaults to 3000).
     #[arg(long, global = true, default_value_t = 8000)]
     budget: usize,
@@ -61,6 +82,8 @@ enum OutputArg {
     Matches,
     Symbols,
     Files,
+    /// Matches plus the header lines of the enclosing loops, conditions and branches.
+    Scopes,
 }
 
 #[derive(Subcommand)]
@@ -98,6 +121,14 @@ enum Cmd {
         /// Emit JSON Lines (unbudgeted) for scripts: one record per match/symbol/file.
         #[arg(long)]
         json: bool,
+        /// PATTERN is code with metavariables, matched against syntax trees:
+        /// `$X` is one node, `$$$ARGS` zero or more, e.g. '$X.unwrap()'.
+        #[arg(long)]
+        ast: bool,
+        /// Language of an --ast pattern (name or extension). Default: every
+        /// language in scope that parses it.
+        #[arg(long, value_name = "LANG", requires = "ast")]
+        lang: Option<String>,
     },
     /// Directory overview with line counts (and top-level symbols with --symbols).
     Map {
@@ -145,7 +176,95 @@ enum Cmd {
     },
 }
 
+unsafe extern "C" {
+    fn mi_malloc(size: usize) -> *mut c_void;
+    fn mi_calloc(count: usize, size: usize) -> *mut c_void;
+    fn mi_realloc(p: *mut c_void, size: usize) -> *mut c_void;
+    fn mi_free(p: *mut c_void);
+    /// Free what the calling thread's heap no longer uses; with `force`,
+    /// return it to the system now rather than after a delay.
+    fn mi_collect(force: bool);
+}
+
+// Tree-sitter aborts when its allocator returns null; so do these.
+unsafe extern "C" fn ts_malloc(size: usize) -> *mut c_void {
+    // SAFETY: plain allocation; the result is checked.
+    let p = unsafe { mi_malloc(size) };
+    if p.is_null() && size > 0 {
+        std::process::abort();
+    }
+    p
+}
+
+unsafe extern "C" fn ts_calloc(count: usize, size: usize) -> *mut c_void {
+    // SAFETY: as above; mimalloc checks the multiplication.
+    let p = unsafe { mi_calloc(count, size) };
+    if p.is_null() && count > 0 && size > 0 {
+        std::process::abort();
+    }
+    p
+}
+
+unsafe extern "C" fn ts_realloc(old: *mut c_void, size: usize) -> *mut c_void {
+    // SAFETY: `old` is null or came from this family, as tree-sitter
+    // guarantees for the allocator it was given.
+    let p = unsafe { mi_realloc(old, size) };
+    if p.is_null() && size > 0 {
+        std::process::abort();
+    }
+    p
+}
+
+unsafe extern "C" fn ts_free(p: *mut c_void) {
+    // SAFETY: as for `ts_realloc`.
+    unsafe { mi_free(p) }
+}
+
+/// Give tree-sitter the allocator the rest of the program uses. Its C
+/// library otherwise calls the system `malloc`, whose freed memory glibc
+/// keeps with the thread that used it: a server that once parsed a 7 MiB
+/// file stayed 330 MiB larger for good, whatever the cache ceiling. Must
+/// run before anything is parsed.
+fn share_allocator_with_tree_sitter() {
+    // SAFETY: one allocator family, aborting rather than returning null,
+    // with `malloc` alignment; called first thing in `main`, before any
+    // other tree-sitter call and before other threads exist.
+    unsafe {
+        tree_sitter::set_allocator(Some(tree_sitter::Allocator {
+            malloc: ts_malloc,
+            calloc: ts_calloc,
+            realloc: ts_realloc,
+            free: ts_free,
+        }));
+    }
+}
+
+/// Return memory freed by the request that just finished. A syntax tree is
+/// tens of times the size of its source for the moment it exists; the
+/// allocator otherwise keeps those pages with whichever thread used them,
+/// and a server that once parsed something big stays that big.
+fn release_memory() {
+    // Every pool thread has its own heap.
+    rayon::spawn_broadcast(|_| {
+        // SAFETY: mimalloc is this binary's global allocator; `mi_collect`
+        // takes no pointers and may be called from any thread.
+        unsafe { mi_collect(true) }
+    });
+    // SAFETY: as above.
+    unsafe { mi_collect(true) };
+}
+
 fn main() -> anyhow::Result<()> {
+    share_allocator_with_tree_sitter();
+    let result = run();
+    // Discovery counters for tests and measurements.
+    if std::env::var_os("SPEEDREAD_STATS").is_some() {
+        eprintln!("speedread-stats {}", speedread::walk::STATS.line());
+    }
+    result
+}
+
+fn run() -> anyhow::Result<()> {
     speedread::macos::tune_process();
     speedread::macos::init_thread_pool();
     let mut cli = Cli::parse();
@@ -156,13 +275,28 @@ fn main() -> anyhow::Result<()> {
     {
         roots.push(PathBuf::from(dir));
     }
-    let ws = Workspace::new(roots, cli.unrestricted, !cli.no_deps)?;
+    let no_cwd_root = cli.no_cwd_root
+        || std::env::var("SPEEDREAD_NO_CWD_ROOT")
+            .is_ok_and(|v| matches!(v.trim(), "1" | "true" | "yes"));
+    let ws = Workspace::with_options(roots, cli.unrestricted, !cli.no_deps, !no_cwd_root)?;
+    let defaults = Config::default();
     let cfg = Config {
         default_budget: cli.budget,
         max_budget: cli.max_budget.max(cli.budget),
-        ..Config::default()
+        max_walk: setting(cli.max_walk, "SPEEDREAD_MAX_WALK")?.unwrap_or(defaults.max_walk),
+        deadline: match setting(cli.deadline_ms, "SPEEDREAD_DEADLINE_MS")? {
+            Some(ms) => (ms > 0).then(|| std::time::Duration::from_millis(ms)),
+            None => defaults.deadline,
+        },
+        cache_bytes: setting(cli.cache_mb, "SPEEDREAD_CACHE_MB")?
+            .map(|mb: usize| mb.max(1) << 20)
+            .unwrap_or(defaults.cache_bytes),
+        ..defaults
     };
-    let engine = Arc::new(Engine::new(ws, cfg));
+    let engine = Engine::new(ws, cfg)
+        .scoped(cli.base_dir.as_deref())
+        .map_err(anyhow::Error::msg)?;
+    let engine = Arc::new(engine);
     // SPEEDREAD_TOKENIZER=claude|openai|legacy pins the budget calibration
     // (default: detect from the MCP client, else legacy).
     if let Some(t) = std::env::var("SPEEDREAD_TOKENIZER")
@@ -189,6 +323,7 @@ fn main() -> anyhow::Result<()> {
                 .on_thread_start(speedread::macos::set_thread_qos)
                 .enable_all()
                 .build()?;
+            let _ = speedread::server::AFTER_REQUEST.set(release_memory);
             rt.block_on(speedread::server::serve(engine))?;
         }
         Cmd::Read {
@@ -221,6 +356,8 @@ fn main() -> anyhow::Result<()> {
             context,
             output,
             json,
+            ast,
+            lang,
         } => {
             let req = SearchRequest {
                 pattern,
@@ -240,9 +377,12 @@ fn main() -> anyhow::Result<()> {
                     OutputArg::Matches => Output::Matches,
                     OutputArg::Symbols => Output::Symbols,
                     OutputArg::Files => Output::Files,
+                    OutputArg::Scopes => Output::Scopes,
                 },
                 budget,
                 max_matches: 5000,
+                ast,
+                lang,
             };
             if json {
                 let max = if req.max_matches == 5000 {
@@ -254,7 +394,7 @@ fn main() -> anyhow::Result<()> {
                     max_matches: max,
                     ..req
                 };
-                emit(|w| speedread::json::search(&engine, &req, w))?;
+                emit(&engine, |w| speedread::json::search(&engine, &req, w))?;
             } else {
                 print!("{}", speedread::search::search(&engine, &req));
             }
@@ -267,7 +407,7 @@ fn main() -> anyhow::Result<()> {
             json,
         } => {
             if json {
-                return emit(|w| {
+                return emit(&engine, |w| {
                     speedread::json::files(&engine, path.as_deref(), &globs, depth, w)
                 });
             }
@@ -302,7 +442,7 @@ fn main() -> anyhow::Result<()> {
         }
         Cmd::Symbols { targets, json } => {
             if json {
-                return emit(|w| speedread::json::symbols(&engine, &targets, w));
+                return emit(&engine, |w| speedread::json::symbols(&engine, &targets, w));
             }
             let records =
                 speedread::json::symbol_records(&engine, &targets).map_err(anyhow::Error::msg)?;
@@ -324,6 +464,7 @@ fn main() -> anyhow::Result<()> {
                 }
             }
             let _ = out.flush();
+            note_stderr(&engine);
         }
         Cmd::BenchWalk { path } => {
             let t = std::time::Instant::now();
@@ -342,12 +483,40 @@ fn main() -> anyhow::Result<()> {
 }
 
 /// Stream JSON Lines to stdout; a closed pipe (`| head`) is not an error.
+/// A flag, else its environment variable, else `None` (the built-in default).
+fn setting<T: std::str::FromStr>(flag: Option<T>, var: &str) -> anyhow::Result<Option<T>> {
+    if flag.is_some() {
+        return Ok(flag);
+    }
+    match std::env::var(var) {
+        Ok(v) if !v.trim().is_empty() => match v.trim().parse() {
+            Ok(n) => Ok(Some(n)),
+            Err(_) => anyhow::bail!("{var}={v}: expected a non-negative whole number"),
+        },
+        _ => Ok(None),
+    }
+}
+
+/// Machine-readable output keeps stdout clean: the incomplete notes go to
+/// stderr.
+fn note_stderr(engine: &Engine) {
+    if let Some(note) = engine.limits.note() {
+        eprintln!("{note}");
+    }
+    if let Some(note) = engine.long_note() {
+        eprintln!("{note}");
+    }
+}
+
 fn emit(
+    engine: &Engine,
     f: impl FnOnce(&mut std::io::BufWriter<std::io::StdoutLock<'static>>) -> Result<usize, String>,
 ) -> anyhow::Result<()> {
     use std::io::Write;
     let mut w = std::io::BufWriter::with_capacity(1 << 16, std::io::stdout().lock());
-    match f(&mut w) {
+    let result = f(&mut w);
+    note_stderr(engine);
+    match result {
         Ok(_) => {}
         Err(e) if e.contains("Broken pipe") => return Ok(()),
         Err(e) => anyhow::bail!(e),

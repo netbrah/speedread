@@ -1,0 +1,21 @@
+{
+  "name": "netbrah-speedread",
+  "owner": {
+    "name": "netbrah",
+    "url": "https://github.com/netbrah"
+  },
+  "metadata": {
+    "description": "netbrah's fork of speedread, packaged for Claude Code, Claude Cowork and Grok Build."
+  },
+  "plugins": [
+    {
+      "name": "speedread-netbrah",
+      "source": "./plugins/speedread-netbrah",
+      "description": "Read, search and trace code within a token budget: the function around each hit, a big file's skeleton, a symbol's callers, or only what changed. Read-only, no index, no folder to configure. A fork of speedread with request deadlines and bounded memory.",
+      "version": "0.2.0-netbrah.2",
+      "category": "development",
+      "homepage": "https://github.com/netbrah/speedread/blob/v0.2.0-netbrah.2/docs/DISTRIBUTION.md",
+      "license": "MIT"
+    }
+  ]
+}

@@ -298,6 +298,65 @@ fn client_roots_become_the_workspace() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// How the Claude Desktop bundle and the plugins start it: no folder is
+/// asked for, nothing is fenced, and the launch directory means nothing.
+#[test]
+fn a_server_with_no_folder_reads_by_absolute_path_and_says_so() {
+    let dir = std::env::temp_dir().join(format!("speedread-nofolder-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("launched/here")).unwrap();
+    std::fs::create_dir_all(dir.join("project/src")).unwrap();
+    std::fs::write(dir.join("launched/here/decoy.rs"), "fn needle() {}\n").unwrap();
+    std::fs::write(
+        dir.join("project/src/lib.rs"),
+        "pub fn needle() -> u32 {\n    7\n}\n",
+    )
+    .unwrap();
+    let project = dir.canonicalize().unwrap().join("project");
+    let init_params = json!({"protocolVersion": "2025-06-18", "capabilities": {},
+                             "clientInfo": {"name": "test", "version": "0"}});
+
+    let mut c = Client::spawn(
+        &["mcp", "--unrestricted", "--no-cwd-root"],
+        Some(&dir.join("launched/here")),
+    );
+    let init = c.rpc("initialize", init_params.clone());
+    let instructions = init["result"]["instructions"].as_str().unwrap();
+    assert!(
+        instructions.contains("No project folder is configured"),
+        "{instructions}"
+    );
+    c.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+
+    // Nothing to resolve against: it says what to pass instead of searching
+    // the directory it happened to be launched in.
+    let out = c.call("search", json!({"query": "needle"}));
+    assert!(out.contains("pass base_dir"), "{out}");
+    assert!(!out.contains("decoy.rs"), "{out}");
+
+    let out = c.call(
+        "search",
+        json!({"query": "needle", "base_dir": project.to_str().unwrap()}),
+    );
+    assert!(out.contains("src/lib.rs"), "{out}");
+    assert!(!out.contains("decoy.rs"), "{out}");
+
+    let target = format!("{}#needle", project.join("src/lib.rs").display());
+    let out = c.call("read", json!({"targets": [target]}));
+    assert!(out.contains("pub fn needle() -> u32"), "{out}");
+    drop(c);
+
+    // A server that has a folder is told nothing extra.
+    let mut c = Client::start(&project);
+    let init = c.rpc("initialize", init_params);
+    let instructions = init["result"]["instructions"].as_str().unwrap();
+    assert!(
+        !instructions.contains("No project folder is configured"),
+        "{instructions}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn luau_symbols_and_trace() {
     let dir = std::env::temp_dir().join(format!("speedread-luau-{}", std::process::id()));
@@ -489,4 +548,64 @@ fn line_targets_outside_symbols_read_the_enclosing_block() {
     assert!(out.contains("==> main.client.luau:1-6 @"), "{out}");
 
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A server that parsed something large must not stay that large: what a
+/// request freed goes back to the system when the request ends.
+#[cfg(target_os = "linux")]
+#[test]
+fn memory_a_request_freed_is_returned_to_the_system() {
+    let dir = std::env::temp_dir().join(format!("speedread-release-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    // About 6 MiB of source: its syntax tree takes several times that.
+    let mut big = String::new();
+    for i in 0..60_000 {
+        big.push_str(&format!(
+            "pub fn generated_{i}(a: u64, b: u64) -> u64 {{\n    let c = a.wrapping_mul({i}) ^ b;\n    c.rotate_left(7) + {i}\n}}\n"
+        ));
+    }
+    std::fs::write(dir.join("src/big.rs"), big).unwrap();
+
+    let mut c = Client::spawn(
+        &["--root", dir.to_str().unwrap(), "--cache-mb", "1", "mcp"],
+        None,
+    );
+    c.rpc(
+        "initialize",
+        json!({"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+    c.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+    let out = c.call("read", json!({"targets": ["src/big.rs#generated_31337"]}));
+    assert!(out.contains("pub fn generated_31337("), "{out}");
+
+    let mib = |status: &str, key: &str| -> u64 {
+        let line = status.lines().find(|l| l.starts_with(key)).expect(key);
+        line.split_whitespace()
+            .nth(1)
+            .unwrap()
+            .parse::<u64>()
+            .unwrap()
+            >> 10
+    };
+    let read = || std::fs::read_to_string(format!("/proc/{}/status", c.child.id())).unwrap();
+    let (mut now, mut peak) = (0, 0);
+    // The pool's threads give their share back just after the answer.
+    for _ in 0..30 {
+        let status = read();
+        (now, peak) = (mib(&status, "VmRSS:"), mib(&status, "VmHWM:"));
+        if now + 24 <= peak {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        peak >= 40,
+        "the request was meant to be large: peak {peak} MiB"
+    );
+    assert!(
+        now + 24 <= peak,
+        "resident {now} MiB after a request that peaked at {peak} MiB"
+    );
 }

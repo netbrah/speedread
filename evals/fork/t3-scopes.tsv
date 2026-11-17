@@ -1,0 +1,15 @@
+repo	pattern	matches_bytes	scopes_bytes	symbols_bytes	scopes_overhead	matches_ms	scopes_ms
+ripgrep	is_match	10398	11845	31432	+14%	40	38
+ripgrep	Searcher	36423	36766	284022	+1%	55	87
+ripgrep	\.unwrap\(\)	85256	100525	369858	+18%	177	194
+ripgrep	line_number	28407	37399	198278	+32%	92	96
+ripgrep	return Err	7582	11602	49350	+53%	52	60
+ripgrep	binary_detection	6135	7049	39578	+15%	52	58
+zod	addIssue	24171	36424	137485	+51%	125	136
+zod	safeParse	214439	225106	842472	+5%	267	271
+zod	throw new Error	25979	34994	134242	+35%	196	207
+zod	_def	31238	36498	147286	+17%	123	121
+zod	ctx.common	3584	5436	35874	+52%	45	52
+zod	instanceof Promise	9395	12763	82050	+36%	95	117
+total		483007	556407	2351927	+15%	1320	1438
+scopes is 24% of symbols bytes

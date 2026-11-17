@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "speedread": {
+      "command": "sh",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/skills/speedread/scripts/speedread.sh",
+        "mcp",
+        "--unrestricted",
+        "--no-cwd-root"
+      ],
+      "env": {
+        "SPEEDREAD_PLUGIN_DATA": "${CLAUDE_PLUGIN_DATA}"
+      }
+    }
+  }
+}

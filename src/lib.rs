@@ -2,6 +2,7 @@
 //! agents — an MCP server and CLI, tuned for macOS on Apple Silicon.
 
 pub mod block;
+pub mod context;
 pub mod diff;
 pub mod engine;
 pub mod json;
@@ -14,6 +15,7 @@ pub mod render;
 pub mod search;
 pub mod server;
 pub mod source;
+pub mod structural;
 pub mod structured;
 pub mod tokens;
 pub mod trace;

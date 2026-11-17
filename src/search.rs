@@ -17,6 +17,7 @@ use grep_searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkContex
 use parking_lot::Mutex;
 use rayon::prelude::*;
 
+use crate::context::{self, ScopeIndex};
 use crate::engine::Engine;
 use crate::outline::{Kind, Outline, split_segments};
 use crate::render::{self, push_num};
@@ -35,6 +36,9 @@ pub enum Output {
     Symbols,
     /// Paths with match counts only.
     Files,
+    /// Matching lines plus the header lines of the syntax that encloses
+    /// them (loops, conditions, match arms …).
+    Scopes,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -48,7 +52,11 @@ pub enum Case {
 }
 
 /// A loaded file and its outline, prepared for rendering.
-type Prepared = (Option<Arc<Source>>, Option<Arc<Outline>>);
+type Prepared = (
+    Option<Arc<Source>>,
+    Option<Arc<Outline>>,
+    Option<ScopeIndex>,
+);
 /// A definition hit: source, outline, symbol index.
 pub type DefHit = (Arc<Source>, Arc<Outline>, usize);
 
@@ -63,13 +71,76 @@ pub struct SearchRequest {
     pub output: Output,
     pub budget: Option<usize>,
     pub max_matches: usize,
+    /// `pattern` is code with metavariables, matched against syntax trees.
+    pub ast: bool,
+    /// Grammar for a structural search (name or extension); all that parse
+    /// the pattern when absent.
+    pub lang: Option<String>,
 }
 
 #[derive(Clone)]
 pub(crate) struct Hit {
     pub(crate) line: u32,
+    /// The line, or its first [`KEEP_LINE`] bytes when it is longer.
     pub(crate) text: Vec<u8>,
     pub(crate) is_match: bool,
+    /// For a line longer than [`KEEP_LINE`]: the part shown around the match.
+    pub(crate) long: Option<Box<Window>>,
+}
+
+/// The shown part of a long line; `before`/`after` say text was cut there.
+#[derive(Clone)]
+pub(crate) struct Window {
+    text: Vec<u8>,
+    before: bool,
+    after: bool,
+}
+
+/// Longest line a text search buffers, per worker thread. A file with a
+/// longer line is searched up to that line and reported (see
+/// [`crate::walk::Limits::long_line`]): unbounded, one 200 MiB line costs
+/// 200 MiB on every thread that meets it, kept for the life of the server.
+pub(crate) const MAX_LINE_BYTES: usize = 4 << 20;
+
+/// Bytes of a hit line kept: more than text output shows (a 300-byte
+/// window) or JSON output carries (1,000 bytes).
+const KEEP_LINE: usize = 4096;
+
+/// The 300 bytes of a long line shown: from 100 before its first match.
+fn window(text: &[u8], matcher: &RegexMatcher) -> (usize, usize) {
+    let pos = matcher
+        .find(text)
+        .ok()
+        .flatten()
+        .map(|m| m.start())
+        .unwrap_or(0);
+    let start = pos.saturating_sub(100);
+    (start, (start + 300).min(text.len()))
+}
+
+impl Hit {
+    /// A hit for `full`, holding a bounded part of it however long it is.
+    pub(crate) fn new(line: u32, full: &[u8], is_match: bool, matcher: &RegexMatcher) -> Hit {
+        if full.len() <= KEEP_LINE {
+            return Hit {
+                line,
+                text: full.to_vec(),
+                is_match,
+                long: None,
+            };
+        }
+        let (start, end) = window(full, matcher);
+        Hit {
+            line,
+            text: full[..KEEP_LINE].to_vec(),
+            is_match,
+            long: Some(Box::new(Window {
+                text: full[start..end].to_vec(),
+                before: start > 0,
+                after: end < full.len(),
+            })),
+        }
+    }
 }
 
 pub(crate) struct FileHits {
@@ -78,16 +149,16 @@ pub(crate) struct FileHits {
     pub(crate) matches: usize,
 }
 
-const MAX_HITS_PER_FILE: usize = 400;
+pub(crate) const MAX_HITS_PER_FILE: usize = 400;
 /// Larger files are shown without enclosing-symbol grouping.
 pub(crate) const MAX_GROUP_BYTES: usize = 1 << 20;
 
-struct Collect {
+struct Collect<'a> {
     hits: Vec<Hit>,
     matches: usize,
+    matcher: &'a RegexMatcher,
 }
-
-impl Sink for Collect {
+impl Sink for Collect<'_> {
     type Error = io::Error;
 
     fn matched(&mut self, _s: &Searcher, m: &SinkMatch<'_>) -> Result<bool, io::Error> {
@@ -97,11 +168,8 @@ impl Sink for Collect {
             // Multi-line matches are not enabled; take the first line.
             let bytes = m.bytes();
             let end = memchr::memchr(b'\n', bytes).unwrap_or(bytes.len());
-            self.hits.push(Hit {
-                line,
-                text: trim_cr(&bytes[..end]).to_vec(),
-                is_match: true,
-            });
+            self.hits
+                .push(Hit::new(line, trim_cr(&bytes[..end]), true, self.matcher));
         }
         Ok(true)
     }
@@ -111,14 +179,49 @@ impl Sink for Collect {
             let line = c.line_number().unwrap_or(0) as u32;
             let bytes = c.bytes();
             let end = memchr::memchr(b'\n', bytes).unwrap_or(bytes.len());
-            self.hits.push(Hit {
-                line,
-                text: trim_cr(&bytes[..end]).to_vec(),
-                is_match: false,
-            });
+            self.hits
+                .push(Hit::new(line, trim_cr(&bytes[..end]), false, self.matcher));
         }
         Ok(true)
     }
+}
+
+/// Did a search stop because a line exceeds [`MAX_LINE_BYTES`]?
+pub(crate) fn line_too_long(err: &io::Error) -> bool {
+    err.to_string().contains("allocation limit")
+}
+
+/// Does `path` have a line matching `m`? Used to pick the files worth
+/// parsing, so a line too long for the line-by-line search must not hide
+/// what follows it: a file small enough to parse is then matched whole,
+/// which costs its size once and no more. (Calling every such file a
+/// match instead had each symbol lookup parse every minified bundle and
+/// one-line data file in the tree, whatever the name.) A larger one counts
+/// as a match; the search that reads it says where it stopped.
+pub(crate) fn file_has(m: &RegexMatcher, path: &Path) -> bool {
+    let mut found = false;
+    // `sinks::Bytes` requires line numbers.
+    let res = with_searcher(0, |s| {
+        s.search_path(
+            m,
+            path,
+            grep_searcher::sinks::Bytes(|_, _| {
+                found = true;
+                Ok(false)
+            }),
+        )
+    });
+    if found || !res.is_err_and(|e| line_too_long(&e)) {
+        return found;
+    }
+    let parseable =
+        std::fs::metadata(path).is_ok_and(|md| md.len() <= crate::source::MAX_PARSE as u64);
+    if !parseable {
+        return true;
+    }
+    // The pattern cannot match across a line break, so the whole file is
+    // as good a haystack as its lines.
+    std::fs::read(path).is_ok_and(|data| !matches!(m.find(&data), Ok(None)))
 }
 
 fn trim_cr(b: &[u8]) -> &[u8] {
@@ -138,6 +241,7 @@ fn with_searcher<R>(context: usize, f: impl FnOnce(&mut Searcher) -> R) -> R {
                 .before_context(context)
                 .after_context(context)
                 .binary_detection(BinaryDetection::quit(b'\x00'))
+                .heap_limit(Some(MAX_LINE_BYTES))
                 .build();
             *slot = Some((context, s));
         }
@@ -228,10 +332,25 @@ pub(crate) fn build_matcher(req: &SearchRequest) -> Result<RegexMatcher, String>
     })
 }
 
+/// The matcher that windows long hit lines: the regex itself, or for a
+/// structural search its literal word (the pattern is not a regex).
+pub(crate) fn line_matcher(req: &SearchRequest) -> Result<RegexMatcher, String> {
+    if !req.ast {
+        return build_matcher(req);
+    }
+    let lit = crate::structural::literal(&req.pattern).unwrap_or(&req.pattern);
+    crate::structural::literal_matcher(lit).map_err(|e| format!("{e}\n"))
+}
+
 pub(crate) struct Scan {
     pub(crate) files: Vec<FileHits>,
     pub(crate) searched: usize,
     pub(crate) stopped: bool,
+}
+
+/// Is this entry one a text search reads?
+fn searchable(entry: &walk::Entry) -> bool {
+    !entry.dataless && !skip_ext(&entry.path) && entry.size <= crate::source::MAX_IN_MEMORY * 4
 }
 
 pub(crate) fn scan(
@@ -242,22 +361,158 @@ pub(crate) fn scan(
     context: usize,
     max_matches: usize,
 ) -> Scan {
+    scan_in(e, roots, globs, None, matcher, context, max_matches)
+}
+
+/// [`scan`] over files already found to match, instead of walking for them.
+pub(crate) fn scan_files(
+    e: &Engine,
+    files: &[PathBuf],
+    matcher: &RegexMatcher,
+    context: usize,
+    max_matches: usize,
+) -> Scan {
+    scan_in(e, &[], &[], Some(files), matcher, context, max_matches)
+}
+
+/// A whole-word pattern for any of `names`: `\b` only where a name itself
+/// starts or ends with a word character (Ruby `valid?`, ObjC selectors).
+pub(crate) fn word_pattern(names: &[String]) -> String {
+    let is_word = |c: char| c.is_alphanumeric() || c == '_';
+    // One spelling per set of names, so the same question is recognised
+    // however the names were collected.
+    let mut names: Vec<&String> = names.iter().collect();
+    names.sort();
+    names.dedup();
+    names
+        .iter()
+        .map(|n| {
+            format!(
+                "{}{}{}",
+                if n.starts_with(is_word) { r"\b" } else { "" },
+                regex_escape(n),
+                if n.ends_with(is_word) { r"\b" } else { "" }
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("|")
+}
+
+/// The files under `root` that mention one of `names` as a whole word.
+///
+/// One walk per request and name set: the list is kept with the request, so
+/// looking up a definition, its namesakes and its call sites reads the tree
+/// once rather than three times. The list stops at [`walk::MAX_MENTIONS`]
+/// files (or at a limit) and then says it is not complete.
+pub(crate) fn mentions(e: &Engine, root: &Path, names: &[String]) -> Option<walk::Mentions> {
+    let pattern = word_pattern(names);
+    // A lookup of definitions alone reads only files that can hold one.
+    let code_only = !e.limits.wants_all_mentions();
+    if let Some(m) = e.limits.mentions(root, &pattern)
+        && (code_only || !m.code_only)
+    {
+        return Some(m);
+    }
+    let wanted = |entry: &walk::Entry| {
+        searchable(entry)
+            && (!code_only
+                || (entry.size <= crate::source::MAX_PARSE as u64
+                    && crate::lang::detect(&entry.path, b"").is_some()))
+    };
+    let matcher = RegexMatcherBuilder::new()
+        .line_terminator(Some(b'\n'))
+        .build(&pattern)
+        .ok()?;
+    let out = Mutex::new(Vec::new());
+    let full = AtomicBool::new(false);
+    let before = e.limits.events();
+    if root.is_file() {
+        if file_has(&matcher, root) {
+            out.lock().push(root.to_path_buf());
+        }
+    } else {
+        let _ = walk::walk(root, &e.walk_opts(), |entry| {
+            if !wanted(&entry) || !file_has(&matcher, &entry.path) {
+                return true;
+            }
+            let mut found = out.lock();
+            found.push(entry.path);
+            if found.len() >= walk::MAX_MENTIONS {
+                full.store(true, Ordering::Relaxed);
+                return false;
+            }
+            true
+        });
+    }
+    let mut files = out.into_inner();
+    files.sort_unstable_by(|a, b| {
+        use std::os::unix::ffi::OsStrExt;
+        a.as_os_str().as_bytes().cmp(b.as_os_str().as_bytes())
+    });
+    let m = walk::Mentions {
+        files: Arc::new(files),
+        complete: !full.load(Ordering::Relaxed) && e.limits.events() == before,
+        code_only,
+    };
+    e.limits.remember_mentions(root, &pattern, m.clone());
+    Some(m)
+}
+
+/// The files among those mentioning `names` whose outlines are worth
+/// parsing for a definition: a known language, a parseable size and, when
+/// there are many, a definition-looking line. At most
+/// [`walk::MAX_CANDIDATES`]; cutting the list short is reported.
+pub(crate) fn definition_candidates(e: &Engine, root: &Path, names: &[String]) -> Vec<PathBuf> {
+    let Some(m) = mentions(e, root, names) else {
+        return Vec::new();
+    };
+    let mut candidates: Vec<PathBuf> = m
+        .files
+        .iter()
+        .filter(|p| crate::lang::detect(p, b"").is_some())
+        .cloned()
+        .collect();
+    prefilter_definitions(&mut candidates, names);
+    candidates.retain(|p| {
+        std::fs::metadata(p).is_ok_and(|md| md.len() <= crate::source::MAX_PARSE as u64)
+    });
+    // A walk stopped by a limit has said so itself; a list that filled up
+    // has not.
+    if m.files.len() >= walk::MAX_MENTIONS || candidates.len() > walk::MAX_CANDIDATES {
+        e.limits.mark(walk::Stop::Candidates);
+    }
+    candidates.truncate(walk::MAX_CANDIDATES);
+    candidates
+}
+
+fn scan_in(
+    e: &Engine,
+    roots: &[PathBuf],
+    globs: &[String],
+    known: Option<&[PathBuf]>,
+    matcher: &RegexMatcher,
+    context: usize,
+    max_matches: usize,
+) -> Scan {
     let out = Mutex::new(Vec::new());
     let total = AtomicUsize::new(0);
     let searched = AtomicUsize::new(0);
     let stopped = AtomicBool::new(false);
-    let visit = |path: &Path| -> bool {
-        if total.load(Ordering::Relaxed) >= max_matches {
-            stopped.store(true, Ordering::Relaxed);
-            return false;
-        }
+    let search_one = |path: &Path| {
         searched.fetch_add(1, Ordering::Relaxed);
         let mut sink = Collect {
             hits: Vec::new(),
             matches: 0,
+            matcher,
         };
         let res = with_searcher(context, |s| s.search_path(matcher, path, &mut sink));
-        if res.is_ok() && sink.matches > 0 {
+        // A line over the limit ends the file's search there: what came
+        // before it counts, and the request says the file was cut short.
+        let long = res.as_ref().is_err_and(line_too_long);
+        if long {
+            e.limits.long_line(path);
+        }
+        if (res.is_ok() || long) && sink.matches > 0 {
             total.fetch_add(sink.matches, Ordering::Relaxed);
             out.lock().push(FileHits {
                 path: path.to_path_buf(),
@@ -265,28 +520,53 @@ pub(crate) fn scan(
                 matches: sink.matches,
             });
         }
+    };
+    let visit = |path: &Path| -> bool {
+        if total.load(Ordering::Relaxed) >= max_matches {
+            stopped.store(true, Ordering::Relaxed);
+            return false;
+        }
+        search_one(path);
         true
     };
-    for root in roots {
-        if root.is_file() {
-            visit(root);
-            continue;
-        }
-        let opts = WalkOpts {
-            globs: globs.to_vec(),
-            ..Default::default()
-        };
-        let _ = walk::walk(root, &opts, |entry| {
-            if entry.dataless
-                || skip_ext(&entry.path)
-                || entry.size > crate::source::MAX_IN_MEMORY * 4
-            {
-                return true;
+    match known {
+        // The files are already known (a walk of this request found them):
+        // search just those.
+        // The files are given in the caller's order of preference. Whole
+        // chunks are searched, in order, until the limit is reached, so what
+        // a limited scan keeps is the preferred files and the same ones on
+        // every run (a walk keeps whichever it reaches first).
+        Some(files) => {
+            for part in files.chunks(256) {
+                if total.load(Ordering::Relaxed) >= max_matches {
+                    stopped.store(true, Ordering::Relaxed);
+                    break;
+                }
+                if e.limits.expired() {
+                    break;
+                }
+                part.par_iter().for_each(|p| search_one(p));
             }
-            visit(&entry.path)
-        });
+        }
+        None => {
+            for root in roots {
+                if root.is_file() {
+                    visit(root);
+                    continue;
+                }
+                let opts = WalkOpts {
+                    globs: globs.to_vec(),
+                    ..e.walk_opts()
+                };
+                let _ = walk::walk(root, &opts, |entry| {
+                    if !searchable(&entry) {
+                        return true;
+                    }
+                    visit(&entry.path)
+                });
+            }
+        }
     }
-    let _ = e;
     let mut files = out.into_inner();
     files.sort_unstable_by(|a, b| {
         use std::os::unix::ffi::OsStrExt;
@@ -302,9 +582,50 @@ pub(crate) fn scan(
     }
 }
 
+/// The files under `roots` with a line matching `matcher`, in path order;
+/// a text search that keeps no lines.
+pub(crate) fn files_with(
+    e: &Engine,
+    roots: &[PathBuf],
+    globs: &[String],
+    matcher: &RegexMatcher,
+) -> Vec<PathBuf> {
+    let out = Mutex::new(Vec::new());
+    for root in roots {
+        if root.is_file() {
+            if file_has(matcher, root) {
+                out.lock().push(root.clone());
+            }
+            continue;
+        }
+        let opts = WalkOpts {
+            globs: globs.to_vec(),
+            ..e.walk_opts()
+        };
+        let _ = walk::walk(root, &opts, |entry| {
+            if searchable(&entry) && file_has(matcher, &entry.path) {
+                out.lock().push(entry.path);
+            }
+            true
+        });
+    }
+    let mut files = out.into_inner();
+    files.sort_unstable_by(|a, b| {
+        use std::os::unix::ffi::OsStrExt;
+        a.as_os_str().as_bytes().cmp(b.as_os_str().as_bytes())
+    });
+    files.dedup();
+    files
+}
+
 pub(crate) fn resolve_roots(e: &Engine, paths: &[String]) -> Result<Vec<PathBuf>, String> {
     if paths.is_empty() {
-        return Ok(vec![e.ws.primary().to_path_buf()]);
+        // The base exactly: never widened to its repository, never `/`.
+        return e
+            .ws
+            .require_base()
+            .map(|b| vec![b])
+            .map_err(|msg| format!("search: {msg}\n"));
     }
     let mut roots = Vec::new();
     for p in paths {
@@ -323,6 +644,7 @@ pub(crate) fn resolve_roots(e: &Engine, paths: &[String]) -> Result<Vec<PathBuf>
             Err(PathError::Outside(r)) => {
                 return Err(format!("Path outside the workspace: {}\n", r.display()));
             }
+            Err(PathError::NoBase(msg)) => return Err(format!("search {p}: {msg}\n")),
         }
     }
     Ok(roots)
@@ -331,16 +653,17 @@ pub(crate) fn resolve_roots(e: &Engine, paths: &[String]) -> Result<Vec<PathBuf>
 fn push_hit_line(out: &mut String, h: &Hit, matcher: &RegexMatcher) {
     push_num(out, h.line as usize);
     out.push('\t');
-    if h.text.len() > 300 {
+    if let Some(w) = &h.long {
+        if w.before {
+            out.push('…');
+        }
+        render::push_text(out, &w.text, 300);
+        if w.after {
+            out.push('…');
+        }
+    } else if h.text.len() > 300 {
         // Show a window around the first match.
-        let pos = matcher
-            .find(&h.text)
-            .ok()
-            .flatten()
-            .map(|m| m.start())
-            .unwrap_or(0);
-        let start = pos.saturating_sub(100);
-        let end = (start + 300).min(h.text.len());
+        let (start, end) = window(&h.text, matcher);
         if start > 0 {
             out.push('…');
         }
@@ -375,11 +698,13 @@ fn owner(o: &Outline, line0: u32) -> Option<usize> {
     o.innermost_at(line0)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_file(
     e: &Engine,
     f: &FileHits,
     src: Option<&Arc<Source>>,
     o: Option<&Arc<Outline>>,
+    scopes: Option<&ScopeIndex>,
     output: Output,
     matcher: &RegexMatcher,
     numbers_budget: usize,
@@ -401,6 +726,8 @@ fn render_file(
     let mut shown_syms: Vec<usize> = Vec::new();
     let mut cur: Option<Option<usize>> = None;
     let mut shown_matches = 0usize;
+    // Lines printed in this block, so shared ancestors appear once.
+    let mut printed: std::collections::HashSet<u32> = hits.iter().map(|h| h.line).collect();
     for h in &hits {
         if out.len() > numbers_budget {
             let rest = f.matches.saturating_sub(shown_matches);
@@ -447,6 +774,27 @@ fn render_file(
             }
             cur = Some(sym);
         }
+        if let (Some(index), Some(src)) = (scopes, src) {
+            let row = h.line.saturating_sub(1);
+            let mut rows = context::scope_rows(index, src, o.map(|o| &**o), row);
+            rows.retain(|r| !printed.contains(&(r + 1)));
+            let (rows, dropped) = context::cap(rows);
+            for (k, r) in rows.iter().enumerate() {
+                printed.insert(r + 1);
+                render::push_lines(
+                    &mut out,
+                    src,
+                    *r as usize,
+                    *r as usize,
+                    true,
+                    300,
+                    usize::MAX,
+                );
+                if k == 0 && dropped > 0 {
+                    out.push_str(&format!("⋯ {} more\n", plural(dropped, "level")));
+                }
+            }
+        }
         push_hit_line(&mut out, h, matcher);
         if h.is_match {
             shown_matches += 1;
@@ -465,9 +813,15 @@ fn render_file(
 }
 
 pub fn search(e: &Engine, req: &SearchRequest) -> String {
+    let mut out = search_request(e, req);
+    e.note_incomplete(&mut out);
+    out
+}
+
+fn search_request(e: &Engine, req: &SearchRequest) -> String {
     let budget = e.budget(req.budget);
     let max_bytes = e.bytes_for(budget);
-    let matcher = match build_matcher(req) {
+    let matcher = match line_matcher(req) {
         Ok(m) => m,
         Err(msg) => return msg,
     };
@@ -480,26 +834,57 @@ pub fn search(e: &Engine, req: &SearchRequest) -> String {
     } else {
         req.context.min(10)
     };
-    let sc = scan(
-        e,
-        &roots,
-        &req.globs,
-        &matcher,
-        context,
-        req.max_matches.max(1),
-    );
+    let mut ast: Option<crate::structural::AstScan> = None;
+    let sc = if req.ast {
+        match crate::structural::scan(e, &roots, req, context) {
+            Ok(mut a) => {
+                let sc = std::mem::replace(
+                    &mut a.scan,
+                    Scan {
+                        files: Vec::new(),
+                        searched: 0,
+                        stopped: false,
+                    },
+                );
+                ast = Some(a);
+                sc
+            }
+            Err(msg) => return msg,
+        }
+    } else {
+        scan(
+            e,
+            &roots,
+            &req.globs,
+            &matcher,
+            context,
+            req.max_matches.max(1),
+        )
+    };
     let total: usize = sc.files.iter().map(|f| f.matches).sum();
     let scope = roots
         .iter()
         .map(|r| e.ws.display(r))
         .collect::<Vec<_>>()
         .join(", ");
+    if let (Some(a), true) = (&ast, sc.files.is_empty()) {
+        return a.nothing(e, &req.pattern, &scope);
+    }
     if sc.files.is_empty() {
-        let mut t = format!(
-            "No matches for /{}/ in {scope} ({} searched; .gitignored files skipped).",
-            req.pattern,
-            plural(sc.searched, "file")
-        );
+        // Absence is only claimed when the whole scope was searched.
+        let mut t = if e.limits.stopped().is_some() {
+            format!(
+                "Nothing matched /{}/ in the {} searched in {scope} before discovery stopped.",
+                req.pattern,
+                plural(sc.searched, "file")
+            )
+        } else {
+            format!(
+                "No matches for /{}/ in {scope} ({} searched; .gitignored files skipped).",
+                req.pattern,
+                plural(sc.searched, "file")
+            )
+        };
         if req.case == Case::Sensitive
             || (req.case == Case::Smart && req.pattern.chars().any(|c| c.is_uppercase()))
         {
@@ -516,10 +901,13 @@ pub fn search(e: &Engine, req: &SearchRequest) -> String {
         return t;
     }
     let mut out = format!(
-        "{} in {} for /{}/{}\n",
+        "{} in {} for {}{}\n",
         plural(total, "match"),
         plural(sc.files.len(), "file"),
-        req.pattern,
+        match &ast {
+            Some(a) => a.title(&req.pattern),
+            None => format!("/{}/", req.pattern),
+        },
         if sc.stopped {
             format!(
                 " (stopped at {}; narrow with path/glob)",
@@ -529,6 +917,13 @@ pub fn search(e: &Engine, req: &SearchRequest) -> String {
             String::new()
         }
     );
+    if let Some(a) = &ast {
+        let more = a.caveats();
+        if !more.is_empty() {
+            out.push_str(more.trim_start());
+            out.push('\n');
+        }
+    }
     // Load sources/outlines lazily in small parallel chunks: only files that
     // can still fit in the budget are ever parsed.
     let needs_outline = req.output != Output::Files;
@@ -536,6 +931,19 @@ pub fn search(e: &Engine, req: &SearchRequest) -> String {
         fs.par_iter()
             .map(|f| {
                 let src = e.load_text(&f.path).ok();
+                // Ancestor lines come from the syntax tree: one parse yields
+                // it and the outline.
+                if req.output == Output::Scopes {
+                    let both = src
+                        .as_ref()
+                        .filter(|s| s.data.len() <= MAX_GROUP_BYTES)
+                        .and_then(|s| e.outline_with_tree(s));
+                    let (o, tree) = match both {
+                        Some((o, tree)) => (Some(o), tree),
+                        None => (None, None),
+                    };
+                    return (src, o, tree.map(|t| ScopeIndex::build(&t)));
+                }
                 // Grouping hits is worth a parse for source-sized files only.
                 let o = if needs_outline {
                     src.as_ref()
@@ -544,7 +952,7 @@ pub fn search(e: &Engine, req: &SearchRequest) -> String {
                 } else {
                     None
                 };
-                (src, o)
+                (src, o, None)
             })
             .collect()
     };
@@ -557,11 +965,11 @@ pub fn search(e: &Engine, req: &SearchRequest) -> String {
             let end = (k + chunk).min(sc.files.len());
             prepared.extend(prepare(&sc.files[k..end]));
         }
-        let (src, o) = prepared
+        let (src, o, scopes) = prepared
             .get(k)
-            .map(|(s, o)| (s.as_ref(), o.as_ref()))
-            .unwrap_or((None, None));
-        let block = render_file(e, f, src, o, req.output, &matcher, per_file_cap);
+            .map(|(s, o, x)| (s.as_ref(), o.as_ref(), x.as_ref()))
+            .unwrap_or((None, None, None));
+        let block = render_file(e, f, src, o, scopes, req.output, &matcher, per_file_cap);
         if out.len() + block.len() > max_bytes && rendered_files > 0 {
             break 'files;
         }
@@ -598,10 +1006,16 @@ pub fn search(e: &Engine, req: &SearchRequest) -> String {
     out
 }
 
-/// Find definitions named `query` (optionally qualified) anywhere in the
-/// workspace: a fast word search narrows candidate files, then outlines are
-/// parsed in parallel. Returns up to `limit` hits and the total count.
-pub fn find_definitions(e: &Engine, query: &str, limit: usize) -> (Vec<DefHit>, usize) {
+/// Find definitions named `query` (optionally qualified) anywhere under
+/// `root` (see `Workspace::lookup_root`): a fast word search narrows
+/// candidate files, then outlines are parsed in parallel. Returns up to
+/// `limit` hits and the total count.
+pub fn find_definitions(
+    e: &Engine,
+    root: &Path,
+    query: &str,
+    limit: usize,
+) -> (Vec<DefHit>, usize) {
     let segs = split_segments(query.trim_end_matches("()"));
     let Some(last) = segs.last() else {
         return (Vec::new(), 0);
@@ -617,49 +1031,7 @@ pub fn find_definitions(e: &Engine, query: &str, limit: usize) -> (Vec<DefHit>, 
     if last.is_empty() {
         return (Vec::new(), 0);
     }
-    let is_word = |c: char| c.is_alphanumeric() || c == '_';
-    // `\b` only where the name itself starts/ends with a word character
-    // (Ruby `valid?`, `save!`, ObjC selectors).
-    let pat = format!(
-        "{}{}{}",
-        if last.starts_with(is_word) { r"\b" } else { "" },
-        regex_escape(last),
-        if last.ends_with(is_word) { r"\b" } else { "" }
-    );
-    let Ok(matcher) = RegexMatcherBuilder::new()
-        .line_terminator(Some(b'\n'))
-        .build(&pat)
-    else {
-        return (Vec::new(), 0);
-    };
-    let candidates = Mutex::new(Vec::new());
-    for root in e.ws.roots().iter().take(1) {
-        let _ = walk::walk(root, &WalkOpts::default(), |entry| {
-            if entry.dataless || entry.size > crate::source::MAX_PARSE as u64 {
-                return true;
-            }
-            if crate::lang::detect(&entry.path, b"").is_none() {
-                return true;
-            }
-            let mut found = false;
-            let _ = with_searcher(0, |s| {
-                s.search_path(
-                    &matcher,
-                    &entry.path,
-                    grep_searcher::sinks::Bytes(|_, _| {
-                        found = true;
-                        Ok(false)
-                    }),
-                )
-            });
-            if found {
-                candidates.lock().push(entry.path);
-            }
-            candidates.lock().len() < 5000
-        });
-    }
-    let mut candidates = candidates.into_inner();
-    prefilter_definitions(&mut candidates, &[last.to_string()]);
+    let mut candidates = definition_candidates(e, root, &[last.to_string()]);
     candidates.sort_unstable_by(|a, b| {
         use std::os::unix::ffi::OsStrExt;
         a.as_os_str().as_bytes().cmp(b.as_os_str().as_bytes())
@@ -667,6 +1039,9 @@ pub fn find_definitions(e: &Engine, query: &str, limit: usize) -> (Vec<DefHit>, 
     let mut hits: Vec<(Arc<Source>, Arc<Outline>, usize, i32)> = candidates
         .par_iter()
         .filter_map(|p| {
+            if e.limits.expired() {
+                return None;
+            }
             let src = e.load_text(p).ok()?;
             let o = e.outline(&src)?;
             let found = o.find(query);
@@ -750,7 +1125,12 @@ pub(crate) fn def_line_pattern(names: &[String]) -> String {
             r"\b(?:fn|func|def|function|class|struct|union|interface|trait|enum|type|typealias|protocol|extension|impl|module|namespace|object|record|actor|macro_rules!|const|static|let|var|val|alias|sub|proc)\s+(?:[\w$]+(?:\.|::?))*{n}"
         ),
         format!(r"\bfunc\s*\([^)]*\)\s*{n}"),
-        format!(r"^\s*(?:[\w$@<>\[\],.*&:?]+\s+)*[*&]?{n}\s*(?:<[^()]*>)?\s*\("),
+        // `type name(`, or `name(` alone at the start of a line. The second
+        // is a statement call when the line has a `;` and no brace; without
+        // that distinction every file that calls a C function as a statement
+        // looks like it defines it, and all of them get parsed.
+        format!(r"^\s*(?:[\w$@<>\[\],.*&:?]+\s+)+[*&]?{n}\s*(?:<[^()]*>)?\s*\("),
+        format!(r"^\s*[*&]?{n}\s*(?:<[^()]*>)?\s*\((?:[^;\n]*|.*[{{}}].*)$"),
         format!(r"{n}\s*[:=]\s*(?:async\s+)?(?:function\b|\(|[\w$]+\s*=>|lambda\b)"),
         format!(r"::{n}\s*\("),
         format!(r"^\s*[-+]\s*\([^)]*\)\s*{n}"),
@@ -775,23 +1155,7 @@ pub(crate) fn prefilter_definitions(candidates: &mut Vec<PathBuf>, names: &[Stri
     else {
         return;
     };
-    let keep: Vec<bool> = candidates
-        .par_iter()
-        .map(|p| {
-            let mut found = false;
-            let _ = with_searcher(0, |s| {
-                s.search_path(
-                    &m,
-                    p,
-                    grep_searcher::sinks::Bytes(|_, _| {
-                        found = true;
-                        Ok(false)
-                    }),
-                )
-            });
-            found
-        })
-        .collect();
+    let keep: Vec<bool> = candidates.par_iter().map(|p| file_has(&m, p)).collect();
     let mut it = keep.into_iter();
     candidates.retain(|_| it.next().unwrap_or(true));
 }
@@ -805,4 +1169,72 @@ fn regex_escape(s: &str) -> String {
         out.push(c);
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use grep_matcher::Matcher;
+
+    /// A line too long to buffer must neither hide a name behind it nor
+    /// make the file a candidate for every name.
+    #[test]
+    fn a_very_long_line_neither_hides_a_name_nor_matches_every_name() {
+        let dir = std::env::temp_dir().join(format!("speedread-file-has-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("bundle.min.js");
+        let mut data = b"var early = 1;\n".to_vec();
+        data.extend(std::iter::repeat_n(b'x', MAX_LINE_BYTES + (1 << 20)));
+        data.extend_from_slice(b" on_the_long_line \nfunction after_long() {}\n");
+        std::fs::write(&path, data).unwrap();
+        let has = |name: &str| {
+            let m = RegexMatcherBuilder::new()
+                .line_terminator(Some(b'\n'))
+                .build(&word_pattern(&[name.to_string()]))
+                .unwrap();
+            file_has(&m, &path)
+        };
+        let seen = [
+            has("early"),
+            has("on_the_long_line"),
+            has("after_long"),
+            has("not_in_the_file"),
+        ];
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(seen, [true, true, true, false]);
+    }
+
+    #[test]
+    fn a_statement_call_is_not_a_definition_looking_line() {
+        let m = RegexMatcherBuilder::new()
+            .line_terminator(Some(b'\n'))
+            .build(&def_line_pattern(&["mutex_lock".to_string()]))
+            .unwrap();
+        let looks = |line: &str| m.is_match(line.as_bytes()).unwrap();
+        for def in [
+            "void __sched mutex_lock(struct mutex *lock)",
+            "mutex_lock(struct mutex *lock)",
+            "mutex_lock(struct mutex *lock) {",
+            "    mutex_lock(a,",
+            "  mutex_lock(a, b) { return a.lock(b); }",
+            "  mutex_lock<T>(a: T) {",
+            "def mutex_lock(lock):",
+            "fn mutex_lock(l: &Mutex) {",
+            "#define mutex_lock(lock) __mutex_lock(lock)",
+            "int mutex_lock(struct mutex *lock);",
+            "    mutex_lock = function (l) {",
+            "void Foo::mutex_lock(int x)",
+            "    mutex_lock(lock)\r",
+        ] {
+            assert!(looks(def), "should look like a definition: {def}");
+        }
+        for call in [
+            "\tmutex_lock(&dev->lock);",
+            "    mutex_lock(&a); mutex_unlock(&a);",
+            "\tmutex_lock(&dev->lock);\r",
+            "        mutex_lock(&ctx->mu); /* held across the call */",
+        ] {
+            assert!(!looks(call), "is a call, not a definition: {call}");
+        }
+    }
 }

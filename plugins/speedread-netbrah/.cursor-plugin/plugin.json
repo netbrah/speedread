@@ -1,0 +1,21 @@
+{
+  "name": "speedread-netbrah",
+  "displayName": "speedread (netbrah fork)",
+  "version": "0.2.0-netbrah.2",
+  "description": "Read, search and trace code within a token budget: the function around each hit, a big file's skeleton, a symbol's callers, or only what changed. Read-only, no index, no folder to configure. A fork of speedread with request deadlines and bounded memory.",
+  "author": {
+    "name": "netbrah",
+    "url": "https://github.com/netbrah"
+  },
+  "homepage": "https://github.com/netbrah/speedread/blob/v0.2.0-netbrah.2/docs/DISTRIBUTION.md",
+  "repository": "https://github.com/netbrah/speedread",
+  "license": "MIT",
+  "keywords": [
+    "code-search",
+    "code-navigation",
+    "tree-sitter",
+    "mcp",
+    "token-efficiency"
+  ],
+  "logo": "assets/logo.png"
+}

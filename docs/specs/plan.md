@@ -1,0 +1,77 @@
+# Implementation plan
+
+> Resuming in a new session: read `README.md` (invariants, ship gate), then this file top to
+> bottom. Check boxes are the source of truth for progress. Work on branch
+> `feat/bounded-context-upgrades`; commit after every green step and push (`git push origin HEAD`).
+
+**Goal:** add CWD-independent scoping, bounded discovery, ancestor context, structural search
+and evidence-labelled relationships to speedread without a persistent index.
+
+**Tech:** Rust 2024 (MSRV 1.90), tree-sitter 0.27, ripgrep crates, rmcp 3.4. Tests: `cargo test --all-targets`.
+
+**Verification for every task:**
+
+```sh
+. ~/.cargo/env
+cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test --all-targets
+```
+
+## Global constraints
+
+- Hard invariants 1–8 in `README.md`.
+- Existing CLI/MCP output for existing arguments stays byte-identical unless a spec says otherwise
+  (upstream snapshot and MCP tests must keep passing unmodified).
+- Model-facing strings in `src/server.rs` change only where a spec adds an argument; token cost noted in `eval.md`.
+- New integration tests live in `tests/fork_*.rs` and drive the built binary
+  (`env!("CARGO_BIN_EXE_speedread")`) with explicit CWDs, so CWD independence is tested for real.
+
+## Tasks
+
+### T0 — Foundations
+- [x] Fork, branch, specs committed.
+- [x] Gate macOS-only walker helpers (`IgnoreNode`, `is_ignored`, `load_matcher`, `global_node`,
+      `initial_stack` in `src/walk.rs`) behind `#[cfg(target_os = "macos")]` so clippy `-D warnings` passes on Linux.
+- [x] `scripts/fork-eval.py`: clone pinned reference repos (Rust: `BurntSushi/ripgrep`; TS: `colinhacks/zod`)
+      into `target/eval-repos`, run the query set, record wall time, peak RSS (`/usr/bin/time -v`), output bytes
+      to `evals/fork/<label>.tsv`. Record baseline (`evals/fork/baseline-37abea2.tsv`).
+
+### T1 — Path and scope contract (spec 01)
+Files: `src/workspace.rs`, `src/engine.rs`, `src/search.rs`, `src/trace.rs`, `src/read.rs`, `src/map.rs`,
+`src/json.rs`, `src/server.rs`, `src/main.rs`; tests `tests/fork_paths.rs`.
+- [x] Failing tests first (list in spec 01 → Tests).
+- [x] `Workspace { base, cwd_root }`, `with_base`, `require_base`, `lookup_root`; unit tests for `.git` dir/file discovery.
+- [x] `Engine { ws, cfg, shared: Arc<Shared> }`, `Engine::scoped(base_dir)`; `file_list(root)` cached per root.
+- [x] Lookups use the target's lookup root: `find_definitions(e, root, query, limit)`,
+      `trace::{defs_named, scan_names}`.
+- [x] Rootless guard for path-less `search`/`map`/`#Name`/`trace`.
+- [x] CLI `--base-dir`, `--no-cwd-root`; MCP `base_dir` on all tools.
+- [x] Verify, commit, push.
+
+### T2 — Bounded discovery and residency (spec 02)
+Files: `src/walk.rs`, `src/engine.rs`, `src/search.rs`, `src/trace.rs`, `src/map.rs`, `src/read.rs`, `src/main.rs`, `src/server.rs`, `src/json.rs`, `src/outline.rs`;
+tests `tests/fork_bounds.rs`; measurement `scripts/fork-rss.py`.
+- [x] Failing tests first (spec 02 → Tests), including the untracked-growth test.
+- [x] `walk::Limits`, `walk::STATS`, both walkers call `admit()`.
+- [x] Incomplete reporting in `search`, `#Symbol` lookup, `trace`, `map`.
+- [x] `Config.cache_bytes`, `--cache-mb`, `--max-walk`, `--deadline-ms` (+ env).
+- [x] Measure RSS at cache caps; decide default; log in `eval.md`.
+- [x] Verify, commit, push.
+
+### T3 — Ancestor context (spec 03)
+Files: `src/context.rs` (new), `src/lib.rs`, `src/search.rs`, `src/json.rs`, `src/main.rs`, `src/server.rs`;
+tests `tests/fork_scopes.rs` (fixtures inline).
+- [x] Failing tests first. - [x] `ScopeIndex`. - [x] `Output::Scopes` rendering. - [x] Ship-gate measurement. - [x] Verify, commit, push.
+
+### T4 — Relationship kinds (spec 05)
+Files: `src/trace.rs`; tests `tests/fork_trace.rs`.
+- [x] Failing tests first. - [x] `ValueUse` on sites (no `OccKind::Value`, see spec 05 "As shipped"), `in_closure`, rendering, summary counts. - [x] Precision pass against upstream on 120 sampled targets. - [x] Verify, commit, push.
+
+### T5 — Structural search (spec 04)
+Files: `Cargo.toml`, `src/structural.rs` (new), `src/search.rs`, `src/json.rs`, `src/main.rs`, `src/server.rs`; tests `tests/fork_ast.rs`; measurement `scripts/fork-ast-eval.py`.
+- [x] Spike: `ast-grep-core` 0.51.1 builds against tree-sitter 0.27 with speedread's grammars (new crates: `ast-grep-core`, `bit-set`, `bit-vec`); binary +261,888 bytes (+0.6%).
+- [x] Failing tests first. - [x] `Language` impl, prefilter, rendering. - [x] Ship-gate measurement (found and fixed the Rust macro gap). - [x] Verify, commit, push.
+
+### T6 — Wrap-up
+- [x] `docs/FORK.md` for new flags and arguments, README pointer, CHANGELOG "Fork" section. The bundled skill and tool descriptions are left alone (model-facing; unmeasured).
+- [x] `eval.md` complete; decision per slice in its summary table.
+- [ ] Open upstream issues/PRs per `00-research.md#pr-or-fork` (only after user confirms).

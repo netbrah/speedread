@@ -11,9 +11,12 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 
+#[cfg(target_os = "macos")]
 use ignore::Match;
+#[cfg(target_os = "macos")]
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use ignore::overrides::{Override, OverrideBuilder};
 
@@ -61,6 +64,256 @@ pub struct WalkOpts {
     pub include_dirs: bool,
     /// Report symlinks as entries (for listings). Walks never follow them.
     pub include_symlinks: bool,
+    /// The request's discovery limits (`None`: unbounded).
+    pub limits: Option<Arc<Limits>>,
+}
+
+/// Which limit stopped discovery.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Stop {
+    /// A walk delivered `max_entries` files.
+    Entries,
+    /// The request ran past its deadline.
+    Deadline,
+    /// The client cancelled the request.
+    Cancelled,
+    /// More files mention a name than a definition lookup examines.
+    Candidates,
+}
+
+/// Upper bound on files that mention a name and are parsed to find its
+/// definitions.
+pub const MAX_CANDIDATES: usize = 5000;
+
+/// Discovery limits of one request, shared by every walk it performs.
+///
+/// The entry limit applies to each walk (a trace walks the same tree several
+/// times); the deadline and cancellation apply to the request as a whole.
+/// When a limit fires the walk stops and [`Limits::stopped`] says why, so the
+/// answer can state that it is incomplete instead of claiming absence.
+#[derive(Debug)]
+pub struct Limits {
+    max_entries: u64,
+    budget: Option<Duration>,
+    started: Instant,
+    cancel: AtomicBool,
+    stop: AtomicU8,
+    examined: AtomicU64,
+    /// Files a text search read only up to a line too long to buffer.
+    long_lines: AtomicU64,
+    /// The first of them in path order, to name one.
+    long_first: parking_lot::Mutex<Option<PathBuf>>,
+    /// Times a limit was reached, whether or not it became the reported one.
+    events: AtomicU64,
+    /// Files found to mention a name, by root and pattern: a trace asks the
+    /// same question of the same tree several times, and one walk answers it.
+    mentions: parking_lot::Mutex<Vec<(MentionKey, Mentions)>>,
+    /// Whether those lists should cover every searchable file (a trace also
+    /// reads call sites from them) or only files that can hold a definition.
+    all_mentions: AtomicBool,
+}
+
+type MentionKey = (PathBuf, String);
+
+/// Upper bound on files remembered as mentioning a name.
+pub const MAX_MENTIONS: usize = 20_000;
+
+/// The files of a tree with a line matching a pattern, in path order.
+#[derive(Clone, Debug)]
+pub struct Mentions {
+    pub files: std::sync::Arc<Vec<PathBuf>>,
+    /// False when the walk stopped early (a limit, or [`MAX_MENTIONS`]).
+    pub complete: bool,
+    /// Only files in a known language and of a parseable size were read.
+    pub code_only: bool,
+}
+
+impl Limits {
+    /// `max_entries` per walk and `deadline` per request; 0 / `None` disable.
+    pub fn new(max_entries: u64, deadline: Option<Duration>) -> Limits {
+        Limits {
+            max_entries,
+            budget: deadline.filter(|d| !d.is_zero()),
+            started: Instant::now(),
+            cancel: AtomicBool::new(false),
+            stop: AtomicU8::new(0),
+            examined: AtomicU64::new(0),
+            long_lines: AtomicU64::new(0),
+            long_first: parking_lot::Mutex::new(None),
+            events: AtomicU64::new(0),
+            mentions: parking_lot::Mutex::new(Vec::new()),
+            all_mentions: AtomicBool::new(false),
+        }
+    }
+
+    /// This request will look for occurrences as well as definitions.
+    pub(crate) fn want_all_mentions(&self) {
+        self.all_mentions.store(true, Ordering::Relaxed);
+    }
+
+    pub(crate) fn wants_all_mentions(&self) -> bool {
+        self.all_mentions.load(Ordering::Relaxed)
+    }
+
+    /// How many times a limit has been reached so far; unchanged across a
+    /// walk means the walk saw everything.
+    pub(crate) fn events(&self) -> u64 {
+        self.events.load(Ordering::Relaxed)
+    }
+
+    pub(crate) fn mentions(&self, root: &Path, pattern: &str) -> Option<Mentions> {
+        self.mentions
+            .lock()
+            .iter()
+            .find(|((r, p), _)| r == root && p == pattern)
+            .map(|(_, m)| m.clone())
+    }
+
+    pub(crate) fn remember_mentions(&self, root: &Path, pattern: &str, m: Mentions) {
+        const KEPT: usize = 16;
+        let mut all = self.mentions.lock();
+        if all.len() < KEPT {
+            all.push(((root.to_path_buf(), pattern.to_string()), m));
+        }
+    }
+
+    pub fn unlimited() -> Limits {
+        Limits::new(0, None)
+    }
+
+    /// Stop this request's walks at their next entry.
+    pub fn cancel(&self) {
+        self.cancel.store(true, Ordering::Relaxed);
+    }
+
+    /// Record that discovery was cut short. The first reason is kept.
+    pub fn mark(&self, why: Stop) {
+        let code = match why {
+            Stop::Entries => 1,
+            Stop::Deadline => 2,
+            Stop::Cancelled => 3,
+            Stop::Candidates => 4,
+        };
+        // The first cause is the one reported, except that running out of
+        // time (or being cancelled) outranks a count limit: after it nothing
+        // more was examined, whatever limit was hit before.
+        let hard = matches!(why, Stop::Deadline | Stop::Cancelled);
+        self.events.fetch_add(1, Ordering::Relaxed);
+        let mut cur = self.stop.load(Ordering::Relaxed);
+        let first = loop {
+            if !(cur == 0 || (hard && matches!(cur, 1 | 4))) {
+                return;
+            }
+            match self
+                .stop
+                .compare_exchange_weak(cur, code, Ordering::Relaxed, Ordering::Relaxed)
+            {
+                Ok(_) => break cur == 0,
+                Err(now) => cur = now,
+            }
+        };
+        if first {
+            match why {
+                Stop::Cancelled => STATS.cancelled.fetch_add(1, Ordering::Relaxed),
+                _ => STATS.stopped.fetch_add(1, Ordering::Relaxed),
+            };
+        }
+    }
+
+    pub fn stopped(&self) -> Option<Stop> {
+        match self.stop.load(Ordering::Relaxed) {
+            1 => Some(Stop::Entries),
+            2 => Some(Stop::Deadline),
+            3 => Some(Stop::Cancelled),
+            4 => Some(Stop::Candidates),
+            _ => None,
+        }
+    }
+
+    /// Files delivered to this request so far, over all its walks.
+    pub fn examined(&self) -> u64 {
+        self.examined.load(Ordering::Relaxed)
+    }
+
+    /// Deadline or cancellation reached (checked for every entry seen, also
+    /// ones a glob filters out).
+    pub(crate) fn expired(&self) -> bool {
+        if self.cancel.load(Ordering::Relaxed) {
+            self.mark(Stop::Cancelled);
+            return true;
+        }
+        if let Some(b) = self.budget
+            && self.started.elapsed() >= b
+        {
+            self.mark(Stop::Deadline);
+            return true;
+        }
+        false
+    }
+
+    /// May a walk that has delivered `seen` entries deliver `n` more?
+    fn admit(&self, seen: u64, n: u64) -> bool {
+        if self.expired() {
+            return false;
+        }
+        if self.max_entries > 0 && seen + n > self.max_entries {
+            self.mark(Stop::Entries);
+            return false;
+        }
+        self.examined.fetch_add(n, Ordering::Relaxed);
+        true
+    }
+
+    /// Record that a text search stopped in `path` at a line too long to
+    /// buffer (`search::MAX_LINE_BYTES`).
+    pub(crate) fn long_line(&self, path: &Path) {
+        self.long_lines.fetch_add(1, Ordering::Relaxed);
+        let mut first = self.long_first.lock();
+        if first.as_deref().is_none_or(|f| path < f) {
+            *first = Some(path.to_path_buf());
+        }
+    }
+
+    /// One line for the end of a response, when files were not read to
+    /// their end. `show` renders a path for the reader.
+    pub fn long_note(&self, show: impl Fn(&Path) -> String) -> Option<String> {
+        let n = self.long_lines.load(Ordering::Relaxed) as usize;
+        let first = self.long_first.lock().clone()?;
+        let limit = crate::search::MAX_LINE_BYTES >> 20;
+        Some(if n == 1 {
+            format!(
+                "not fully searched: 1 file has a line longer than {limit} MiB and was read only up to it: {}",
+                show(&first)
+            )
+        } else {
+            format!(
+                "not fully searched: {} files have a line longer than {limit} MiB and were read only up to it, e.g. {}",
+                crate::util::thousands(n),
+                show(&first)
+            )
+        })
+    }
+
+    /// One line for the end of a response, when discovery was cut short.
+    pub fn note(&self) -> Option<String> {
+        let n = crate::util::thousands(self.examined() as usize);
+        Some(match self.stopped()? {
+            Stop::Entries => format!(
+                "incomplete: a walk stopped at its limit of {} files; results may be missing. Narrow with a path or glob.",
+                crate::util::thousands(self.max_entries as usize)
+            ),
+            Stop::Deadline => format!(
+                "incomplete: stopped after {} ms ({n} files examined); results may be missing. Narrow with a path or glob.",
+                self.budget.map(|b| b.as_millis()).unwrap_or(0)
+            ),
+            Stop::Cancelled => format!("incomplete: cancelled ({n} files examined)."),
+            Stop::Candidates => format!(
+                "incomplete: the name is in more files than a lookup examines (at most {} searched, {} parsed); definitions may be missing. Qualify it (path#Name) or narrow with a path.",
+                crate::util::thousands(MAX_MENTIONS),
+                crate::util::thousands(MAX_CANDIDATES)
+            ),
+        })
+    }
 }
 
 pub fn build_overrides(root: &Path, globs: &[String]) -> anyhow::Result<Option<Override>> {
@@ -76,6 +329,39 @@ pub fn build_overrides(root: &Path, globs: &[String]) -> anyhow::Result<Option<O
         }
     }
     Ok(Some(b.build()?))
+}
+
+/// Process-wide discovery counters. They make "this request did not walk"
+/// a testable property (`SPEEDREAD_STATS=1` prints them on exit).
+pub struct Stats {
+    /// Directory walks started.
+    pub walks: AtomicU64,
+    /// Entries delivered to callers.
+    pub entries: AtomicU64,
+    /// Requests whose discovery hit a limit.
+    pub stopped: AtomicU64,
+    /// Requests cancelled by the client.
+    pub cancelled: AtomicU64,
+}
+
+pub static STATS: Stats = Stats {
+    walks: AtomicU64::new(0),
+    entries: AtomicU64::new(0),
+    stopped: AtomicU64::new(0),
+    cancelled: AtomicU64::new(0),
+};
+
+impl Stats {
+    /// `walks=… entries=… stopped=… cancelled=…`
+    pub fn line(&self) -> String {
+        format!(
+            "walks={} entries={} stopped={} cancelled={}",
+            self.walks.load(Ordering::Relaxed),
+            self.entries.load(Ordering::Relaxed),
+            self.stopped.load(Ordering::Relaxed),
+            self.cancelled.load(Ordering::Relaxed)
+        )
+    }
 }
 
 /// Walk `root` in parallel; `f` is called for every file (and directory when
@@ -94,6 +380,23 @@ where
     F: Fn(Vec<Entry>) -> bool + Sync,
 {
     let overrides = build_overrides(root, &opts.globs)?;
+    STATS.walks.fetch_add(1, Ordering::Relaxed);
+    let limits = opts.limits.as_deref();
+    if limits.is_some_and(|l| l.expired()) {
+        return Ok(());
+    }
+    // Entries this walk has delivered (the entry limit is per walk).
+    let seen = AtomicU64::new(0);
+    let f = |batch: Vec<Entry>| {
+        let n = batch.len() as u64;
+        if let Some(l) = limits
+            && !l.admit(seen.fetch_add(n, Ordering::Relaxed), n)
+        {
+            return false;
+        }
+        STATS.entries.fetch_add(n, Ordering::Relaxed);
+        f(batch)
+    };
     #[cfg(target_os = "macos")]
     if !use_portable() {
         fast::walk(root, opts, overrides, &f);
@@ -111,12 +414,14 @@ fn use_portable() -> bool {
     *PORTABLE.get_or_init(|| std::env::var("SPEEDREAD_WALKER").is_ok_and(|v| v == "portable"))
 }
 
+#[cfg(target_os = "macos")]
 struct IgnoreNode {
     parent: Option<Arc<IgnoreNode>>,
     /// Lowest precedence first.
     matchers: Vec<Gitignore>,
 }
 
+#[cfg(target_os = "macos")]
 fn is_ignored(stack: &Option<Arc<IgnoreNode>>, path: &Path, is_dir: bool) -> bool {
     let mut cur = stack.as_ref();
     while let Some(node) = cur {
@@ -132,6 +437,7 @@ fn is_ignored(stack: &Option<Arc<IgnoreNode>>, path: &Path, is_dir: bool) -> boo
     false
 }
 
+#[cfg(target_os = "macos")]
 fn load_matcher(dir: &Path, files: &[&str]) -> Option<Gitignore> {
     let mut b = GitignoreBuilder::new(dir);
     let mut any = false;
@@ -151,6 +457,7 @@ fn load_matcher(dir: &Path, files: &[&str]) -> Option<Gitignore> {
 /// then every `.gitignore` from the enclosing repository root down to (but
 /// excluding) `root` itself.
 /// The global excludes file (`core.excludesFile`), the base of every stack.
+#[cfg(target_os = "macos")]
 fn global_node() -> Option<Arc<IgnoreNode>> {
     let (global, _) = Gitignore::global();
     (!global.is_empty()).then(|| {
@@ -164,6 +471,7 @@ fn global_node() -> Option<Arc<IgnoreNode>> {
 /// A repository root is an ignore boundary: rules from an enclosing
 /// repository (a dotfiles repo in `~`, a monorepo around a nested checkout)
 /// never apply inside it, exactly as in git.
+#[cfg(target_os = "macos")]
 fn initial_stack(root: &Path, global: Option<Arc<IgnoreNode>>) -> Option<Arc<IgnoreNode>> {
     let mut node = global;
     if root.join(".git").exists() {
@@ -545,10 +853,13 @@ mod portable {
         let stop = AtomicBool::new(false);
         let include_dirs = opts.include_dirs;
         let include_symlinks = opts.include_symlinks;
+        let limits = opts.limits.as_deref();
         b.build_parallel().run(|| {
             let stop = &stop;
             Box::new(move |res| {
-                if stop.load(Ordering::Relaxed) {
+                // Checked for every entry, so a glob that filters everything
+                // out cannot outrun the deadline or a cancellation.
+                if stop.load(Ordering::Relaxed) || limits.is_some_and(|l| l.expired()) {
                     return ignore::WalkState::Quit;
                 }
                 let Ok(e) = res else {
@@ -632,6 +943,24 @@ pub fn sort_by_path(v: &mut [Entry]) {
 mod tests {
     use super::*;
     use std::fs;
+
+    #[test]
+    fn running_out_of_time_outranks_a_count_limit() {
+        let l = Limits::unlimited();
+        l.mark(Stop::Candidates);
+        assert_eq!(l.stopped(), Some(Stop::Candidates));
+        l.mark(Stop::Entries);
+        assert_eq!(
+            l.stopped(),
+            Some(Stop::Candidates),
+            "first count limit wins"
+        );
+        l.mark(Stop::Deadline);
+        assert_eq!(l.stopped(), Some(Stop::Deadline));
+        l.mark(Stop::Candidates);
+        l.mark(Stop::Cancelled);
+        assert_eq!(l.stopped(), Some(Stop::Deadline), "a hard stop is final");
+    }
 
     #[test]
     fn walks_respecting_gitignore_and_globs() {

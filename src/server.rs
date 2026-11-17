@@ -20,6 +20,7 @@ use serde::{Deserialize, Deserializer};
 use crate::engine::Engine;
 use crate::read::{Mode, ReadRequest};
 use crate::search::{Case, Output, SearchRequest};
+use crate::walk::Limits;
 
 pub const INSTRUCTIONS: &str = "speedread: fast, token-budgeted code reading. Prefer its tools over shell cat/sed/head/grep/find/ls and over one-file-at-a-time reads. Batch every file, range and symbol you need into ONE `read` call (`path`, `path:A-B`, `path#Symbol`, `#Symbol`, globs); oversized files come back as skeletons you expand by symbol instead of being cut off. `search` hits show their enclosing function/class; `trace` follows callers, callees, references and implementations; `map` orients you in a repo. After editing a file, read `path@etag` (etag from the `==>` header) to see only what changed.";
 
@@ -129,6 +130,10 @@ pub struct ReadArgs {
     pub budget: Option<usize>,
     #[serde(default, deserialize_with = "lenient_bool")]
     pub line_numbers: Option<bool>,
+    /// Absolute directory that relative paths and the default scope resolve
+    /// against for this call.
+    #[serde(default, alias = "cwd")]
+    pub base_dir: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -156,6 +161,16 @@ pub struct SearchArgs {
     pub output: Option<Output>,
     #[serde(default, deserialize_with = "lenient_usize")]
     pub budget: Option<usize>,
+    /// `pattern` is code with metavariables, matched against syntax trees.
+    #[serde(default, deserialize_with = "lenient_bool", alias = "structural")]
+    pub ast: Option<bool>,
+    /// Grammar of an `ast` pattern.
+    #[serde(default, alias = "language")]
+    pub lang: Option<String>,
+    /// Absolute directory that relative paths and the default scope resolve
+    /// against for this call.
+    #[serde(default, alias = "cwd")]
+    pub base_dir: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -170,6 +185,10 @@ pub struct MapArgs {
     pub globs: Option<Vec<String>>,
     #[serde(default, deserialize_with = "lenient_usize")]
     pub budget: Option<usize>,
+    /// Absolute directory that relative paths and the default scope resolve
+    /// against for this call.
+    #[serde(default, alias = "cwd")]
+    pub base_dir: Option<String>,
 }
 
 fn lenient_direction<'de, D: Deserializer<'de>>(
@@ -200,6 +219,10 @@ pub struct TraceArgs {
     pub depth: Option<usize>,
     #[serde(default, deserialize_with = "lenient_usize")]
     pub budget: Option<usize>,
+    /// Absolute directory that relative paths and the default scope resolve
+    /// against for this call.
+    #[serde(default, alias = "cwd")]
+    pub base_dir: Option<String>,
 }
 
 impl JsonSchema for TraceArgs {
@@ -213,7 +236,8 @@ impl JsonSchema for TraceArgs {
                 "target": {"type": "string", "description": "`#Name`, `Type.method`, `path#Name` or `path:LINE`."},
                 "direction": {"type": "string", "enum": ["callers", "callees", "refs", "impls"], "description": "Default callers."},
                 "depth": {"type": "integer", "description": "Levels to follow, 1-3 (default 1)."},
-                "budget": {"type": "integer", "description": "Max response tokens (default 4000)."}
+                "budget": {"type": "integer", "description": "Max response tokens (default 4000)."},
+                "base_dir": {"type": "string", "description": "Absolute directory that relative paths and the default scope resolve against (default: workspace root)."}
             },
             "required": ["target"]
         })
@@ -231,7 +255,8 @@ impl JsonSchema for ReadArgs {
                 "targets": {"type": "array", "items": {"type": "string"}, "description": "Everything to read, in one call (syntax above)."},
                 "mode": {"type": "string", "enum": ["auto", "full", "skeleton", "outline"], "description": "auto (default): full if it fits, else skeleton, else outline. full: never collapse (paginates). skeleton|outline: structure only."},
                 "budget": {"type": "integer", "description": "Max response tokens (default 8000)."},
-                "line_numbers": {"type": "boolean", "description": "Default true."}
+                "line_numbers": {"type": "boolean", "description": "Default true."},
+                "base_dir": {"type": "string", "description": "Absolute directory that relative paths and the default scope resolve against (default: workspace root)."}
             },
             "required": ["targets"]
         })
@@ -253,8 +278,11 @@ impl JsonSchema for SearchArgs {
                 "word": {"type": "boolean", "description": "Whole words only."},
                 "case": {"type": "string", "enum": ["smart", "sensitive", "insensitive"], "description": "smart (default): insensitive unless the pattern has uppercase."},
                 "context": {"type": "integer", "description": "Context lines per hit (default 0)."},
-                "output": {"type": "string", "enum": ["matches", "symbols", "files"], "description": "matches (default) | symbols: full source of each enclosing symbol | files: paths + counts."},
-                "budget": {"type": "integer", "description": "Max response tokens (default 8000)."}
+                "output": {"type": "string", "enum": ["matches", "symbols", "files", "scopes"], "description": "matches (default) | symbols: full source of each enclosing symbol | files: paths + counts | scopes: matches plus the enclosing loop/condition/branch header lines."},
+                "budget": {"type": "integer", "description": "Max response tokens (default 8000)."},
+                "ast": {"type": "boolean", "description": "Pattern is code matched against syntax, not text: `$X` is any one node, `$$$ARGS` any number, e.g. `$X.unwrap()` or `router.$METHOD($$$ARGS)`. Skips comments and strings."},
+                "lang": {"type": "string", "description": "Language of an ast pattern, e.g. rust, ts (default: every language in scope that parses it)."},
+                "base_dir": {"type": "string", "description": "Absolute directory that relative paths and the default scope resolve against (default: workspace root)."}
             },
             "required": ["pattern"]
         })
@@ -273,7 +301,8 @@ impl JsonSchema for MapArgs {
                 "symbols": {"type": "boolean", "description": "Add each file's top-level definitions."},
                 "depth": {"type": "integer", "description": "Max depth to expand (default: as far as the budget allows)."},
                 "globs": {"type": "array", "items": {"type": "string"}, "description": "Include/exclude globs, e.g. [\"*.swift\"]."},
-                "budget": {"type": "integer", "description": "Max response tokens (default 3000)."}
+                "budget": {"type": "integer", "description": "Max response tokens (default 3000)."},
+                "base_dir": {"type": "string", "description": "Absolute directory that relative paths and the default scope resolve against (default: workspace root)."}
             }
         })
     }
@@ -297,12 +326,52 @@ pub struct Server {
     tool_router: ToolRouter<Server>,
 }
 
-async fn blocking<F>(f: F) -> Result<CallToolResult, McpError>
+fn text_result(text: String) -> CallToolResult {
+    CallToolResult::success(vec![ContentBlock::text(text)])
+}
+
+/// Stops a request's walks when the handler is dropped (the client went
+/// away) so abandoned work does not keep reading the disk.
+/// Run after every tool call, when set: the binary uses it to hand memory a
+/// request freed back to the system, so a long-lived server's resident size
+/// follows what it holds rather than the largest request it ever served.
+pub static AFTER_REQUEST: std::sync::OnceLock<fn()> = std::sync::OnceLock::new();
+
+struct CancelOnDrop(Arc<Limits>);
+
+impl Drop for CancelOnDrop {
+    fn drop(&mut self) {
+        self.0.cancel();
+    }
+}
+
+/// Run a request on the blocking pool. A `notifications/cancelled` for it
+/// stops its walks at their next entry; the partial answer is discarded by
+/// the client, the point is to stop the work.
+async fn blocking<F>(
+    ctx: RequestContext<RoleServer>,
+    limits: Arc<Limits>,
+    f: F,
+) -> Result<CallToolResult, McpError>
 where
     F: FnOnce() -> String + Send + 'static,
 {
-    let text = tokio::task::spawn_blocking(f)
-        .await
+    let _guard = CancelOnDrop(limits.clone());
+    let mut work = tokio::task::spawn_blocking(move || {
+        let text = f();
+        if let Some(release) = AFTER_REQUEST.get() {
+            release();
+        }
+        text
+    });
+    let joined = tokio::select! {
+        r = &mut work => r,
+        _ = ctx.ct.cancelled() => {
+            limits.cancel();
+            work.await
+        }
+    };
+    let text = joined
         .map_err(|e| McpError::internal_error(format!("speedread worker failed: {e}"), None))?;
     Ok(CallToolResult::success(vec![ContentBlock::text(text)]))
 }
@@ -359,17 +428,21 @@ impl Server {
     async fn read(
         &self,
         Parameters(args): Parameters<ReadArgs>,
-        peer: Peer<RoleServer>,
+        ctx: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        self.ensure_roots(&peer).await;
-        let engine = self.engine.clone();
+        self.ensure_roots(&ctx.peer).await;
+        let engine = match self.engine.scoped(args.base_dir.as_deref()) {
+            Ok(e) => e,
+            Err(msg) => return Ok(text_result(format!("{msg}\n"))),
+        };
         let req = ReadRequest {
             targets: args.targets,
             mode: args.mode.unwrap_or_default(),
             budget: args.budget,
             numbers: args.line_numbers.unwrap_or(true),
         };
-        blocking(move || crate::read::read(&engine, &req)).await
+        let limits = engine.limits.clone();
+        blocking(ctx, limits, move || crate::read::read(&engine, &req)).await
     }
 
     #[tool(
@@ -380,10 +453,13 @@ impl Server {
     async fn search(
         &self,
         Parameters(args): Parameters<SearchArgs>,
-        peer: Peer<RoleServer>,
+        ctx: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        self.ensure_roots(&peer).await;
-        let engine = self.engine.clone();
+        self.ensure_roots(&ctx.peer).await;
+        let engine = match self.engine.scoped(args.base_dir.as_deref()) {
+            Ok(e) => e,
+            Err(msg) => return Ok(text_result(format!("{msg}\n"))),
+        };
         let req = SearchRequest {
             pattern: args.pattern,
             paths: args.paths.unwrap_or_default(),
@@ -395,8 +471,11 @@ impl Server {
             output: args.output.unwrap_or_default(),
             budget: args.budget,
             max_matches: 5000,
+            ast: args.ast.unwrap_or(false),
+            lang: args.lang,
         };
-        blocking(move || crate::search::search(&engine, &req)).await
+        let limits = engine.limits.clone();
+        blocking(ctx, limits, move || crate::search::search(&engine, &req)).await
     }
 
     #[tool(
@@ -407,10 +486,13 @@ impl Server {
     async fn map(
         &self,
         Parameters(args): Parameters<MapArgs>,
-        peer: Peer<RoleServer>,
+        ctx: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        self.ensure_roots(&peer).await;
-        let engine = self.engine.clone();
+        self.ensure_roots(&ctx.peer).await;
+        let engine = match self.engine.scoped(args.base_dir.as_deref()) {
+            Ok(e) => e,
+            Err(msg) => return Ok(text_result(format!("{msg}\n"))),
+        };
         let req = crate::map::MapRequest {
             path: args.path,
             depth: args.depth,
@@ -418,7 +500,8 @@ impl Server {
             globs: args.globs.unwrap_or_default(),
             budget: args.budget,
         };
-        blocking(move || crate::map::map(&engine, &req)).await
+        let limits = engine.limits.clone();
+        blocking(ctx, limits, move || crate::map::map(&engine, &req)).await
     }
 
     #[tool(
@@ -429,17 +512,37 @@ impl Server {
     async fn trace(
         &self,
         Parameters(args): Parameters<TraceArgs>,
-        peer: Peer<RoleServer>,
+        ctx: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        self.ensure_roots(&peer).await;
-        let engine = self.engine.clone();
+        self.ensure_roots(&ctx.peer).await;
+        let engine = match self.engine.scoped(args.base_dir.as_deref()) {
+            Ok(e) => e,
+            Err(msg) => return Ok(text_result(format!("{msg}\n"))),
+        };
         let req = crate::trace::TraceRequest {
             target: args.target,
             direction: args.direction.unwrap_or_default(),
             depth: args.depth.unwrap_or(1),
             budget: args.budget,
         };
-        blocking(move || crate::trace::trace(&engine, &req)).await
+        let limits = engine.limits.clone();
+        blocking(ctx, limits, move || crate::trace::trace(&engine, &req)).await
+    }
+}
+
+/// Added to the instructions when the server starts with no workspace root
+/// (`--no-cwd-root` without `--root`): a path-less call has nothing to
+/// resolve against, and saying so up front saves the model a failed call.
+pub const ROOTLESS_NOTE: &str = " No project folder is configured here: give absolute paths (`/abs/dir/file.rs#Symbol`), or pass `base_dir` (an absolute directory) to scope a call to one project.";
+
+impl Server {
+    fn instructions(&self) -> String {
+        let ws = &self.engine.ws;
+        if ws.rootless() && ws.base().is_none() {
+            format!("{INSTRUCTIONS}{ROOTLESS_NOTE}")
+        } else {
+            INSTRUCTIONS.to_string()
+        }
     }
 }
 
@@ -448,7 +551,7 @@ impl ServerHandler for Server {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("speedread", env!("CARGO_PKG_VERSION")))
-            .with_instructions(INSTRUCTIONS)
+            .with_instructions(self.instructions())
     }
 
     async fn initialize(

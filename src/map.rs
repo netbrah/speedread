@@ -51,14 +51,24 @@ const MAX_DIRS: usize = 24;
 pub const DEFAULT_MAP_BUDGET: usize = 3000;
 
 pub fn map(e: &Engine, req: &MapRequest) -> String {
+    let mut out = map_request(e, req);
+    e.note_incomplete(&mut out);
+    out
+}
+
+fn map_request(e: &Engine, req: &MapRequest) -> String {
     let budget = e.budget(Some(
         req.budget
             .unwrap_or(DEFAULT_MAP_BUDGET.min(e.cfg.default_budget)),
     ));
     let path = match &req.path {
-        None => e.ws.primary().to_path_buf(),
+        None => match e.ws.require_base() {
+            Ok(p) => p,
+            Err(msg) => return format!("map: {msg}\n"),
+        },
         Some(p) => match e.ws.resolve(p) {
             Ok(p) => p,
+            Err(PathError::NoBase(msg)) => return format!("map {p}: {msg}\n"),
             Err(PathError::NotFound(_)) => {
                 let sugg = crate::workspace::suggest(p, &e.file_list(), 3);
                 return if sugg.is_empty() {
@@ -95,7 +105,7 @@ pub fn tree(
     let opts = WalkOpts {
         globs: globs.to_vec(),
         include_symlinks: true,
-        ..Default::default()
+        ..e.walk_opts()
     };
     let (files, truncated) = match walk::list_files(root, &opts, 400_000) {
         Ok(v) => v,
