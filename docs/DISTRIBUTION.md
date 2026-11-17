@@ -6,16 +6,17 @@ upstream's `speedread` and asks for no folder. Design, sources and the test log:
 [specs/07-distribution.md](specs/07-distribution.md). The plugin itself:
 [plugins/speedread-netbrah/](../plugins/speedread-netbrah/README.md).
 
-Until [PR #1](https://github.com/netbrah/speedread/pull/1) is merged, the plugin is not on
-the default branch, so the commands below name the release tag. After the merge the
-`#v…` / `@v…` suffix can be dropped.
+The plugin is on the default branch, so the commands below name only the repository and
+follow `main`. To stay on one release instead, pin its tag: `netbrah/speedread#v0.2.0-netbrah.2`
+for Claude, `netbrah/speedread@v0.2.0-netbrah.2#plugins/speedread-netbrah` for Grok. Either
+way the binary is the one the launcher pins, checked by SHA-256.
 
 ## Install
 
 ### Claude Code
 
 ```
-claude plugin marketplace add netbrah/speedread#v0.2.0-netbrah.2
+claude plugin marketplace add netbrah/speedread
 claude plugin install speedread-netbrah@netbrah-speedread
 ```
 
@@ -26,8 +27,8 @@ The same two commands work inside a session as `/plugin marketplace add …` and
 ### Claude Cowork
 
 Customize > Plugins > upload `speedread-netbrah-plugin.zip` from the
-[release](https://github.com/netbrah/speedread/releases/tag/v0.2.0-netbrah.2), or, once
-PR #1 is merged, Add marketplace > `netbrah/speedread`. The tools appear in Cowork sessions
+[release](https://github.com/netbrah/speedread/releases/tag/v0.2.0-netbrah.2), or
+Add marketplace > `netbrah/speedread`. The tools appear in Cowork sessions
 that run on your computer.
 
 ### Claude Desktop (chat)
@@ -55,11 +56,11 @@ Then restart Cursor or run "Developer: Reload Window". (A symlink to a folder ou
 ### Grok Build
 
 ```
-grok plugin install netbrah/speedread@v0.2.0-netbrah.2#plugins/speedread-netbrah --trust
+grok plugin install netbrah/speedread#plugins/speedread-netbrah --trust
 ```
 
 or, to browse it as a marketplace: `grok plugin marketplace add netbrah/speedread`, then
-`grok plugin install speedread-netbrah --trust` (after PR #1 is merged). `--trust` is what
+`grok plugin install speedread-netbrah --trust`. `--trust` is what
 lets Grok start the plugin's MCP server. `grok mcp doctor` should report the `speedread`
 server healthy with 4 tools.
 

@@ -4,7 +4,7 @@ Working specs for the `netbrah/speedread` fork. Goal: the most capability we can
 speedread while keeping its operating model — point it at files and it works — and without
 becoming a persistent code-graph service.
 
-Branch: `feat/bounded-context-upgrades`. Upstream: `brennengreen/speedread` @ `37abea2`.
+Merged to the fork's `main` in [PR #1](https://github.com/netbrah/speedread/pull/1). Upstream: `brennengreen/speedread` @ `37abea2`.
 
 ## Hard invariants (every spec inherits these)
 

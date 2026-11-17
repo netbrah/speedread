@@ -217,4 +217,3 @@ directory. Steps are in [docs/DISTRIBUTION.md](../DISTRIBUTION.md#curated-direct
 - Cursor Marketplace (form; manual review).
 - MCP Registry (`mcp-publisher login github`, or enable Actions on the fork).
 - Perplexity: personal or organization import only; the public catalog takes no submissions.
-- Merging PR #1, after which `netbrah/speedread` works without a ref on every host.

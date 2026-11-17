@@ -1,6 +1,6 @@
 # Fork additions
 
-This fork (`netbrah/speedread`, branch `feat/bounded-context-upgrades`) keeps speedread's
+This fork (`netbrah/speedread`) keeps speedread's
 shape — a stateless reader, no index, no daemon — and adds what a long-lived agent tool on
 large or messy trees needs. Specs, plan and measurements: [docs/specs/](specs/README.md).
 Nothing here adds a persistent index, a graph store or a background process.
