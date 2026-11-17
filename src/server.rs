@@ -530,12 +530,28 @@ impl Server {
     }
 }
 
+/// Added to the instructions when the server starts with no workspace root
+/// (`--no-cwd-root` without `--root`): a path-less call has nothing to
+/// resolve against, and saying so up front saves the model a failed call.
+pub const ROOTLESS_NOTE: &str = " No project folder is configured here: give absolute paths (`/abs/dir/file.rs#Symbol`), or pass `base_dir` (an absolute directory) to scope a call to one project.";
+
+impl Server {
+    fn instructions(&self) -> String {
+        let ws = &self.engine.ws;
+        if ws.rootless() && ws.base().is_none() {
+            format!("{INSTRUCTIONS}{ROOTLESS_NOTE}")
+        } else {
+            INSTRUCTIONS.to_string()
+        }
+    }
+}
+
 #[tool_handler]
 impl ServerHandler for Server {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("speedread", env!("CARGO_PKG_VERSION")))
-            .with_instructions(INSTRUCTIONS)
+            .with_instructions(self.instructions())
     }
 
     async fn initialize(

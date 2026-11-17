@@ -4,7 +4,7 @@
   "display_name": "speedread (netbrah fork)",
   "version": "0.0.0",
   "description": "Token-efficient code reading for AI coding agents: symbol-aware, budgeted, diff-aware reads.",
-  "long_description": "A fork of speedread by Brennen Green (https://github.com/brennengreen/speedread, MIT). speedread gives the agent the part of a codebase a question needs, within a token budget: the function around each search hit, a large file's skeleton, a symbol's callers and implementations, or only what changed since the last read. The fork adds request deadlines and cancellation, bounded memory for long-lived sessions, structural search and ancestor context, and says so when an answer is incomplete. Read-only by construction: paths must lie inside the folder you choose. Built for macOS on Apple Silicon.",
+  "long_description": "A fork of speedread by Brennen Green (https://github.com/brennengreen/speedread, MIT). speedread gives the agent the part of a codebase a question needs, within a token budget: the function around each search hit, a large file's skeleton, a symbol's callers and implementations, or only what changed since the last read. The fork adds request deadlines and cancellation, bounded memory for long-lived sessions, structural search and ancestor context, and says so when an answer is incomplete. Read-only. It asks for no folder: it reads the paths the model names, anywhere your account can read, and never searches a directory it was not pointed at. Built for macOS on Apple Silicon.",
   "author": {
     "name": "netbrah",
     "url": "https://github.com/netbrah"
@@ -23,8 +23,8 @@
       "command": "${__dirname}/server/speedread",
       "args": [
         "mcp",
-        "--root",
-        "${user_config.workspace}"
+        "--unrestricted",
+        "--no-cwd-root"
       ]
     }
   },
@@ -58,13 +58,5 @@
     "platforms": [
       "darwin"
     ]
-  },
-  "user_config": {
-    "workspace": {
-      "type": "directory",
-      "title": "Code folder",
-      "description": "The folder speedread may read: one project, or a parent folder such as ~/code. Reads outside it are refused.",
-      "required": true
-    }
   }
 }

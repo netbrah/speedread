@@ -298,6 +298,65 @@ fn client_roots_become_the_workspace() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// How the Claude Desktop bundle and the plugins start it: no folder is
+/// asked for, nothing is fenced, and the launch directory means nothing.
+#[test]
+fn a_server_with_no_folder_reads_by_absolute_path_and_says_so() {
+    let dir = std::env::temp_dir().join(format!("speedread-nofolder-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("launched/here")).unwrap();
+    std::fs::create_dir_all(dir.join("project/src")).unwrap();
+    std::fs::write(dir.join("launched/here/decoy.rs"), "fn needle() {}\n").unwrap();
+    std::fs::write(
+        dir.join("project/src/lib.rs"),
+        "pub fn needle() -> u32 {\n    7\n}\n",
+    )
+    .unwrap();
+    let project = dir.canonicalize().unwrap().join("project");
+    let init_params = json!({"protocolVersion": "2025-06-18", "capabilities": {},
+                             "clientInfo": {"name": "test", "version": "0"}});
+
+    let mut c = Client::spawn(
+        &["mcp", "--unrestricted", "--no-cwd-root"],
+        Some(&dir.join("launched/here")),
+    );
+    let init = c.rpc("initialize", init_params.clone());
+    let instructions = init["result"]["instructions"].as_str().unwrap();
+    assert!(
+        instructions.contains("No project folder is configured"),
+        "{instructions}"
+    );
+    c.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+
+    // Nothing to resolve against: it says what to pass instead of searching
+    // the directory it happened to be launched in.
+    let out = c.call("search", json!({"query": "needle"}));
+    assert!(out.contains("pass base_dir"), "{out}");
+    assert!(!out.contains("decoy.rs"), "{out}");
+
+    let out = c.call(
+        "search",
+        json!({"query": "needle", "base_dir": project.to_str().unwrap()}),
+    );
+    assert!(out.contains("src/lib.rs"), "{out}");
+    assert!(!out.contains("decoy.rs"), "{out}");
+
+    let target = format!("{}#needle", project.join("src/lib.rs").display());
+    let out = c.call("read", json!({"targets": [target]}));
+    assert!(out.contains("pub fn needle() -> u32"), "{out}");
+    drop(c);
+
+    // A server that has a folder is told nothing extra.
+    let mut c = Client::start(&project);
+    let init = c.rpc("initialize", init_params);
+    let instructions = init["result"]["instructions"].as_str().unwrap();
+    assert!(
+        !instructions.contains("No project folder is configured"),
+        "{instructions}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn luau_symbols_and_trace() {
     let dir = std::env::temp_dir().join(format!("speedread-luau-{}", std::process::id()));
