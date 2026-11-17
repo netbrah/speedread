@@ -126,15 +126,16 @@ the repository owner's account and that directory's review. None has been submit
 ## Cutting a release
 
 1. Bump `version` in `Cargo.toml` (`0.2.0-netbrah.N`), `cargo build`, and update the
-   version in the three plugin manifests and two marketplace files (`rg 0.2.0-netbrah`).
+   version in the three plugin manifests and two marketplace files, and the tag in the
+   links they and the plugin README carry (`rg --hidden 0.2.0-netbrah`).
 2. Write `docs/releases/v<version>.md` and a `CHANGELOG.md` entry. Commit.
 3. `scripts/fork-release.sh v<version>` — builds four targets and the bundle into
    `target/fork-release/`, and writes the version and checksums into the launcher.
 4. `scripts/test-launcher.sh`, then commit the launcher. Tag that commit.
-5. Zip the plugin folder's contents (`plugin.json` at the zip root) as
-   `speedread-netbrah-plugin.zip`.
+5. `scripts/plugin-zip.sh` — zips the plugin folder's contents (`plugin.json` at the zip
+   root) as `speedread-netbrah-plugin.zip` and adds its checksum to `sha256.txt`.
 6. `gh release create v<version> --repo netbrah/speedread --prerelease --target <sha> …`
-   with every file in `target/fork-release/` and the zip.
+   with every file in `target/fork-release/`.
 7. From a clean cache, run the launcher against the real release, and install from the
    tag in each host you can run (the commands above).
 

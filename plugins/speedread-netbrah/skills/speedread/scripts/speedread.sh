@@ -20,11 +20,11 @@
 set -eu
 
 # Pinned by scripts/fork-release.sh; do not edit by hand.
-VERSION="0.0.0"
-SHA_aarch64_apple_darwin=""
-SHA_x86_64_apple_darwin=""
-SHA_x86_64_unknown_linux_musl=""
-SHA_aarch64_unknown_linux_musl=""
+VERSION="0.2.0-netbrah.2"
+SHA_aarch64_apple_darwin="f110bce08ffc8ff96a6e9bdbf7be41e6028ee9511d6b4a65daaf3dec6ec32b90"
+SHA_x86_64_apple_darwin="f6de26667d1fb6cdc6ce4c3bec807880819f252fb271c452fc6fb1154852b969"
+SHA_x86_64_unknown_linux_musl="fea14c567e34e20337ebb06e90ebf91e15d1fe3b3b291426b4930030e04b7ea8"
+SHA_aarch64_unknown_linux_musl="1323bdb87d5e07fdacb6db61ded69c55e8ced9571bce4a8003007d98dca087e8"
 # End of pin.
 
 say() { printf 'speedread launcher: %s\n' "$*" >&2; }

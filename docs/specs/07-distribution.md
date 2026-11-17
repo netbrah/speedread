@@ -33,6 +33,12 @@ absolute paths or `base_dir` (`ROOTLESS_NOTE` in `src/server.rs`, tested in
 `tests/mcp.rs::a_server_with_no_folder_reads_by_absolute_path_and_says_so`). A server that
 has a root is told nothing new, so existing configurations behave as before.
 
+The sentence is decided at startup, before the client has said whether it has roots. A
+client that later supplies MCP roots therefore still sees it;
+relative paths then resolve against those roots, and the advice to use absolute paths
+stays correct. `CLAUDE_PROJECT_DIR`, when a host sets it, is known at startup: it becomes
+the base directory and the sentence is not added.
+
 Cost, stated plainly: the folder fence is gone. What remains is the host's own tool-approval
 prompt and the fact that speedread is read-only. Anyone who wants the fence back runs
 `speedread mcp --root <DIR>` from a hand-written MCP entry; the binary is the same.
@@ -138,7 +144,19 @@ build and the pin; the release notes say so.
 
 Recorded when `0.2.0-netbrah.2` was cut. "Not tested" means exactly that.
 
-TESTLOG
+Before publication, on Linux x86_64 (2 vCPU sandbox):
+
+- **Source.** `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` (Linux, and again for `aarch64-apple-darwin`), and all 98 tests pass, including one new test that starts the server the way every package now does and checks that it reads by absolute path, refuses a path-less call, and says so in its instructions.
+- **Linux binaries.** Both are static (no interpreter, no shared libraries). The x86_64 binary run natively and the arm64 binary run under QEMU gave byte-identical answers to the tested build on 15 queries over the ripgrep source (`map`, `search`, AST search, scopes, `trace` callers/implementations/callees, `read` by path, symbol, line range and heading, JSON output). Each, started as an MCP server with the shipped arguments, refused a path-less `map` and answered a `trace` given `base_dir`. Timing on the zod source was within 5% of the tested build.
+- **macOS binaries.** Inspected, not run: correct CPU type, minimum macOS 11.0, only system libraries linked, arm64 ad-hoc signed. The binary inside the `.mcpb` is byte-identical to the one in the arm64 tarball; the bundle's manifest has no `user_config` and starts `mcp --unrestricted --no-cwd-root`.
+- **Launcher.** 11 checks (`scripts/test-launcher.sh`) under `sh`, `dash` and `bash` against a local mirror: download and cache, second run without the network, a checksum mismatch installs nothing, a failed download names the URL, `SPEEDREAD_BIN`, `SPEEDREAD_NO_DOWNLOAD`, the data-directory fallbacks, and a `speedread` already on `PATH` used only if its version matches. `shellcheck` clean.
+- **Manifests.** `claude plugin validate` (plugin, marketplace and the unpacked zip), `grok plugin validate`, Cursor's `validate-template.mjs`, and the Agent Plugins 1.0.0 JSON schemas all pass.
+- **Claude Code 2.1.197** (installed from a local checkout): marketplace add, plugin install, `claude mcp list` shows the server connected.
+- **Grok Build 1.0.77** (installed from a local checkout): install with `--trust`, `grok mcp doctor` reports the server started, handshake completed, 4 tools found.
+
+Checks against the published files (a real download through the launcher, and installs from this tag in Claude Code and Grok Build) can only run after publication; their results are added to the release page and to this file on the branch.
+
+Not tested: anything on macOS; Claude Desktop and Claude Cowork (no way to run either here); Cursor at runtime (its command line needs a login to manage plugins, so only the manifest validator ran); Perplexity's import dialog.
 
 ## Sources
 
