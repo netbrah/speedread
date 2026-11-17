@@ -46,6 +46,7 @@ A feature merges into the fork's default behavior only when, against the previou
 | 04 | [Structural search](04-structural-search.md) | shipped, opt-in | ast-grep |
 | 05 | [Relationship kinds and evidence](05-relationship-kinds.md) | shipped | codebase-memory-mcp, CodeGraph |
 | 06 | [Backlog: entity correspondence, import-aware lookup, Git input layer](06-backlog.md) | backlog | sem, weave, gix |
+| 07 | [Distribution: one plugin for every agent host](07-distribution.md) | shipped | host plugin formats (Claude, Cursor, Grok Build, Perplexity, Agent Plugins) |
 | — | [Implementation plan](plan.md) | living | — |
 | — | [Evaluation log](eval.md) | living | — |
 

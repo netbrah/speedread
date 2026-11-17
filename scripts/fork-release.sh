@@ -7,6 +7,11 @@
 #   speedread-<target>.tar.gz   one per target below; the binary alone
 #   speedread-aarch64-apple-darwin.mcpb   the Claude Desktop bundle
 #   sha256.txt                  checksums of all of the above
+# and pins the plugin launcher (plugins/speedread-netbrah/skills/speedread/
+# scripts/speedread.sh) to this version and these checksums. Commit that
+# change and tag THAT commit: the launcher downloads the assets by tag, so a
+# plugin installed at the tag must already know their checksums. The binaries
+# are therefore built from the tag's parent, which differs only in the pin.
 #
 # The release job in .github/workflows/ci.yml builds the macOS arm64 assets
 # natively when Actions are enabled. This script cross-compiles instead
@@ -58,3 +63,22 @@ npx -y @anthropic-ai/mcpb@2.1.2 validate "$bundle/manifest.json"
 npx -y @anthropic-ai/mcpb@2.1.2 pack "$bundle" "$out/speedread-aarch64-apple-darwin.mcpb"
 
 (cd "$out" && sha256sum speedread-*.tar.gz speedread-*.mcpb > sha256.txt && cat sha256.txt)
+
+# Pin the plugin launcher to exactly these files.
+python3 - "$version" "$out/sha256.txt" plugins/speedread-netbrah/skills/speedread/scripts/speedread.sh <<'PY'
+import re, sys
+version, sums, launcher = sys.argv[1:]
+text = open(launcher).read()
+text, n = re.subn(r'^VERSION=".*"$', f'VERSION="{version}"', text, count=1, flags=re.M)
+assert n == 1, "VERSION line not found"
+for line in open(sums):
+    digest, name = line.split()
+    m = re.fullmatch(r"speedread-(.+)\.tar\.gz", name)
+    if not m:
+        continue
+    var = "SHA_" + m.group(1).replace("-", "_")
+    text, n = re.subn(rf'^{var}=".*"$', f'{var}="{digest}"', text, count=1, flags=re.M)
+    assert n == 1, f"{var} line not found"
+open(launcher, "w").write(text)
+PY
+git diff --stat -- plugins/speedread-netbrah/skills/speedread/scripts/speedread.sh

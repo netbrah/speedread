@@ -2,6 +2,14 @@
 
 Notable changes by release. Before 1.0, minor versions may change tool arguments and output formats.
 
+## Fork (`netbrah/speedread`, on upstream `37abea2`) — 0.2.0-netbrah.2
+
+Pre-release notes: [docs/releases/v0.2.0-netbrah.2.md](docs/releases/v0.2.0-netbrah.2.md). Install and publishing guide: [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).
+
+- No folder to configure. The Claude Desktop bundle no longer asks for one; it and every plugin start `speedread mcp --unrestricted --no-cwd-root`, which reads by absolute path or `base_dir` anywhere the account can read and refuses a path-less call rather than searching the launch directory. Started that way, the server instructions say how to address it.
+- One plugin, `plugins/speedread-netbrah/`, for Claude Code, Claude Cowork, Cursor, Grok Build and Perplexity Computer, with marketplace catalogs at the repository root. The plugin is text; its launcher downloads the release binary for the machine once and checks its SHA-256.
+- Binaries for macOS (arm64, x86_64) and Linux (x86_64, arm64; static musl). `scripts/fork-release.sh` builds all of them; `scripts/test-launcher.sh` tests the launcher.
+
 ## Fork (`netbrah/speedread`, on upstream `37abea2`) — 0.2.0-netbrah.1
 
 Not part of an upstream release. Pre-release notes: [docs/releases/v0.2.0-netbrah.1.md](docs/releases/v0.2.0-netbrah.1.md). Details and measurements: [docs/FORK.md](docs/FORK.md), [docs/specs/](docs/specs/README.md).

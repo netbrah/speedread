@@ -76,27 +76,32 @@ speedread mcp --no-cwd-root            # roots come from the client, or each cal
 speedread --base-dir /repo/services/api search 'TODO'   # relative scope without cd
 ```
 
-## Install the fork in Claude Desktop
+## Install the fork
 
-Download `speedread-aarch64-apple-darwin.mcpb` from the fork's
-[releases](https://github.com/netbrah/speedread/releases) and open it. Claude Desktop asks
-which folder speedread may read. The bundle installs as `speedread (netbrah fork)`, beside
-upstream's bundle rather than over it; both offer tools named `map`, `read`, `search` and
-`trace`, so enable one at a time. Apple Silicon only; the binary is not notarized.
+One plugin, `speedread-netbrah`, covers Claude Code, Claude Cowork, Cursor, Grok Build and
+Perplexity Computer; an `.mcpb` bundle covers Claude Desktop chat. Commands for each are in
+[DISTRIBUTION.md](DISTRIBUTION.md). None of them asks for a folder: the server is started
+with `--unrestricted --no-cwd-root`, reads by absolute path or `base_dir`, and refuses a
+path-less call rather than searching wherever it was launched. It installs beside
+upstream's `speedread` rather than over it; both offer tools named `map`, `read`, `search`
+and `trace`, so enable one at a time.
 
 Fork releases are versioned `<upstream minor + 1>.0-netbrah.N` (`speedread --version`, the
-MCP server info and the bundle agree). They are not listed in the MCP Registry, which holds
-upstream's `io.github.brennengreen/speedread`.
+MCP server info, the bundle and the plugin agree) and are GitHub pre-releases. They are not
+listed in the MCP Registry, which holds upstream's `io.github.brennengreen/speedread`.
 
-With Actions enabled on the fork, pushing a `v*` tag builds and publishes the bundle on a
-macOS runner (`.github/workflows/ci.yml`). Without them, `scripts/fork-mcpb.sh TAG`
-cross-compiles the same bundle from Linux; a bundle built that way has not been run and its
-release notes must say so.
+`scripts/fork-release.sh TAG` cross-compiles every asset from Linux (macOS arm64 and
+x86_64, static Linux x86_64 and arm64, the bundle, checksums) and pins the plugin launcher
+to them. Binaries built that way for a platform the build machine cannot run have not been
+executed, and the release notes must say which. With Actions enabled on the fork, pushing a
+`v*` tag also builds the macOS arm64 assets natively (`.github/workflows/ci.yml`).
 
 ## Not changed
 
 - The MCP tool descriptions and server instructions (model-facing text) are untouched apart
-  from the new argument descriptions. The bundled skill is untouched. Whether models pick
+  from the new argument descriptions. Upstream's skill (`skills/speedread/`) is untouched; the plugin carries its own copy with
+  the fork's arguments. A server started with no root appends one sentence to its
+  instructions (spec [07](specs/07-distribution.md)). Whether models pick
   the new arguments unprompted is not measured; upstream's agent evals need API keys.
 - The macOS fast walker compiles and lints clean for `aarch64-apple-darwin` with the limits
   (cross-compiled), but has not been run: development and every measurement were on Linux.
