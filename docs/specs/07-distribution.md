@@ -154,7 +154,11 @@ Before publication, on Linux x86_64 (2 vCPU sandbox):
 - **Claude Code 2.1.197** (installed from a local checkout): marketplace add, plugin install, `claude mcp list` shows the server connected.
 - **Grok Build 1.0.77** (installed from a local checkout): install with `--trust`, `grok mcp doctor` reports the server started, handshake completed, 4 tools found.
 
-Checks against the published files (a real download through the launcher, and installs from this tag in Claude Code and Grok Build) can only run after publication; their results are added to the release page and to this file on the branch.
+After publication, against the files on this release page (downloaded without credentials; all seven match `sha256.txt`):
+
+- **Launcher, real download.** Unpacked from `speedread-netbrah-plugin.zip` with no executable bit and an empty cache, it fetched the x86_64 Linux binary, verified it, and served MCP `initialize`, a refused path-less `map`, and `map`, `read` and `search` by absolute path and `base_dir`. The same launcher ran the command line (`--unrestricted search …`, `--root DIR search …`), which is how the skill works in Perplexity's sandbox.
+- **Claude Code 2.1.197, from GitHub.** `claude plugin marketplace add netbrah/speedread#v0.2.0-netbrah.2`, `claude plugin install speedread-netbrah@netbrah-speedread`, then `claude mcp list`: connected, binary cached under `~/.claude/plugins/data/`.
+- **Grok Build 1.0.77, from GitHub.** `grok plugin install netbrah/speedread@v0.2.0-netbrah.2#plugins/speedread-netbrah --trust`, then `grok mcp doctor`: server started, handshake completed, 4 tools found, binary cached under `~/.grok/plugin-data/`.
 
 Not tested: anything on macOS; Claude Desktop and Claude Cowork (no way to run either here); Cursor at runtime (its command line needs a login to manage plugins, so only the manifest validator ran); Perplexity's import dialog.
 
