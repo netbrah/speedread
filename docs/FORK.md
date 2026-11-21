@@ -7,6 +7,7 @@ Nothing here adds a persistent index, a graph store or a background process.
 
 | Addition | How to use it | Default? | Spec |
 |---|---|---|---|
+| An unfenced server | nothing; `speedread mcp` reads any path a call names. `--restricted` confines it to its roots | on | [08](specs/08-unfenced-server.md) |
 | Working-directory independence | `--base-dir <DIR>`, `--no-cwd-root` (`SPEEDREAD_NO_CWD_ROOT=1`); MCP `base_dir` on every tool | on; flags optional | [01](specs/01-path-and-scope-contract.md) |
 | Bounded discovery | `--max-walk <FILES>`, `--deadline-ms <MS>` (`SPEEDREAD_MAX_WALK`, `SPEEDREAD_DEADLINE_MS`); MCP cancellation stops walks | on (1,000,000 files, 10 s) | [02](specs/02-bounded-discovery.md) |
 | Bounded memory | `--cache-mb <MIB>` (`SPEEDREAD_CACHE_MB`) | on (256 MiB) | [02](specs/02-bounded-discovery.md) |
@@ -24,6 +25,10 @@ Nothing here adds a persistent index, a graph store or a background process.
   file and says `not fully searched: …`. One 200 MiB single-line bundle used to cost 1 GiB.
 - `trace` reads the tree once per level instead of three times, and a trace that reaches
   its 20,000-line limit keeps the call sites nearest the definition, the same on every run.
+- The MCP server no longer answers `Outside the workspace`. A server registered with
+  `--root DIR`, or launched inside a project, used to refuse paths outside it; now the
+  folder only says where relative paths and path-less calls resolve. Add `--restricted` to
+  keep the old limit. Commands (`speedread read …`) are limited as before.
 - Reading a named file never walks the tree, however many untracked files surround it.
 - A server started without a root no longer adopts whatever directory it was launched from
   when `--no-cwd-root` is set; it asks for absolute paths or a `base_dir`.
@@ -81,7 +86,8 @@ speedread --base-dir /repo/services/api search 'TODO'   # relative scope without
 One plugin, `speedread-netbrah`, covers Claude Code, Claude Cowork, Cursor, Grok Build and
 Perplexity Computer; an `.mcpb` bundle covers Claude Desktop chat. Commands for each are in
 [DISTRIBUTION.md](DISTRIBUTION.md). None of them asks for a folder: the server is started
-with `--unrestricted --no-cwd-root`, reads by absolute path or `base_dir`, and refuses a
+with `--no-cwd-root` (and `--unrestricted`, which a server no longer needs), reads by
+absolute path or `base_dir`, and refuses a
 path-less call rather than searching wherever it was launched. It installs beside
 upstream's `speedread` rather than over it; both offer tools named `map`, `read`, `search`
 and `trace`, so enable one at a time.

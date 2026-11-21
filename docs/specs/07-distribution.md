@@ -23,6 +23,10 @@ Two questions decide the design:
 
 ### D1. One launch configuration everywhere: `mcp --unrestricted --no-cwd-root`
 
+Since `0.2.0-netbrah.3` a server is unfenced whether or not `--unrestricted` is passed
+([08](08-unfenced-server.md)). The packages keep the flag: it costs nothing and keeps them
+working with an older binary named by `SPEEDREAD_BIN`.
+
 | Flag | Effect | Why |
 |---|---|---|
 | `--unrestricted` | any path the account can read is allowed | no host can be relied on to supply a folder: Cowork does not prompt for plugin configuration, Cursor and Grok have no equivalent, and a server started by a desktop app has no meaningful working directory |
@@ -161,6 +165,16 @@ After publication, against the files on this release page (downloaded without cr
 - **Grok Build 1.0.77, from GitHub.** `grok plugin install netbrah/speedread@v0.2.0-netbrah.2#plugins/speedread-netbrah --trust`, then `grok mcp doctor`: server started, handshake completed, 4 tools found, binary cached under `~/.grok/plugin-data/`.
 
 Not tested: anything on macOS; Claude Desktop and Claude Cowork (no way to run either here); Cursor at runtime (its command line needs a login to manage plugins, so only the manifest validator ran); Perplexity's import dialog.
+
+### 0.2.0-netbrah.3
+
+What ran before publication is in the [release notes](../releases/v0.2.0-netbrah.3.md). After publication, against the files on the release page (downloaded without credentials; all seven match `sha256.txt`):
+
+- **Launcher, real download.** Unpacked from `speedread-netbrah-plugin.zip` with no executable bit and an empty cache, it fetched the x86_64 Linux binary, verified it, and as an MCP server refused a path-less `map` and answered `map`, `read`, `search` (by `base_dir`) and `trace` (by `base_dir` and by absolute path) on two repositories. From the cache it then ran the command line inside one repository against the other: `--unrestricted search` answered; `map` without the flag was refused with the new message.
+- **Claude Code 2.1.197, from GitHub, in an empty home directory.** `claude plugin marketplace add netbrah/speedread#v0.2.0-netbrah.3`, `claude plugin install speedread-netbrah@netbrah-speedread`, then `claude mcp list`: connected; the cached binary reports `0.2.0-netbrah.3`.
+- **Grok Build 1.0.77, from GitHub, in an empty home directory.** `grok plugin install netbrah/speedread@v0.2.0-netbrah.3#plugins/speedread-netbrah --trust`, then `grok mcp doctor`: server started, handshake completed, 4 tools found, binary cached under `~/.grok/plugin-data/`.
+
+Not tested, as before: anything on macOS; Claude Desktop and Claude Cowork; Cursor at runtime; Perplexity's import dialog.
 
 ## Sources
 

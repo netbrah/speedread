@@ -2,6 +2,15 @@
 
 Notable changes by release. Before 1.0, minor versions may change tool arguments and output formats.
 
+## Fork (`netbrah/speedread`, on upstream `37abea2`) — 0.2.0-netbrah.3
+
+Pre-release notes: [docs/releases/v0.2.0-netbrah.3.md](docs/releases/v0.2.0-netbrah.3.md). Spec: [docs/specs/08-unfenced-server.md](docs/specs/08-unfenced-server.md).
+
+- `speedread mcp` reads any path a call names, however it is started. Its roots (`--root`, the launch directory, `CLAUDE_PROJECT_DIR`, client roots) say where relative paths and path-less calls resolve; they no longer limit what may be read. **A server registered with `--root DIR` is no longer confined to `DIR`**: add `--restricted` to keep that. `--unrestricted` is still accepted. Commands (`speedread read|search|trace|map|symbols`) are limited to their roots as before.
+- Every `outside the workspace` refusal says how to lift it. `map`, `search`, `trace` and the JSON commands used to give only the path.
+- Fixed (introduced in 0.2.0-netbrah.2): a fenced server with no folder told the model to use absolute paths, then refused them. The no-folder sentence is now added only when the server is unfenced.
+- The plugin skill runs the command line with `--unrestricted`, so the route used where a host starts no local server (Perplexity Computer) reads by absolute path too.
+
 ## Fork (`netbrah/speedread`, on upstream `37abea2`) — 0.2.0-netbrah.2
 
 Pre-release notes: [docs/releases/v0.2.0-netbrah.2.md](docs/releases/v0.2.0-netbrah.2.md). Install and publishing guide: [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).

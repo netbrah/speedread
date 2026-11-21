@@ -40,6 +40,9 @@ pub struct Workspace {
     base: Option<PathBuf>,
 }
 
+/// How to lift a refusal, appended to every "outside the workspace" answer.
+pub const FENCE_HINT: &str = "to allow it add --root <dir>, or lift the limit: --unrestricted for commands, remove --restricted from `speedread mcp`";
+
 impl Workspace {
     pub fn new(
         roots: Vec<PathBuf>,
@@ -133,6 +136,11 @@ impl Workspace {
         }
     }
 
+    /// No fence: any path the account can read is allowed.
+    pub fn unrestricted(&self) -> bool {
+        self.unrestricted
+    }
+
     /// The base, or the reason there is none.
     pub fn require_base(&self) -> Result<PathBuf, String> {
         self.base().ok_or_else(|| self.no_base())
@@ -143,9 +151,9 @@ impl Workspace {
         if self.unrestricted {
             "no base directory: use an absolute path or pass base_dir (CLI: --base-dir)".into()
         } else if self.no_cwd {
-            "no workspace root (--no-cwd-root without --root): pass --root <project dir>, or --unrestricted with absolute paths or base_dir".into()
+            "no workspace root (--no-cwd-root without --root): pass --root <project dir>, or lift the limit (--unrestricted for commands, remove --restricted from `speedread mcp`) and use absolute paths or base_dir".into()
         } else {
-            "no workspace root (speedread was started in / without --root); add `--root <project dir>` to its MCP config".into()
+            "no workspace root (speedread was started in / without --root): pass --root <project dir>, or lift the limit (--unrestricted for commands, remove --restricted from `speedread mcp`) and use absolute paths or base_dir".into()
         }
     }
 
@@ -166,7 +174,7 @@ impl Workspace {
         }
         if !self.allowed(&canon) {
             return Err(format!(
-                "base_dir is outside the workspace: {} (start speedread with --root <dir> or --unrestricted)",
+                "base_dir is outside the workspace: {} ({FENCE_HINT})",
                 canon.display()
             ));
         }

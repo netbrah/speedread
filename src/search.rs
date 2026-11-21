@@ -642,7 +642,11 @@ pub(crate) fn resolve_roots(e: &Engine, paths: &[String]) -> Result<Vec<PathBuf>
                 return Err(t);
             }
             Err(PathError::Outside(r)) => {
-                return Err(format!("Path outside the workspace: {}\n", r.display()));
+                return Err(format!(
+                    "Path outside the workspace: {} ({})\n",
+                    r.display(),
+                    crate::workspace::FENCE_HINT
+                ));
             }
             Err(PathError::NoBase(msg)) => return Err(format!("search {p}: {msg}\n")),
         }

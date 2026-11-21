@@ -869,8 +869,9 @@ fn resolve_or_suggest(e: &Engine, raw: &str) -> Result<(PathBuf, Option<String>)
             Err(format!("==> {raw}: {}\n", e.ws.no_base()))
         }
         Err(PathError::Outside(p)) => Err(format!(
-            "==> {raw}: outside the workspace ({}); start speedread with --root <dir> (or --unrestricted)\n",
-            p.display()
+            "==> {raw}: outside the workspace ({}); {}\n",
+            p.display(),
+            crate::workspace::FENCE_HINT
         )),
         Err(PathError::NotFound(p)) => {
             let files = e.file_list();
@@ -940,7 +941,10 @@ fn expand_glob(e: &Engine, pat: &str) -> Result<(Vec<PathBuf>, usize), String> {
         .canonicalize()
         .map_err(|_| format!("==> {pat}: no such directory {}\n", base.display()))?;
     if !e.ws.allowed(&base) {
-        return Err(format!("==> {pat}: outside the workspace\n"));
+        return Err(format!(
+            "==> {pat}: outside the workspace; {}\n",
+            crate::workspace::FENCE_HINT
+        ));
     }
     let glob = format!("/{}", rest.join("/"));
     let opts = WalkOpts {
