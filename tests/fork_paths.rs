@@ -503,11 +503,20 @@ fn mcp_base_dir_on_every_tool() {
     assert!(out.contains("base_dir"), "{out}");
 }
 
+/// A server's root is where path-less calls resolve. It fences `base_dir`
+/// only under `--restricted`.
 #[test]
-fn mcp_default_behaviour_is_unchanged_without_base_dir() {
+fn mcp_restricted_keeps_the_fence_for_base_dir() {
     let fx = Fx::new("mcpdefault");
     let a = fx.p("a");
     let mut c = Client::spawn(&fx, "elsewhere", &["--root", &a, "mcp"]);
+    let out = c.call(
+        "search",
+        json!({"pattern": "target", "base_dir": fx.p("b")}),
+    );
+    assert!(out.contains("b_caller"), "{out}");
+    drop(c);
+    let mut c = Client::spawn(&fx, "elsewhere", &["--restricted", "--root", &a, "mcp"]);
     let out = c.call("search", json!({"pattern": "a_caller"}));
     assert!(out.contains("==> src/lib.rs @"), "{out}");
     // A base inside the root narrows the default scope.
@@ -520,7 +529,9 @@ fn mcp_default_behaviour_is_unchanged_without_base_dir() {
         json!({"pattern": "target", "base_dir": fx.p("b")}),
     );
     assert!(
-        out.contains("outside the workspace") && !out.contains("b_caller"),
+        out.contains("outside the workspace")
+            && out.contains("--restricted")
+            && !out.contains("b_caller"),
         "{out}"
     );
 }

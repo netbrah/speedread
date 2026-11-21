@@ -78,7 +78,11 @@ fn map_request(e: &Engine, req: &MapRequest) -> String {
                 };
             }
             Err(PathError::Outside(p)) => {
-                return format!("Outside the workspace: {}\n", p.display());
+                return format!(
+                    "Outside the workspace: {} ({})\n",
+                    p.display(),
+                    crate::workspace::FENCE_HINT
+                );
             }
         },
     };

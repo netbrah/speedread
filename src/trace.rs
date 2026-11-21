@@ -237,7 +237,11 @@ fn load_outline(e: &Engine, p: &str) -> Result<(Arc<Source>, Arc<Outline>), Stri
             });
         }
         Err(PathError::Outside(r)) => {
-            return Err(format!("Outside the workspace: {}", r.display()));
+            return Err(format!(
+                "Outside the workspace: {} ({})",
+                r.display(),
+                crate::workspace::FENCE_HINT
+            ));
         }
         Err(PathError::NoBase(msg)) => return Err(format!("{p}: {msg}")),
     };
