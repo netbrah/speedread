@@ -46,4 +46,4 @@ Use the speedread MCP tools to read, search and navigate code; use built-in tool
 
 ## 4. Verify
 
-Call the `map` tool on the workspace: it returns a budgeted tree of the repository. Reads outside the workspace roots are refused unless the server was started with `--unrestricted`.
+Call the `map` tool on the workspace: it returns a budgeted tree of the repository. In this fork the server reads any path a call names; started with `--restricted`, it refuses reads outside the workspace roots.

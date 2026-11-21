@@ -13,17 +13,18 @@ diff instead of a re-read. Four tools (MCP) or the same four commands (CLI).
 **Which one you have.** If the tools `read`, `search`, `trace` and `map` from the
 `speedread` server are available, call them. If they are not (the host does not
 start local servers), run the launcher that ships beside this file:
-`sh scripts/speedread.sh <command> ...` (path relative to this skill's folder). It
-fetches the pinned binary on first use, checks its SHA-256, and takes the same
-arguments as the tools.
+`sh scripts/speedread.sh --unrestricted <command> ...` (path relative to this
+skill's folder). It fetches the pinned binary on first use, checks its SHA-256,
+and takes the same arguments as the tools.
 
 **Where it reads.** This plugin configures no project folder. Name files by
 absolute path (`/abs/repo/src/app.ts#Server.start`), or pass `base_dir` (an
 absolute directory) so relative paths and path-less `search`/`map` resolve
 there. A path-less call without `base_dir` is refused rather than searching
-wherever the server happened to start. From the CLI, relative paths resolve
-against the current directory; add `--root DIR` or `--unrestricted` to read
-outside it.
+wherever the server happened to start. The tools read any path you name. The CLI
+resolves relative paths against the current directory and, unlike the tools,
+refuses paths outside it (`Outside the workspace`) unless you pass
+`--unrestricted` before the command, as in the launcher line above.
 
 ## The loop
 
@@ -70,8 +71,8 @@ Rules of thumb:
 ## Scripts and code execution
 
 The CLI mirrors the tools and adds JSON Lines for filtering in code instead of
-in context. `speedread` below is `sh scripts/speedread.sh` when the binary is not
-on PATH:
+in context. `speedread` below is `sh scripts/speedread.sh --unrestricted` when the binary is
+not on PATH:
 
 ```bash
 speedread read 'src/app.ts#Server.start' src/util.ts:40-80

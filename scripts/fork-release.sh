@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build every release asset of the fork from one machine (Linux or macOS).
 #
-#   scripts/fork-release.sh v0.2.0-netbrah.2 [OUT_DIR]
+#   scripts/fork-release.sh v0.2.0-netbrah.3 [OUT_DIR]
 #
 # Writes, into OUT_DIR (default target/fork-release):
 #   speedread-<target>.tar.gz   one per target below; the binary alone

@@ -91,3 +91,8 @@ the first assertion (`map` refused) before the change:
 `tests/fork_paths.rs::mcp_restricted_keeps_the_fence_for_base_dir` (was
 `mcp_default_behaviour_is_unchanged_without_base_dir`) keeps the old refusal under
 `--restricted`.
+
+Each assertion was checked by breaking the code it guards and seeing a test fail. Six
+changes, six failures: the server left fenced by default; `--restricted` ignored; commands
+unfenced as well; the no-folder sentence kept under `--restricted`; the `map` refusal
+without its remedy; a server started with no subcommand not recognised as one.

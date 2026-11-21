@@ -334,7 +334,7 @@ Use the speedread MCP tools to read, search and navigate code; use built-in tool
 
 ## Configuration
 
-speedread serves MCP over stdio (`speedread mcp`). Workspace roots come from `--root <dir>` (repeatable), then `$CLAUDE_PROJECT_DIR`, then the client's MCP roots (VS Code/Cursor folders, Claude Code `--add-dir`), then the current directory. Usually no flags are needed.
+speedread serves MCP over stdio (`speedread mcp`). Workspace roots come from `--root <dir>` (repeatable), then `$CLAUDE_PROJECT_DIR`, then the client's MCP roots (VS Code/Cursor folders, Claude Code `--add-dir`), then the current directory. Usually no flags are needed. In this fork the roots are where relative paths resolve, not a limit on what the server may read; add `--restricted` for that.
 
 | Client | Config |
 |---|---|
@@ -364,7 +364,7 @@ Each of these is written up with its scope, the skills it needs and a suggested 
 
 ## Security
 
-Read-only by construction: there are no write tools. Paths are canonicalized and must lie inside a root. Dependency caches (`~/.cargo/registry`, `~/go/pkg/mod`, SwiftPM checkouts, SDKs) are readable; `--no-deps` turns that off and `--unrestricted` lifts all path limits. macOS privacy protections still apply. Report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
+Read-only by construction: there are no write tools. In this fork the MCP server reads any path a call names; its roots say where relative paths and path-less calls resolve. `speedread mcp --restricted` confines it to its roots, as upstream does by default ([why](docs/specs/08-unfenced-server.md)). The other commands are confined to their roots unless `--unrestricted` is given. Where a limit applies, paths are canonicalized and must lie inside a root; dependency caches (`~/.cargo/registry`, `~/go/pkg/mod`, SwiftPM checkouts, SDKs) are readable, and `--no-deps` turns that off. macOS privacy protections still apply. Report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
 
 ## How it works
 
