@@ -166,6 +166,16 @@ After publication, against the files on this release page (downloaded without cr
 
 Not tested: anything on macOS; Claude Desktop and Claude Cowork (no way to run either here); Cursor at runtime (its command line needs a login to manage plugins, so only the manifest validator ran); Perplexity's import dialog.
 
+### 0.2.0-netbrah.3
+
+What ran before publication is in the [release notes](../releases/v0.2.0-netbrah.3.md). After publication, against the files on the release page (downloaded without credentials; all seven match `sha256.txt`):
+
+- **Launcher, real download.** Unpacked from `speedread-netbrah-plugin.zip` with no executable bit and an empty cache, it fetched the x86_64 Linux binary, verified it, and as an MCP server refused a path-less `map` and answered `map`, `read`, `search` (by `base_dir`) and `trace` (by `base_dir` and by absolute path) on two repositories. From the cache it then ran the command line inside one repository against the other: `--unrestricted search` answered; `map` without the flag was refused with the new message.
+- **Claude Code 2.1.197, from GitHub, in an empty home directory.** `claude plugin marketplace add netbrah/speedread#v0.2.0-netbrah.3`, `claude plugin install speedread-netbrah@netbrah-speedread`, then `claude mcp list`: connected; the cached binary reports `0.2.0-netbrah.3`.
+- **Grok Build 1.0.77, from GitHub, in an empty home directory.** `grok plugin install netbrah/speedread@v0.2.0-netbrah.3#plugins/speedread-netbrah --trust`, then `grok mcp doctor`: server started, handshake completed, 4 tools found, binary cached under `~/.grok/plugin-data/`.
+
+Not tested, as before: anything on macOS; Claude Desktop and Claude Cowork; Cursor at runtime; Perplexity's import dialog.
+
 ## Sources
 
 Read on 2026-11-16. Each is here because a decision above rests on it.
