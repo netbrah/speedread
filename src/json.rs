@@ -48,7 +48,11 @@ fn resolve(e: &Engine, p: &str) -> Result<PathBuf, String> {
         Ok(r) => Ok(r),
         Err(PathError::NotFound(_)) => Err(format!("not found: {p}")),
         Err(PathError::NoBase(msg)) => Err(format!("{p}: {msg}")),
-        Err(PathError::Outside(r)) => Err(format!("outside the workspace: {}", r.display())),
+        Err(PathError::Outside(r)) => Err(format!(
+            "outside the workspace: {} ({})",
+            r.display(),
+            crate::workspace::FENCE_HINT
+        )),
     }
 }
 

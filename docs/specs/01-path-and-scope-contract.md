@@ -26,7 +26,9 @@ Terms:
   4. the base, when it contains the target;
   5. the target's own directory.
   For a path-less target (`#Name`) the target is the base.
-- **access policy** — unchanged: configured roots, dependency caches, or `--unrestricted`.
+- **access policy** — configured roots, dependency caches, or `--unrestricted`. Since
+  [08](08-unfenced-server.md) a server is unrestricted unless started with `--restricted`;
+  commands are as before.
 
 Rules:
 

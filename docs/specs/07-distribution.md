@@ -23,6 +23,10 @@ Two questions decide the design:
 
 ### D1. One launch configuration everywhere: `mcp --unrestricted --no-cwd-root`
 
+Since `0.2.0-netbrah.3` a server is unfenced whether or not `--unrestricted` is passed
+([08](08-unfenced-server.md)). The packages keep the flag: it costs nothing and keeps them
+working with an older binary named by `SPEEDREAD_BIN`.
+
 | Flag | Effect | Why |
 |---|---|---|
 | `--unrestricted` | any path the account can read is allowed | no host can be relied on to supply a folder: Cowork does not prompt for plugin configuration, Cursor and Grok have no equivalent, and a server started by a desktop app has no meaningful working directory |

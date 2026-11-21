@@ -7,8 +7,8 @@ upstream's `speedread` and asks for no folder. Design, sources and the test log:
 [plugins/speedread-netbrah/](../plugins/speedread-netbrah/README.md).
 
 The plugin is on the default branch, so the commands below name only the repository and
-follow `main`. To stay on one release instead, pin its tag: `netbrah/speedread#v0.2.0-netbrah.2`
-for Claude, `netbrah/speedread@v0.2.0-netbrah.2#plugins/speedread-netbrah` for Grok. Either
+follow `main`. To stay on one release instead, pin its tag: `netbrah/speedread#v0.2.0-netbrah.3`
+for Claude, `netbrah/speedread@v0.2.0-netbrah.3#plugins/speedread-netbrah` for Grok. Either
 way the binary is the one the launcher pins, checked by SHA-256.
 
 ## Install
@@ -27,7 +27,7 @@ The same two commands work inside a session as `/plugin marketplace add …` and
 ### Claude Cowork
 
 Customize > Plugins > upload `speedread-netbrah-plugin.zip` from the
-[release](https://github.com/netbrah/speedread/releases/tag/v0.2.0-netbrah.2), or
+[release](https://github.com/netbrah/speedread/releases/tag/v0.2.0-netbrah.3), or
 Add marketplace > `netbrah/speedread`. The tools appear in Cowork sessions
 that run on your computer.
 
@@ -43,7 +43,7 @@ longer asks for a folder. If macOS refuses to open it:
 For one machine, put the plugin folder where Cursor looks for local plugins and reload:
 
 ```
-git clone --depth 1 --branch v0.2.0-netbrah.2 https://github.com/netbrah/speedread /tmp/speedread-netbrah
+git clone --depth 1 --branch v0.2.0-netbrah.3 https://github.com/netbrah/speedread /tmp/speedread-netbrah
 mkdir -p ~/.cursor/plugins/local
 cp -R /tmp/speedread-netbrah/plugins/speedread-netbrah ~/.cursor/plugins/local/
 ```
@@ -69,7 +69,7 @@ server healthy with 4 tools.
 Plugins > Add custom > Import plugin from GitHub, and paste the plugin folder's URL:
 
 ```
-https://github.com/netbrah/speedread/tree/v0.2.0-netbrah.2/plugins/speedread-netbrah
+https://github.com/netbrah/speedread/tree/v0.2.0-netbrah.3/plugins/speedread-netbrah
 ```
 
 or Upload plugin with `speedread-netbrah-plugin.zip` from the release. Perplexity does not
@@ -81,20 +81,24 @@ line inside Computer's sandbox (`sh scripts/speedread.sh search …`).
 Download the tarball for your platform from the release and register it by hand:
 
 ```json
-{ "mcpServers": { "speedread": { "command": "/path/to/speedread", "args": ["mcp", "--unrestricted", "--no-cwd-root"] } } }
+{ "mcpServers": { "speedread": { "command": "/path/to/speedread", "args": ["mcp", "--no-cwd-root"] } } }
 ```
 
-Use `"args": ["mcp", "--root", "/path/to/project"]` instead to confine it to one folder.
+Use `"args": ["mcp", "--restricted", "--root", "/path/to/project"]` instead to confine it
+to one folder. `--root` alone no longer confines a server: it only says where relative
+paths resolve ([specs/08](specs/08-unfenced-server.md)).
 
 ## What "no folder" means
 
-The server is started with `--unrestricted --no-cwd-root`. It reads any path your account
+The server is started with `--unrestricted --no-cwd-root`; since `0.2.0-netbrah.3` a
+server is unfenced without the first flag, which the packages keep so that they also work
+with an older binary. It reads any path your account
 can read when the agent asks for one, and it never searches a directory it was not pointed
 at: the agent names files by absolute path, or passes `base_dir`. A call with neither is
 refused with what to pass. A host that sends its workspace folders over MCP (Claude Code
 does) also gets relative paths resolved against them. What is given up is the fence that
 kept the server inside one chosen folder; the host's tool-approval prompt is the control
-that remains.
+that remains. To have the fence, register the binary yourself with `--restricted --root`.
 
 ## Platforms
 

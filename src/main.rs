@@ -31,9 +31,14 @@ struct Cli {
     /// --root or client roots, requests need absolute paths or a base directory.
     #[arg(long, global = true)]
     no_cwd_root: bool,
-    /// Allow reading anywhere, not just inside the roots.
+    /// Allow reading anywhere, not just inside the roots. `speedread mcp` already does;
+    /// this is for the other commands.
     #[arg(long, global = true)]
     unrestricted: bool,
+    /// Limit `speedread mcp` to its roots and the dependency caches, as the other
+    /// commands are by default.
+    #[arg(long, global = true, conflicts_with = "unrestricted")]
+    restricted: bool,
     /// Don't allow read-only access to dependency caches (cargo registry, SwiftPM checkouts, SDKs, Go modules).
     #[arg(long, global = true)]
     no_deps: bool,
@@ -278,7 +283,16 @@ fn run() -> anyhow::Result<()> {
     let no_cwd_root = cli.no_cwd_root
         || std::env::var("SPEEDREAD_NO_CWD_ROOT")
             .is_ok_and(|v| matches!(v.trim(), "1" | "true" | "yes"));
-    let ws = Workspace::with_options(roots, cli.unrestricted, !cli.no_deps, !no_cwd_root)?;
+    // The server reads whatever path a call names: its roots say where relative
+    // paths and path-less calls resolve, and fence it only with `--restricted`.
+    // Commands keep the fence unless `--unrestricted` is given.
+    let serving = match &cli.cmd {
+        Some(Cmd::Mcp) => true,
+        Some(_) => false,
+        None => !std::io::stdin().is_terminal(),
+    };
+    let unrestricted = cli.unrestricted || (serving && !cli.restricted);
+    let ws = Workspace::with_options(roots, unrestricted, !cli.no_deps, !no_cwd_root)?;
     let defaults = Config::default();
     let cfg = Config {
         default_budget: cli.budget,

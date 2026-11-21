@@ -357,6 +357,167 @@ fn a_server_with_no_folder_reads_by_absolute_path_and_says_so() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// `speedread mcp` reads whatever path it is given. Its folders say where
+/// relative paths and path-less calls resolve; they are not a fence unless
+/// the server was started with `--restricted`.
+#[test]
+fn an_mcp_server_reads_outside_its_folder_unless_restricted() {
+    let dir = std::env::temp_dir().join(format!("speedread-nofence-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("project/src")).unwrap();
+    std::fs::create_dir_all(dir.join("other/src")).unwrap();
+    std::fs::write(
+        dir.join("project/src/lib.rs"),
+        "pub fn inside() -> u32 {\n    1\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("other/src/lib.rs"),
+        "pub fn outside() -> u32 {\n    2\n}\n\npub fn calls_outside() -> u32 {\n    outside()\n}\n",
+    )
+    .unwrap();
+    let dir = dir.canonicalize().unwrap();
+    let project = dir.join("project");
+    let other = dir.join("other");
+    let other_s = other.to_str().unwrap();
+    let other_file = other.join("src/lib.rs");
+    let init_params = json!({"protocolVersion": "2025-06-18", "capabilities": {},
+                             "clientInfo": {"name": "test", "version": "0"}});
+
+    // Spawn a server and complete the handshake; returns its instructions.
+    let open = |args: &[&str], cwd: Option<&std::path::Path>| {
+        let mut c = Client::spawn(args, cwd);
+        let init = c.rpc("initialize", init_params.clone());
+        let instructions = init["result"]["instructions"].as_str().unwrap().to_string();
+        c.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+        (c, instructions)
+    };
+
+    // Every tool, on a path outside the configured folder.
+    let reads_outside = |c: &mut Client, what: &str| {
+        let out = c.call("map", json!({"path": other_s}));
+        assert!(out.contains("lib.rs"), "{what}: map: {out}");
+        let out = c.call(
+            "read",
+            json!({"targets": [format!("{}#outside", other_file.display())]}),
+        );
+        assert!(
+            out.contains("pub fn outside() -> u32"),
+            "{what}: read: {out}"
+        );
+        let out = c.call("search", json!({"pattern": "outside", "path": other_s}));
+        assert!(out.contains("calls_outside"), "{what}: search: {out}");
+        let out = c.call("search", json!({"pattern": "outside", "base_dir": other_s}));
+        assert!(out.contains("==> src/lib.rs @"), "{what}: base_dir: {out}");
+        let out = c.call(
+            "trace",
+            json!({"target": format!("{}#outside", other_file.display())}),
+        );
+        assert!(out.contains("calls_outside"), "{what}: trace: {out}");
+        assert!(!out.contains("utside the workspace"), "{what}: {out}");
+    };
+
+    // A server with a folder: the folder scopes path-less calls, nothing more.
+    let (mut c, _) = open(&["--root", project.to_str().unwrap(), "mcp"], None);
+    reads_outside(&mut c, "--root project");
+    let out = c.call("search", json!({"pattern": "fn "}));
+    assert!(out.contains("inside") && !out.contains("outside"), "{out}");
+    drop(c);
+
+    // Launched in the project with no flags at all, as a hand-written MCP
+    // entry does it.
+    let (mut c, _) = open(&["mcp"], Some(&project));
+    reads_outside(&mut c, "mcp, launched in project");
+    drop(c);
+
+    // No subcommand and a pipe for stdin is also the MCP server.
+    let (mut c, _) = open(&[], Some(&project));
+    reads_outside(&mut c, "no subcommand");
+    drop(c);
+
+    // Launched from `/`, as desktop apps do: it has no folder, says so, and
+    // the absolute paths it asks for work.
+    let (mut c, instructions) = open(&["mcp"], Some(std::path::Path::new("/")));
+    assert!(
+        instructions.contains("No project folder is configured"),
+        "{instructions}"
+    );
+    let out = c.call("map", json!({}));
+    assert!(out.contains("pass base_dir"), "{out}");
+    reads_outside(&mut c, "mcp, launched in /");
+    drop(c);
+
+    // `--restricted` brings the fence back, and each refusal says how to lift it.
+    let (mut c, _) = open(
+        &["--restricted", "--root", project.to_str().unwrap(), "mcp"],
+        None,
+    );
+    let out = c.call("search", json!({"pattern": "fn "}));
+    assert!(out.contains("inside"), "{out}");
+    let refusals = [
+        c.call("map", json!({"path": other_s})),
+        c.call(
+            "read",
+            json!({"targets": [format!("{}#outside", other_file.display())]}),
+        ),
+        c.call("search", json!({"pattern": "outside", "path": other_s})),
+        c.call("search", json!({"pattern": "outside", "base_dir": other_s})),
+        c.call(
+            "trace",
+            json!({"target": format!("{}#outside", other_file.display())}),
+        ),
+    ];
+    for out in &refusals {
+        assert!(out.contains("utside the workspace"), "{out}");
+        assert!(out.contains("--restricted"), "no remedy in: {out}");
+        assert!(
+            !out.contains("calls_outside") && !out.contains("u32"),
+            "{out}"
+        );
+    }
+    drop(c);
+
+    // A restricted server with no folder is not told to use absolute paths:
+    // it would refuse them.
+    let (c, instructions) = open(&["mcp", "--restricted"], Some(std::path::Path::new("/")));
+    assert!(
+        !instructions.contains("No project folder is configured"),
+        "{instructions}"
+    );
+    drop(c);
+
+    // The two flags contradict each other; the server does not guess.
+    let out = Command::new(env!("CARGO_BIN_EXE_speedread"))
+        .args(["mcp", "--restricted", "--unrestricted"])
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("cannot be used with"),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    // Commands keep their fence: only the server changed.
+    let out = Command::new(env!("CARGO_BIN_EXE_speedread"))
+        .current_dir(&project)
+        .env_remove("CLAUDE_PROJECT_DIR")
+        .args(["map", other_s])
+        .output()
+        .unwrap();
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        text.contains("Outside the workspace") && text.contains("--unrestricted"),
+        "{text}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn luau_symbols_and_trace() {
     let dir = std::env::temp_dir().join(format!("speedread-luau-{}", std::process::id()));

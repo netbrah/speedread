@@ -7,7 +7,7 @@ question needs within a token budget: the function around each search hit, a
 large file's skeleton, a symbol's callers and implementations, or only what
 changed since the last read. A fork of
 [speedread](https://github.com/brennengreen/speedread) by Brennen Green (MIT);
-what the fork changes is in [docs/FORK.md](https://github.com/netbrah/speedread/blob/v0.2.0-netbrah.2/docs/FORK.md).
+what the fork changes is in [docs/FORK.md](https://github.com/netbrah/speedread/blob/v0.2.0-netbrah.3/docs/FORK.md).
 
 ## What is in the folder
 
@@ -24,7 +24,7 @@ what the fork changes is in [docs/FORK.md](https://github.com/netbrah/speedread/
 ## Use
 
 Install it (commands per host are in
-[docs/DISTRIBUTION.md](https://github.com/netbrah/speedread/blob/v0.2.0-netbrah.2/docs/DISTRIBUTION.md)), then ask about code. There
+[docs/DISTRIBUTION.md](https://github.com/netbrah/speedread/blob/v0.2.0-netbrah.3/docs/DISTRIBUTION.md)), then ask about code. There
 is nothing to configure and no folder to choose: the agent names files by
 absolute path, or passes `base_dir` to scope a call to one project. Example
 prompts: "map /path/to/repo", "who calls `parse_header` in /path/to/repo?",
@@ -38,8 +38,8 @@ line inside its sandbox.
 ## What it does on your machine, and what it sends
 
 - **Reads** any file your account can read, when the agent asks for it. The
-  server is started with `--unrestricted --no-cwd-root`: there is no folder
-  fence, and it never searches a directory it was not pointed at. Your host's
+  server has no folder fence (`speedread mcp` reads any path a call names
+  unless started with `--restricted`), and it never searches a directory it was not pointed at. Your host's
   tool-approval prompt is the control over which calls run. It never writes to
   the files it reads.
 - **Downloads once.** The plugin contains no executable code besides the
