@@ -309,7 +309,7 @@ Intel macOS uses `speedread-x86_64-apple-darwin.tar.gz`. Linux arm64 uses `speed
 
 **Homebrew (upstream, not this fork):** `brew install brennengreen/tap/speedread` builds Brennen Green's repository from source. Use the full name: plain `brew install speedread` installs a different program, an RSVP speed-reading tool from homebrew-core that also installs a `speedread` binary.
 
-**MCP Registry:** this fork is not listed. Upstream is listed as `io.github.brennengreen/speedread` (`mcp-name: io.github.brennengreen/speedread`). Agents installing this fork can follow [llms-install.md](llms-install.md).
+**MCP Registry:** a release of this fork publishes `io.github.netbrah/speedread`. Upstream stays listed as `io.github.brennengreen/speedread` (`mcp-name: io.github.brennengreen/speedread`). Agents installing this fork can follow [llms-install.md](llms-install.md).
 
 New versions of this fork are published as [releases](https://github.com/netbrah/speedread/releases) with notes; to be notified, use **Watch → Custom → Releases**.
 

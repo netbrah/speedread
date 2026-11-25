@@ -95,14 +95,15 @@ upstream's `speedread` rather than over it; both offer tools named `map`, `read`
 and `trace`, so enable one at a time.
 
 Fork releases are versioned `<upstream minor + 1>.0-netbrah.N` (`speedread --version`, the
-MCP server info, the bundle and the plugin agree) and are GitHub pre-releases. They are not
-listed in the MCP Registry, which holds upstream's `io.github.brennengreen/speedread`.
+MCP server info, the bundle and the plugin agree). The GitHub Actions release job publishes
+a full release of this fork (not a pre-release) and registers it as `io.github.netbrah/speedread`.
+Upstream's registry listing stays `io.github.brennengreen/speedread`.
 
 `scripts/fork-release.sh TAG` cross-compiles every asset from Linux (macOS arm64 and
 x86_64, static Linux x86_64 and arm64, the bundle, checksums) and pins the plugin launcher
 to them. Binaries built that way for a platform the build machine cannot run have not been
-executed, and the release notes must say which. With Actions enabled on the fork, pushing a
-`v*` tag also builds the macOS arm64 assets natively (`.github/workflows/ci.yml`).
+executed, and the release notes must say which. With Actions enabled, pushing a `v*` tag
+builds all four targets and the bundle (`.github/workflows/ci.yml`).
 
 ## Not changed
 

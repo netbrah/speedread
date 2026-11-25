@@ -125,7 +125,7 @@ the repository owner's account and that directory's review. None has been submit
 |---|---|---|
 | Anthropic plugin directory | sign in at https://claude.ai/directory/manage (paid plan), submit the repository and the folder `plugins/speedread-netbrah` | the automated check holds plugins that download or run a binary for a human reviewer; the plugin README states what is downloaded and from where |
 | Cursor Marketplace | submit the repository link at https://cursor.com/marketplace/publish | manual review |
-| MCP Registry | `mcp-publisher login github` as `netbrah`, then `mcp-publisher publish` with a `server.json` named `io.github.netbrah/speedread` pointing at the release's `.mcpb`; or enable Actions on the fork and change the registry job's repository guard in `.github/workflows/ci.yml` | automated; name ownership is proved by the GitHub login |
+| MCP Registry | the release workflow writes `server.json` as `io.github.netbrah/speedread` and runs `mcp-publisher` (`.github/workflows/mcp-registry.yml`). Upstream's name `io.github.brennengreen/speedread` is unchanged. By hand: `mcp-publisher login github` as `netbrah`, then `mcp-publisher publish` | automated; name ownership is proved by the GitHub login |
 | Perplexity | none: the public catalog takes no submissions. Share within an organization with Transfer to organization on the plugin's page | — |
 | Grok Build | none found: distribution is by repository | — |
 | cursor.directory, Glama and similar community lists | their own forms | — |
@@ -141,8 +141,10 @@ the repository owner's account and that directory's review. None has been submit
 4. `scripts/test-launcher.sh`, then commit the launcher. Tag that commit.
 5. `scripts/plugin-zip.sh` — zips the plugin folder's contents (`plugin.json` at the zip
    root) as `speedread-netbrah-plugin.zip` and adds its checksum to `sha256.txt`.
-6. `gh release create v<version> --repo netbrah/speedread --prerelease --target <sha> …`
-   with every file in `target/fork-release/`.
+6. Push the tag. `.github/workflows/ci.yml` builds the four targets, `sha256.txt`, the
+   plugin zip and the `.mcpb`, and publishes a full release (not a pre-release) marked
+   latest. `gh release create` by hand is the fallback when Actions cannot run; do not
+   pass `--prerelease`.
 7. From a clean cache, run the launcher against the real release, and install from the
    tag in each host you can run (the commands above).
 

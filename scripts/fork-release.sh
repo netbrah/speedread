@@ -13,10 +13,11 @@
 # plugin installed at the tag must already know their checksums. The binaries
 # are therefore built from the tag's parent, which differs only in the pin.
 #
-# The release job in .github/workflows/ci.yml builds the macOS arm64 assets
-# natively when Actions are enabled. This script cross-compiles instead
-# (cargo-zigbuild), so only targets the build machine can execute are run
-# before release; the release notes must say which were not.
+# The release jobs in .github/workflows/ci.yml build the same four targets
+# (macOS natively, Linux musl with cargo-zigbuild) and publish a full release
+# of this fork. This script cross-compiles instead, so only targets the build
+# machine can execute are run before release; the release notes must say which
+# were not.
 #
 # Needs: cargo-zigbuild + zig, the Rust targets below, python3, ImageMagick
 # (convert), npx.

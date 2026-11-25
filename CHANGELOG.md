@@ -35,6 +35,7 @@ Not part of an upstream release. Pre-release notes: [docs/releases/v0.2.0-netbra
 ## Unreleased
 
 - Docs and crate metadata identify this repository as netbrah's fork of speedread by Brennen Green (MIT preserved) and point install at this fork's releases and [`plugins/speedread-netbrah/`](plugins/speedread-netbrah/).
+- Release automation publishes this fork: MCP Registry name `io.github.netbrah/speedread`, Homebrew formula URLs on `netbrah/speedread`, and the GitHub Actions release builds all four targets as a full release. The Pages workflow no longer deploys or IndexNow-pings upstream's docs site. Upstream's registry name and docs site are unchanged.
 
 
 

@@ -24,35 +24,99 @@ jobs:
       - run: cargo build --release
       - run: scripts/test-launcher.sh
 
-  release:
-    name: release binary (macOS arm64)
-    if: startsWith(github.ref, 'refs/tags/v')
+  release-macos:
+    name: release binaries (macOS)
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'netbrah/speedread'
     needs: test
     runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Build Apple Silicon and Intel
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
+        run: |
+          set -euo pipefail
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+          mkdir -p dist
+          tar czf dist/speedread-aarch64-apple-darwin.tar.gz -C target/aarch64-apple-darwin/release speedread
+          tar czf dist/speedread-x86_64-apple-darwin.tar.gz -C target/x86_64-apple-darwin/release speedread
+      # One-click install in Claude Desktop, and the package the MCP Registry lists.
+      # The bundle stays Apple Silicon, as upstream ships it.
+      - name: MCP bundle (.mcpb)
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/mcpb"
+          mkdir -p "$d/server"
+          cp target/aarch64-apple-darwin/release/speedread "$d/server/speedread"
+          sips -Z 512 docs/assets/logo-1024.png --out "$d/icon.png" >/dev/null
+          jq --arg v "${GITHUB_REF_NAME#v}" '.version = $v' packaging/mcpb/manifest.json > "$d/manifest.json"
+          npx -y @anthropic-ai/mcpb@2.1.2 pack "$d" dist/speedread-aarch64-apple-darwin.mcpb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: dist/*
+
+  release-linux:
+    name: release binaries (Linux musl)
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'netbrah/speedread'
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+      - name: Install Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.14.1
+      - name: Install cargo-zigbuild
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild
+      - name: Build static musl binaries
+        run: |
+          set -euo pipefail
+          cargo zigbuild --release --locked --target x86_64-unknown-linux-musl
+          cargo zigbuild --release --locked --target aarch64-unknown-linux-musl
+          mkdir -p dist
+          tar czf dist/speedread-x86_64-unknown-linux-musl.tar.gz -C target/x86_64-unknown-linux-musl/release speedread
+          tar czf dist/speedread-aarch64-unknown-linux-musl.tar.gz -C target/aarch64-unknown-linux-musl/release speedread
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: dist/*
+
+  release:
+    name: publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'netbrah/speedread'
+    needs: [release-macos, release-linux]
+    runs-on: ubuntu-24.04
     permissions:
       contents: write # create the release and upload assets
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo build --release --locked
-      # Version-less asset name, so releases/latest/download/<asset> is a stable URL.
-      - run: |
-          cd target/release
-          tar czf speedread-aarch64-apple-darwin.tar.gz speedread
-          shasum -a 256 speedread-aarch64-apple-darwin.tar.gz > sha256.txt
-      # One-click install in Claude Desktop, and the package the MCP Registry lists.
-      - name: MCP bundle (.mcpb)
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: target/fork-release
+      - name: Checksums and plugin zip
         run: |
-          d="$RUNNER_TEMP/mcpb"
-          mkdir -p "$d/server"
-          cp target/release/speedread "$d/server/speedread"
-          sips -Z 512 docs/assets/logo-1024.png --out "$d/icon.png" >/dev/null
-          jq --arg v "${GITHUB_REF_NAME#v}" '.version = $v' packaging/mcpb/manifest.json > "$d/manifest.json"
-          npx -y @anthropic-ai/mcpb@2.1.2 pack "$d" target/release/speedread-aarch64-apple-darwin.mcpb
-          cd target/release
-          shasum -a 256 speedread-aarch64-apple-darwin.mcpb >> sha256.txt
+          set -euo pipefail
+          cd target/fork-release
+          sha256sum speedread-*.tar.gz speedread-*.mcpb | tee sha256.txt
+          cd "$GITHUB_WORKSPACE"
+          scripts/plugin-zip.sh target/fork-release
+          echo "assets:"
+          ls -l target/fork-release
       # docs/releases/<tag>.md, if present: its first line ("# title") names the
       # release and the rest is the body. Otherwise GitHub generates notes.
+      # A full release, not a pre-release, so GitHub marks it latest.
       - name: Release notes
         id: notes
         run: |
@@ -67,15 +131,22 @@ jobs:
           name: ${{ steps.notes.outputs.title || github.ref_name }}
           body_path: ${{ steps.notes.outputs.path }}
           generate_release_notes: ${{ steps.notes.outputs.path == '' }}
+          prerelease: false
+          make_latest: true
           files: |
-            target/release/speedread-aarch64-apple-darwin.tar.gz
-            target/release/speedread-aarch64-apple-darwin.mcpb
-            target/release/sha256.txt
+            target/fork-release/speedread-aarch64-apple-darwin.tar.gz
+            target/fork-release/speedread-x86_64-apple-darwin.tar.gz
+            target/fork-release/speedread-x86_64-unknown-linux-musl.tar.gz
+            target/fork-release/speedread-aarch64-unknown-linux-musl.tar.gz
+            target/fork-release/speedread-aarch64-apple-darwin.mcpb
+            target/fork-release/speedread-netbrah-plugin.zip
+            target/fork-release/sha256.txt
 
   mcp-registry:
     name: MCP Registry
-    # The registry entry is upstream's name; a fork's release must not try to claim it.
-    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'brennengreen/speedread'
+    # Publishes this fork as io.github.netbrah/speedread. Upstream's listing
+    # (io.github.brennengreen/speedread) is a different registry name.
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'netbrah/speedread'
     needs: release
     permissions:
       contents: read

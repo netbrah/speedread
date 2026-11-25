@@ -1,6 +1,7 @@
 name: MCP Registry
 
 # Publishes a release's .mcpb bundle to the MCP Registry as
+# io.github.netbrah/speedread. Upstream's listing stays
 # io.github.brennengreen/speedread. CI calls this after each release; run it by
 # hand (Actions → MCP Registry → Run workflow) to republish an existing tag.
 on:
@@ -12,15 +13,17 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to publish, for example v0.1.0
+        description: Release tag to publish, for example v0.2.1-netbrah.1
         required: true
 
 jobs:
   publish:
     runs-on: ubuntu-24.04
+    # Only this fork's repository may publish the netbrah registry name.
+    if: github.repository == 'netbrah/speedread'
     permissions:
       contents: read
-      id-token: write # GitHub OIDC login: the registry grants the io.github.brennengreen namespace
+      id-token: write # GitHub OIDC login: the registry grants the io.github.netbrah namespace
     steps:
       - name: Write server.json for the release's bundle
         env:
@@ -32,13 +35,13 @@ jobs:
           curl -fsSL -o "$asset" "$url"
           jq -n --arg v "${TAG#v}" --arg url "$url" --arg sha "$(sha256sum "$asset" | cut -d' ' -f1)" '{
             "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-            name: "io.github.brennengreen/speedread",
+            name: "io.github.netbrah/speedread",
             title: "speedread",
-            description: "Token-efficient code reading for coding agents: symbol-aware, budgeted, diff-aware reads.",
+            description: "Fork of speedread by Brennen Green (MIT). Token-efficient code reading for coding agents: symbol-aware, budgeted, diff-aware reads.",
             version: $v,
-            websiteUrl: "https://github.com/brennengreen/speedread",
-            repository: { url: "https://github.com/brennengreen/speedread", source: "github" },
-            icons: [{ src: "https://raw.githubusercontent.com/brennengreen/speedread/main/docs/assets/logo-256.png", mimeType: "image/png", sizes: ["256x256"] }],
+            websiteUrl: "https://github.com/netbrah/speedread",
+            repository: { url: "https://github.com/netbrah/speedread", source: "github" },
+            icons: [{ src: "https://raw.githubusercontent.com/netbrah/speedread/main/docs/assets/logo-256.png", mimeType: "image/png", sizes: ["256x256"] }],
             packages: [{ registryType: "mcpb", identifier: $url, version: $v, fileSha256: $sha, transport: { type: "stdio" } }]
           }' > server.json
           cat server.json
