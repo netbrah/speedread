@@ -285,7 +285,8 @@ on the order of 80k input tokens), not from a Grok invoice:
 - Chromium Q&A trial ≈ $1.50 (range $0.50–$3)
 - coding trial ≈ $1.00
 
-That is roughly **$740**, with a range of about **$300–$1800**, because the
+`evals/run_baseline.py` prints the same total from the task files (currently
+about **$742**), with a range of about **$300–$1800**, because the
 per-trial price is an extrapolation. 460 small decision trials × $0.30,
 280 Chromium decision trials × $1.50, 74 exclusive trials (23 small × 2 ×
 $0.30 plus 14 Chromium × 2 × $1.50), 128 coding trials × $1.00.
@@ -341,21 +342,23 @@ git -c protocol.version=2 fetch --filter=blob:none --depth 1 origin 3a7520d2d79d
 git checkout --detach FETCH_HEAD
 ```
 
-The historical tree was 474,447 files and 4.5 GB after images, media, fonts,
-and archives were left out. This script's omission list is explicit and may
-not reproduce that count. It writes `chromium/CHECKOUT.txt` with the commit,
-the file count, and `du`. CLI timings are comparable to
-`evals/fork/big-chromium.txt` only when that count is 474447. Otherwise the
-comparison is a different tree and a perf claim from it is not made.
+The checkout of this SHA with those extensions omitted measured **476,800
+files and 5.7G**. `docs/specs/eval.md` records **474,447 files and 4.5 GB**
+for the same commit under an earlier omission pass. The script writes
+`chromium/CHECKOUT.txt` with the commit, the file count, and `du`. CLI
+timings are not comparable to `evals/fork/big-chromium.txt`: the file counts
+differ, so that comparison is a different tree.
 
 Chromium questions (`evals/chromium_tasks.json`, 14) keep the set balanced:
 a tiny file (`chrome/VERSION` is 160.0.8155.0, fetched from the commit),
 small headers (`base/command_line.h` lines 16 and 38, `url/gurl.h` lines
 92 / 159 / 232 / 236 / 240 / 252, `base/version.h` lines 45 / 54 / 63), and
-two large-file line numbers taken from the symbol spans already printed in
-`evals/fork/big-chromium.txt` (18234 and 4029). `--check` confirms those
-source lines contain the symbol. The small-repo control tasks stay in the
-decision set: Suite 3 (10) plus `evals/pin_tasks.json` (13), which adds
+two large-file line numbers. `RenderFrameHostImpl::DidCommitNavigation`
+begins at line **18236** (18234 is the comment above it).
+`RenderFrameImpl::DidCommitNavigation` begins at line 4029. `--check`
+confirms those source lines contain the symbol. The small-repo control
+tasks stay in the decision set: Suite 3 (10) plus `evals/pin_tasks.json`
+(13), which adds
 line questions on flask, gin, ripgrep (`struct LineNumber` at `defs.rs:3976`),
 Alamofire, swift-argument-parser (`_commandName` at `ParsableCommand.swift:23`),
 and zod. None of the prompts name speedread, trace, or MCP.
@@ -428,9 +431,12 @@ It is not the baseline:
 python3 evals/grok_eval.py --live-check --speedread "$PWD/target/fast/speedread"
 ```
 
-Needs Rust 1.90+, a C compiler, Grok CLI signed in or `XAI_API_KEY`, and
-disk for the pins (Chromium is the large one). `--venvs <dir>` plus Go adds
-the descriptive Suite 4. `--dry-run`, or a machine without `grok`, runs
+Needs Rust 1.90+, a C compiler, Go, Grok CLI signed in or `XAI_API_KEY`, and
+disk for the pins (Chromium is the large one). The command creates
+`<bench>/venvs/flask` from `evals/flask-tests.txt` (hashes exported from the
+pinned flask `uv.lock`) when that venv is missing, then runs Suite 4 as well
+as the decision set: 942 trials. `--venvs <dir>` uses another directory.
+`--dry-run`, or a machine without `grok`, runs
 `evals/test_description_harness.py` against the hand-written stream in
 `evals/fixtures/grok_streaming/` and does not write a baseline.
 

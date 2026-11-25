@@ -6,9 +6,11 @@ On a machine with Grok CLI, a login or ``XAI_API_KEY``, and enough disk:
     python3 evals/run_baseline.py --bench /path/to/bench
 
 That builds ``target/fast/speedread`` (the repo's ``fast`` profile: release
-optimizations without LTO), fetches every pinned repo including Chromium, and
-runs the pre-registered baseline in docs/specs/description-ab.md. It prints
-every artifact path it writes.
+optimizations without LTO), fetches every pinned repo including Chromium,
+creates ``<bench>/venvs/flask`` from ``evals/flask-tests.txt`` when it is
+missing, and runs the pre-registered baseline in
+docs/specs/description-ab.md, including Suite 4. Go must be on ``PATH``.
+It prints every artifact path it writes.
 
 This environment check comes first. If ``grok`` is not on ``PATH``, the
 command does not invent a baseline. It runs the fixture self-check and exits.
@@ -36,6 +38,11 @@ REPLICATION = "grok-4.7-build-fast"
 QA_TRIALS = 5
 EXCLUSIVE_TRIALS = 1
 CODING_TRIALS = 4
+# Planning prices, not a measurement. Same figures as the design doc.
+SMALL_TRIAL_USD = 0.30
+CHROMIUM_TRIAL_USD = 1.50
+CODING_TRIAL_USD = 1.00
+FLASK_REQUIREMENTS = HERE / "flask-tests.txt"
 
 
 def machine_spec():
@@ -103,25 +110,105 @@ def self_check():
     return proc.returncode
 
 
-def print_plan(spec):
-    print("description baseline plan", flush=True)
-    print(json.dumps({
+def _task_count(name):
+    return len(json.loads((HERE / name).read_text())["tasks"])
+
+
+def plan_counts():
+    """Trial totals from the task files, not from a hardcoded task count."""
+    suite3 = _task_count("agent_tasks.json")
+    pin = _task_count("pin_tasks.json")
+    chromium = _task_count("chromium_tasks.json")
+    coding = _task_count("coding_tasks.json")
+    decision = suite3 + pin + chromium
+    per_arm = decision * QA_TRIALS
+    models = 2
+    arms = 2
+    decision_trials = per_arm * arms * models
+    exclusive = decision * EXCLUSIVE_TRIALS * models
+    coding_trials = coding * CODING_TRIALS * arms * models
+    small_sessions = (suite3 + pin) * (QA_TRIALS * arms * models + EXCLUSIVE_TRIALS * models)
+    chrom_sessions = chromium * (QA_TRIALS * arms * models + EXCLUSIVE_TRIALS * models)
+    spend = small_sessions * SMALL_TRIAL_USD + chrom_sessions * CHROMIUM_TRIAL_USD + coding_trials * CODING_TRIAL_USD
+    return {
+        "suite3": suite3,
+        "pin": pin,
+        "chromium": chromium,
+        "coding": coding,
+        "decision_tasks": decision,
+        "decision_trials_per_arm_per_model": per_arm,
+        "decision_trials": decision_trials,
+        "exclusive_trials": exclusive,
+        "coding_trials": coding_trials,
+        "total_trials": decision_trials + exclusive + coding_trials,
+        "estimated_spend_usd": round(spend),
+    }
+
+
+def plan_payload(spec):
+    counts = plan_counts()
+    return {
         "models": [PRIMARY, REPLICATION],
         "arms": ["baseline", "dropin"],
         "exclusive_control_trials_per_task": EXCLUSIVE_TRIALS,
         "qa_trials_per_task": QA_TRIALS,
         "coding_trials_per_task": CODING_TRIALS,
         "tasks": {
-            "suite3": "evals/agent_tasks.json (10)",
-            "pin": "evals/pin_tasks.json (13)",
-            "chromium": "evals/chromium_tasks.json (14)",
-            "coding_descriptive": "evals/coding_tasks.json (8), not in the ship rule",
+            "suite3": f"evals/agent_tasks.json ({counts['suite3']})",
+            "pin": f"evals/pin_tasks.json ({counts['pin']})",
+            "chromium": f"evals/chromium_tasks.json ({counts['chromium']})",
+            "coding_descriptive": f"evals/coding_tasks.json ({counts['coding']}), not in the ship rule",
         },
-        "decision_trials_per_arm_per_model": 22 * QA_TRIALS,
-        "estimated_spend_usd": "about 500, range 200-1200; see docs/specs/description-ab.md",
+        "decision_trials_per_arm_per_model": counts["decision_trials_per_arm_per_model"],
+        "decision_trials": counts["decision_trials"],
+        "exclusive_trials": counts["exclusive_trials"],
+        "coding_trials": counts["coding_trials"],
+        "total_trials": counts["total_trials"],
+        "estimated_spend_usd": counts["estimated_spend_usd"],
+        "estimated_spend_note": (
+            f"{SMALL_TRIAL_USD:.2f} per small Q&A trial, {CHROMIUM_TRIAL_USD:.2f} per Chromium trial, "
+            f"{CODING_TRIAL_USD:.2f} per coding trial; not a measurement"
+        ),
         "profile": "fast",
         "machine": spec,
-    }, indent=2))
+    }
+
+
+def print_plan(spec):
+    print("description baseline plan", flush=True)
+    print(json.dumps(plan_payload(spec), indent=2))
+
+
+def ensure_flask_venv(bench, venvs):
+    """Create ``<venvs>/flask`` from the pinned requirements if it is missing.
+
+    The requirements are the flask checkout's ``uv.lock`` test group at the
+    corpora pin, exported with hashes. Pytest runs with ``PYTHONPATH=src``,
+    so Flask itself is the workspace copy and is not installed here.
+    """
+    dest = Path(venvs) / "flask"
+    pytest_bin = dest / "bin" / "pytest"
+    if pytest_bin.is_file():
+        print(f"flask venv {dest}", flush=True)
+        return dest
+    if not (bench / "flask").is_dir():
+        raise SystemExit(f"{bench / 'flask'} is not checked out; fetch corpora before creating the venv")
+    if not FLASK_REQUIREMENTS.is_file():
+        raise SystemExit(f"missing {FLASK_REQUIREMENTS}")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    print(f"creating flask venv {dest}", flush=True)
+    run_checked([sys.executable, "-m", "venv", str(dest)])
+    run_checked([
+        str(dest / "bin" / "pip"), "install", "--disable-pip-version-check",
+        "--require-hashes", "-r", str(FLASK_REQUIREMENTS),
+    ])
+    (dest / "PIN.txt").write_text(
+        "requirements evals/flask-tests.txt\n"
+        "flask pin d73fa1cdcbd8b1465c151db8924ba58b1dd14e35\n"
+    )
+    if not pytest_bin.is_file():
+        raise SystemExit(f"venv install did not produce {pytest_bin}")
+    return dest
 
 
 def live(args, spec):
@@ -165,28 +252,27 @@ def live(args, spec):
         print(f"transcripts {dest / 'transcripts'}", flush=True)
         run_checked([sys.executable, str(HERE / "adoption.py"), "check", str(dest)])
         run_checked([sys.executable, str(HERE / "stats.py"), str(dest), "--adoption", "--arm", "dropin"])
-    venv = args.venvs
-    if venv and shutil.which("go"):
-        dest = out / "coding"
-        run_checked(common + [
-            "--tasks", str(HERE / "coding_tasks.json"), "--trials", str(CODING_TRIALS),
-            "--conditions", "baseline,available", "--coding", "--venvs", str(venv), "--out", str(dest),
-            "--timeout", "1800", "--max-turns", "80",
-        ])
-        print(f"trials {dest / 'trials.jsonl'}", flush=True)
-        print(f"diffs {dest / 'diffs'}", flush=True)
-    else:
-        note = out / "coding-SKIPPED.txt"
-        note.write_text("Suite 4 was not started. It needs `go` on PATH and --venvs pointing at a flask virtualenv.\n")
-        print(f"skipped coding; wrote {note}", flush=True)
+    if not shutil.which("go"):
+        raise SystemExit("Suite 4 needs `go` on PATH. The baseline is 942 trials, including the coding arm.")
+    venv = args.venvs if args.venvs else args.bench / "venvs"
+    ensure_flask_venv(args.bench, venv)
+    dest = out / "coding"
+    run_checked(common + [
+        "--tasks", str(HERE / "coding_tasks.json"), "--trials", str(CODING_TRIALS),
+        "--conditions", "baseline,available", "--coding", "--venvs", str(venv), "--out", str(dest),
+        "--timeout", "1800", "--max-turns", "80",
+    ])
+    print(f"trials {dest / 'trials.jsonl'}", flush=True)
+    print(f"diffs {dest / 'diffs'}", flush=True)
     cli = out / "cli-chromium.txt"
     cli.write_text(
         "CLI comparison, fast profile, description override compiled in and unset.\n"
         "Run from the repo root after the Chromium checkout exists.\n"
         "Five is the run count; report median and range. Wall is noisy when loadavg exceeds nproc.\n"
         f"python3 scripts/fork-big-eval.py chromium {binary}\n"
-        "Compare to evals/fork/big-chromium.txt only if chromium/CHECKOUT.txt reports 474447 files.\n"
-        "Otherwise label the comparison inconclusive — different tree.\n"
+        "This checkout of the pinned SHA measured 476800 files and 5.7G.\n"
+        "docs/specs/eval.md records 474447 files and 4.5 GB. Those counts differ,\n"
+        "so do not compare these timings to evals/fork/big-chromium.txt as the same tree.\n"
     )
     print(f"cli instructions {cli}", flush=True)
     print(f"run directory {out}", flush=True)
@@ -199,7 +285,8 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="fixture self-check only")
     ap.add_argument("--models", default=f"{PRIMARY},{REPLICATION}")
     ap.add_argument("--workers", type=int, default=2)
-    ap.add_argument("--venvs", type=Path, default=None)
+    ap.add_argument("--venvs", type=Path, default=None,
+                    help="directory of virtualenvs (default: <bench>/venvs). flask is created there from evals/flask-tests.txt if missing")
     args = ap.parse_args()
     spec = machine_spec()
     print("machine", json.dumps(spec), flush=True)

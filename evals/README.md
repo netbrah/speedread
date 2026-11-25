@@ -196,7 +196,9 @@ this directory as a historical `trace` suite and is not part of the baseline.
 The primary runner is Grok CLI (`grok -p … --output-format streaming-json`).
 Copilot (`agent_eval.py`, `coding_eval.py`) still runs, and both honor
 `--description`. One command builds, fetches the pinned corpora (including
-Chromium at `3a7520d2d79d6569d3a11f968d32b20665fa4db3`), and runs the baseline:
+Chromium at `3a7520d2d79d6569d3a11f968d32b20665fa4db3`), creates
+`<bench>/venvs/flask` from `flask-tests.txt` when it is missing, and runs the
+baseline, Suite 4 included. Go must be on `PATH`.
 
 ```bash
 python3 evals/run_baseline.py --bench /path/to/bench

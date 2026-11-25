@@ -56,8 +56,8 @@
       "repo": "chromium",
       "category": "large file",
       "prompt": "In content/browser/renderer_host/render_frame_host_impl.cc, on which line does RenderFrameHostImpl::DidCommitNavigation begin in this tree? Answer with the starting line number.",
-      "graders": ["\\b18234\\b"],
-      "reference": "Line 18234. The symbol span in evals/fork/big-chromium.txt for this commit starts at that line."
+      "graders": ["\\b18236\\b"],
+      "reference": "Line 18236, `void RenderFrameHostImpl::DidCommitNavigation(`. Line 18234 is the comment above the function. The symbol span in evals/fork/big-chromium.txt started at 18234."
     },
     {
       "id": "chromium-rfi-did-commit",

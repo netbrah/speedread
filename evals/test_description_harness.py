@@ -16,6 +16,7 @@ import adoption  # noqa: E402
 import desc_variant  # noqa: E402
 import fetch_corpora  # noqa: E402
 import grok_eval  # noqa: E402
+import run_baseline  # noqa: E402
 import mcp_allow  # noqa: E402
 import stats  # noqa: E402
 from grok_transcript import normalize_usage, parse_streaming_json  # noqa: E402
@@ -361,6 +362,64 @@ class FilterTests(unittest.TestCase):
         failed = subprocess.run(broken, capture_output=True, text=True)
         self.assertEqual(failed.returncode, 1)
         self.assertIn("Couldn't create session", failed.stderr)
+
+
+class PlanTests(unittest.TestCase):
+    def test_plan_follows_the_task_files(self):
+        counts = run_baseline.plan_counts()
+        self.assertEqual(counts["suite3"], 10)
+        self.assertEqual(counts["pin"], 13)
+        self.assertEqual(counts["chromium"], 14)
+        self.assertEqual(counts["coding"], 8)
+        self.assertEqual(counts["decision_tasks"], 37)
+        self.assertEqual(counts["decision_trials_per_arm_per_model"], 185)
+        self.assertEqual(counts["decision_trials"], 740)
+        self.assertEqual(counts["exclusive_trials"], 74)
+        self.assertEqual(counts["coding_trials"], 128)
+        self.assertEqual(counts["total_trials"], 942)
+        payload = run_baseline.plan_payload({})
+        self.assertEqual(payload["decision_trials_per_arm_per_model"], 185)
+        self.assertEqual(payload["total_trials"], 942)
+        self.assertEqual(payload["estimated_spend_usd"], 742)
+        blob = json.dumps(payload)
+        self.assertNotIn("about 500", blob)
+        self.assertNotIn("110", blob)
+
+    def test_chromium_sentinels_match_the_checked_tree(self):
+        # Lines read from gitiles at 3a7520d2d79d6569d3a11f968d32b20665fa4db3.
+        # render_frame_host_impl.cc:18234 is the comment; the function is 18236.
+        lock = json.loads((HERE / "corpora.json").read_text())["repos"]["chromium"]
+        sent = {(s["path"], s["line"]): s["contains"] for s in lock["sentinels"]}
+        expect = {
+            ("chrome/VERSION", 1): "MAJOR=160",
+            ("chrome/VERSION", 3): "BUILD=8155",
+            ("url/gurl.h", 92): "is_valid",
+            ("url/gurl.h", 159): "Resolve",
+            ("url/gurl.h", 232): "IsStandard",
+            ("url/gurl.h", 236): "IsAboutBlank",
+            ("url/gurl.h", 240): "IsAboutSrcdoc",
+            ("url/gurl.h", 252): "SchemeIsHTTPOrHTTPS",
+            ("base/version.h", 45): "IsValid",
+            ("base/version.h", 54): "CompareTo",
+            ("base/version.h", 63): "GetString",
+            ("base/command_line.h", 16): "BASE_COMMAND_LINE_H_",
+            ("base/command_line.h", 38): "namespace base",
+            ("content/browser/renderer_host/render_frame_host_impl.cc", 18236): "DidCommitNavigation",
+            ("content/renderer/render_frame_impl.cc", 4029): "DidCommitNavigation",
+        }
+        self.assertEqual(sent, expect)
+        tasks = json.loads((HERE / "chromium_tasks.json").read_text())["tasks"]
+        rfh = next(t for t in tasks if t["id"] == "chromium-rfh-did-commit")
+        self.assertIn(r"\b18236\b", rfh["graders"])
+        self.assertNotIn("18234", json.dumps(rfh["graders"]))
+
+    def test_flask_requirements_are_pinned_to_the_corpora_commit(self):
+        text = (HERE / "flask-tests.txt").read_text()
+        pin = json.loads((HERE / "corpora.json").read_text())["repos"]["flask"]["commit"]
+        self.assertIn(pin, text)
+        self.assertIn("pytest==", text)
+        self.assertIn("--hash=sha256:", text)
+        self.assertNotIn("flask==", text.lower())
 
 
 class PinTests(unittest.TestCase):

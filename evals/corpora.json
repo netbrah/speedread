@@ -85,7 +85,7 @@
         "zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar",
         "apk", "aab", "dmg", "iso", "pdf"
       ],
-      "historical_size": "474,447 files and 4.5 GB after images, media, fonts, and archives were left out, as recorded in docs/specs/eval.md. This checkout is that commit minus the extensions listed here. evals/fetch_corpora.py writes the resulting file count next to any perf result; do not treat a different count as the same tree.",
+      "historical_size": "The checkout of this SHA with the extensions below omitted measured 476,800 files and 5.7G. docs/specs/eval.md records 474,447 files and 4.5 GB for the same commit under an earlier omission pass. Those are different trees; do not compare CLI timings to evals/fork/big-chromium.txt as if the file counts matched.",
       "sentinels": [
         {"path": "chrome/VERSION", "line": 1, "contains": "MAJOR=160"},
         {"path": "chrome/VERSION", "line": 3, "contains": "BUILD=8155"},
@@ -96,9 +96,11 @@
         {"path": "url/gurl.h", "line": 92, "contains": "is_valid"},
         {"path": "url/gurl.h", "line": 232, "contains": "IsStandard"},
         {"path": "url/gurl.h", "line": 236, "contains": "IsAboutBlank"},
+        {"path": "url/gurl.h", "line": 240, "contains": "IsAboutSrcdoc"},
+        {"path": "url/gurl.h", "line": 252, "contains": "SchemeIsHTTPOrHTTPS"},
         {"path": "base/version.h", "line": 45, "contains": "IsValid"},
         {"path": "base/version.h", "line": 63, "contains": "GetString"},
-        {"path": "content/browser/renderer_host/render_frame_host_impl.cc", "line": 18234, "contains": "DidCommitNavigation"},
+        {"path": "content/browser/renderer_host/render_frame_host_impl.cc", "line": 18236, "contains": "DidCommitNavigation"},
         {"path": "content/renderer/render_frame_impl.cc", "line": 4029, "contains": "DidCommitNavigation"}
       ]
     }
