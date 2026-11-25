@@ -190,6 +190,9 @@ arithmetic are in [`docs/specs/description-ab.md`](../docs/specs/description-ab.
 Shipped description text is not edited here. A variant is a JSON file in
 [`descriptions/`](descriptions/); `current` means the shipped text.
 
+The harness covers `map`, `search`, and `read`. The decision set is Suite 3
+(10) plus the pin tasks (13) plus Chromium (14), 37 tasks. Suite 3b stays in
+this directory as a historical `trace` suite and is not part of the baseline.
 The primary runner is Grok CLI (`grok -p … --output-format streaming-json`).
 Copilot (`agent_eval.py`, `coding_eval.py`) still runs, and both honor
 `--description`. One command builds, fetches the pinned corpora (including

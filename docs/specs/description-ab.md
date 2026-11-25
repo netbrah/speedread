@@ -17,6 +17,16 @@ The live baseline has not been run. This environment has no `grok` binary.
 `evals/results/description-baseline/PENDING.md` says that, and names the
 command. The numbers below are the pre-registered plan, not results.
 
+The harness tool set is **map, search, and read**. `trace` is being removed
+in a separate PR; this one does not edit `TRACE_DESC` or the other shipped
+description constants. `context` (PR #6) was closed without merging, so it is
+not a tool and not an adoption event. Until `trace` is gone from the server,
+every arm that launches speedread passes `--deny MCPTool(speedread__trace)`
+and `--deny MCPTool(speedread__context)`. `--disallowed-tools` removes
+built-in ids only; it does not drop an MCP catalog key. The no-speedread arm
+denies `MCPTool(speedread__*)`. A baseline trial that still calls `map`,
+`search`, or `read` is an invalid deny leak.
+
 ## Current path
 
 An agent trial today is one of two Python drivers, both talking to GitHub
@@ -30,26 +40,32 @@ Copilot CLI:
 | `src/server.rs` | `INSTRUCTIONS`, `READ_DESC`, `SEARCH_DESC`, `MAP_DESC`, `TRACE_DESC` are the strings `tools/list` and `initialize` return. The `#[tool]` macros bake them into a `ToolRouter`. |
 | `evals/stats.py` | Trial-resampled 95% bootstrap CIs for tokens and time. |
 
-`used_speedread` on the Copilot path was a binary "did any of the four
+`used_speedread` on the old Copilot path was a binary "did any of the four
 `speedread-*` names appear". There was no step share in Suite 3. Suite 3b's
-committed run had no drop-in arm. Copilot remains available (`--description`
-on both drivers). It is not the Phase 1 baseline. The committed
-`evals/RESULTS.md` numbers are a different harness (Copilot CLI, claude-sonnet-5,
-before this server's `trace` work for Suite 3) and are not reused as the
-baseline.
+committed run had no drop-in arm and its tasks target `trace`, so the
+baseline does not run `evals/relationship_tasks.json`. Copilot remains
+available (`--description` on both drivers). It is not the Phase 1 baseline.
+The committed `evals/RESULTS.md` numbers are a different harness (Copilot
+CLI, claude-sonnet-5) and are not reused as the baseline.
 
 Grok CLI is the primary runner. Headless is `grok -p "<prompt>"`. Tool calls
 are the NDJSON from `--output-format streaming-json` (one ACP-derived object
 per line: `tool_call`, `tool_call_update`, `text`, `usage`, `end`). MCP
 servers are `grok mcp` / `[mcp_servers.*]` in the trial's `GROK_HOME`.
+`--trust` is on every invocation: a fresh checkout does not expose project
+MCP tools without it. `--always-approve` is how an unattended run proceeds.
 Per-session tokens and cost are `grok usage <session-id>` (`costUsdTicks` is
 USD × 10^10; a missing cost is unreported, not zero). Built-in readers are
 removed with `--disallowed-tools` (ids such as `read_file`, `grep`,
-`list_dir`; the shell id is `run_terminal_cmd`). `--deny MCPTool(speedread__*)`
-keeps speedread out of the no-speedread arm even if a user config would have
-added it. `--always-approve` is how an unattended run proceeds.
-MCP tools are catalog keys `server__tool`, and the model invokes them through
-`use_tool`. Adoption reads that inner name.
+`list_dir`; the live shell id is `run_terminal_command`). MCP tools are
+catalog keys `server__tool`, hidden with `--deny MCPTool(...)`, and the
+model invokes them through `use_tool`. Adoption reads that inner name.
+The exclusive arm also writes
+`[toolset.search_replace] skip_read_before_edit = true` into the trial
+config, after the MCP table, because dropping `read_file` otherwise makes
+`search_replace` an invalid toolset and the session never starts. If any
+session fails to initialize, the driver records that trial and aborts the
+run.
 
 ## Two ways to load a variant
 
@@ -62,10 +78,14 @@ startup the server replaces instructions and the named tool descriptions on
 the instance `ToolRouter` (`#[tool_handler(router = self.tool_router)]`,
 because the macro's default rebuilds the router from the constants and would
 ignore the edit). Unset, the variable is not read and `tools/list` is the
-macro output. A file that names an unknown tool, or that sets neither
-instructions nor tools, exits before the server accepts a connection.
-Schemas are not in the file, so a variant cannot change the `search` `output`
-enum or any other argument.
+macro output. A file that names an unknown tool other than `trace` or
+`context`, or that sets neither instructions nor tools, exits before the
+server accepts a connection. A missing `trace` key is valid. A leftover
+`trace` or `context` key is dropped by `evals/desc_variant.py` before the
+env var is pointed at the file, and the server also skips those two names
+when they are not in the router, so the same variant works before and after
+the removal PR. Schemas are not in the file, so a variant cannot change the
+`search` `output` enum or any other argument.
 
 **Shape B — a stdio proxy in front of `speedread mcp`.** The proxy rewrites
 `initialize` and `tools/list` and forwards every other message, including
@@ -97,21 +117,23 @@ what the macro used to rebuild on each request.
 ## Metrics (fixed before any live trial)
 
 **Trial-level adoption.** A trial used speedread if any tool call's effective
-name is `speedread-read`, `speedread-search`, `speedread-map`,
-`speedread-trace`, or any later name with prefix `speedread-` or
-`speedread__` (Grok's catalog key). `use_tool` is unwrapped to its
-`tool_name` first. `search_tool` does not count. A call that fails or is
-denied still counts: the model asked. This is read from the transcript, not
-from the model's answer.
+name is `speedread-read`, `speedread-search`, `speedread-map`, or the Grok
+catalog forms `speedread__read`, `speedread__search`, `speedread__map`.
+`use_tool` is unwrapped to its `tool_name` first. `search_tool` does not
+count. Any other speedread leaf (`trace`, `context`, or a later tool) is
+listed on the trial as `other_speedread_tools` and is **not** an adoption
+event and **not** a speedread step. A call that fails or is denied still
+counts when its leaf is one of the three: the model asked. This is read
+from the transcript, not from the model's answer.
 
 **Step-level adoption.** One tool call is one step. The denominator is
 code-reading steps only.
 
 | Class | What counts |
 |---|---|
-| `speedread` | a speedread tool, including through `use_tool` |
+| `speedread` | `read`, `search`, or `map`, including through `use_tool` |
 | `native` | Copilot `view` / `grep` / `glob` / `rg`; Grok `read_file` / `grep` / `list_dir` / `glob` / `glob_file_search` |
-| `shell` | a shell step (`bash`, `shell`, `run_terminal_cmd`) whose command is a reader |
+| `shell` | a shell step (`bash`, `shell`, `run_terminal_command`, `run_terminal_cmd`) whose command is a reader |
 | `other` | not a code-reading step |
 
 A shell step is classified as a whole, not per pipeline segment. The command
@@ -129,8 +151,8 @@ test-only trial is not a 0% speedread share.
 `python3 evals/adoption.py check <run>` recomputes these fields from the
 saved transcripts and exits non-zero on a mismatch.
 
-**Success.** Suite 3, Suite 3b, and the Chromium questions use their regex
-graders: pass@1, pass^k, and mean score (fraction of graders that hit).
+**Success.** Suite 3, the pin tasks, and the Chromium questions use their
+regex graders: pass@1, pass^k, and mean score (fraction of graders that hit).
 Suite 4, when it is run, uses the existing grader: the repo's test suite is
 green and no protected test file was modified. Suite 4 is reported and is
 not in the ship rule (see sample size).
@@ -191,31 +213,36 @@ The unit that matters is the task. If a model either reaches for speedread on
 a task or does not, extra trials of that task mostly repeat. The power
 calculation assumes an intra-task correlation of 0.5.
 
-Decision set: Suite 3 (10) + Suite 3b (4) + Chromium Q&A (8) = **22 tasks**.
-**5 trials** per task. Per arm, per model, that is **110 trials**.
-Design effect = 1 + (5 − 1) × 0.5 = **3**. Effective n ≈ **36.7**.
+Decision set: Suite 3 (10) + pin tasks (13) + Chromium Q&A (14) = **37
+tasks**. Suite 3b is not in the set: those four tasks target `trace`.
+**5 trials** per task. Per arm, per model, that is **185 trials**.
+Design effect = 1 + (5 − 1) × 0.5 = **3**. Effective n = 185 / 3 ≈ **61.67**.
+Stacking more trials on the same tasks cannot push effective n past about
+2 × 37, because the intra-task correlation dominates.
 
 The alternative the study is sized for is the one this track is about: a
 near-zero unprompted baseline moving by a lot, but not all the way to the
 historical "one guidance sentence → everyone uses it" jump. Take current
 adoption 0.05 and variant adoption 0.55 (difference **0.50**).
 Variance = 0.05×0.95 + 0.55×0.45 = **0.295**.
-SE = √(0.295 / 36.7) ≈ **0.090**. A 95% half-width is ≈ **0.176**, which is
+SE = √(0.295 / 61.67) ≈ **0.0692**. A 95% half-width is ≈ **0.136**, which is
 under the 0.25 noise floor, so a run of this size is allowed to resolve the
-rule. The ship rule needs the lower bound above 0.25, i.e. the estimate above
-≈ 0.426. When the truth is 0.50, that happens with probability about
-**Φ(0.83) ≈ 80%**.
+rule. The ship rule needs the lower bound above 0.25, which when the truth
+is 0.50 happens with probability **Φ(1.65) ≈ 95%** on one model.
+Both models have to clear the bar, and the models are independent, so joint
+power is about **0.95² ≈ 90%**.
 
 At the worst-case variance for a 0.50 gap (0.375 vs 0.625, variance 0.469)
-the half-width is ≈ 0.22, still under 0.25, and the power to clear the bar
-falls to about **60%**. If a real run lands in that regime, the
+the half-width is ≈ 0.17, still under 0.25, and single-model power falls to
+about **82%** (joint about **67%**). If a real run lands in that regime, the
 half-width rule is what stops a shaky call. The pre-registered alternative
 is the low-baseline one, because that is the historical shape (drop-in
 adoption was 0/10 on the old Copilot run, which this design does not treat
 as the new baseline).
 
 Two models are part of the rule, not a pooled n. Pooling would hide a
-one-model fluke. The replication has to clear the same bar.
+one-model fluke. The replication has to clear the same bar. Joint power is
+the square of the single-model figure for that reason.
 
 Suite 4 has 8 tasks. Even at 4 trials, design effect 2.5, effective n ≈ 13.
 A 0.25 pass-rate gap at a high base rate has a half-width around **0.31**,
@@ -233,10 +260,10 @@ magnitude before the command starts. It is not a measurement.
 
 | Block | Trials |
 |---|---|
-| Decision set, 22 tasks × 5 × 2 arms (`baseline`, `dropin`) × 2 models | 440 |
-| `exclusive` control, 22 × 1 × 2 models | 44 |
+| Decision set, 37 tasks × 5 × 2 arms (`baseline`, `dropin`) × 2 models | 740 |
+| `exclusive` control, 37 × 1 × 2 models | 74 |
 | Suite 4 descriptive, 8 × 4 × 2 arms × 2 models | 128 |
-| **Total** | **612** |
+| **Total** | **942** |
 
 Planning prices, extrapolated from the published headless example (about
 $0.013 for one ~50k-token turn) and from the old Suite 3 shape (a few turns,
@@ -246,17 +273,27 @@ on the order of 80k input tokens), not from a Grok invoice:
 - Chromium Q&A trial ≈ $1.50 (range $0.50–$3)
 - coding trial ≈ $1.00
 
-That is roughly **$500**, with a range of about **$200–$1200**, because the
-per-trial price is an extrapolation. 280 small decision trials × $0.30,
-160 Chromium decision trials × $1.50, 44 exclusive trials (14 small × $0.30
-× 2 plus 8 Chromium × $1.50 × 2), 128 coding trials × $1.00. `costUsdTicks`
-from `grok usage` replaces this estimate after the run. A missing tick count
-is reported as unreported cost, not as $0.
+That is roughly **$740**, with a range of about **$300–$1800**, because the
+per-trial price is an extrapolation. 460 small decision trials × $0.30,
+280 Chromium decision trials × $1.50, 74 exclusive trials (23 small × 2 ×
+$0.30 plus 14 Chromium × 2 × $1.50), 128 coding trials × $1.00.
+`costUsdTicks` from `grok usage` replaces this estimate after the run. A
+missing tick count is reported as unreported cost, not as $0.
 
-Primary model: `grok-build` (the CLI's documented default for agent
-sessions). Replication: `grok-4.7`. `run_baseline.py` runs `grok models`
-and exits if either id is absent. It does not substitute. Pass `--models`
-with ids the CLI actually lists if those two names have moved.
+Primary model: `grok-4.7`. Replication: `grok-4.7-build-fast`. `grok usage`
+reports the primary as `grok-4.7-build`; that alias is recorded and the
+`-m` flag is not rewritten. `run_baseline.py` runs `grok models` and exits
+if either id is absent. It does not substitute. Pass `--models` with ids
+the CLI actually lists if those two names have moved.
+
+Token source of record is `grok usage` when the session ledger is present.
+`inputTokens` already includes cache; `cache_read` is a subset, not an
+addend; total is `totalTokens` or input + output, never input + cache +
+output. If the ledger is missing, the stream `end` event is the fallback:
+its `input_tokens` is uncached, and the driver folds `cache_read` and
+`cache_creation` into the inclusive input so both sources mean the same
+thing. A trial records `usage_source`. A present ledger is not mixed with
+stream buckets.
 
 `claude-sonnet-5` via Copilot is a different runner. New Grok numbers are
 not comparable to `evals/results/` and are not presented as an update of
@@ -299,14 +336,17 @@ the file count, and `du`. CLI timings are comparable to
 `evals/fork/big-chromium.txt` only when that count is 474447. Otherwise the
 comparison is a different tree and a perf claim from it is not made.
 
-Chromium questions (`evals/chromium_tasks.json`) keep the set balanced: a
-tiny file (`chrome/VERSION` is 160.0.8155.0, fetched from the commit), small
-headers (`base/command_line.h:16`, `url/gurl.h` lines 159 / 240 / 252,
-`base/version.h:54`), and two large-file line numbers taken from the symbol
-spans already printed in `evals/fork/big-chromium.txt` (18234 and 4029).
-`--check` confirms those source lines contain the symbol. The small-repo
-control tasks (tiny `go.mod`, one-symbol flask, one-grep-scale questions)
-stay in the decision set.
+Chromium questions (`evals/chromium_tasks.json`, 14) keep the set balanced:
+a tiny file (`chrome/VERSION` is 160.0.8155.0, fetched from the commit),
+small headers (`base/command_line.h` lines 16 and 38, `url/gurl.h` lines
+92 / 159 / 232 / 236 / 240 / 252, `base/version.h` lines 45 / 54 / 63), and
+two large-file line numbers taken from the symbol spans already printed in
+`evals/fork/big-chromium.txt` (18234 and 4029). `--check` confirms those
+source lines contain the symbol. The small-repo control tasks stay in the
+decision set: Suite 3 (10) plus `evals/pin_tasks.json` (13), which adds
+line questions on flask, gin, ripgrep (`struct LineNumber` at `defs.rs:3976`),
+Alamofire, swift-argument-parser (`_commandName` at `ParsableCommand.swift:23`),
+and zod. None of the prompts name speedread, trace, or MCP.
 
 ## Perf protocol
 
@@ -346,15 +386,21 @@ would make it a result, or an inconclusive one.
 
 ## What this phase does not do
 
-- It does not edit `INSTRUCTIONS` or the four `*_DESC` constants, or the
-  skill `description`.
+- It does not edit `INSTRUCTIONS`, `READ_DESC`, `SEARCH_DESC`, `MAP_DESC`,
+  `TRACE_DESC`, or the skill `description`. `trace` leaves in another PR.
 - It does not change the `search` `output` enum or its shipped description.
-- It does not add an LSP/SCIP layer or a `context` tool. The adoption
-  classifier already counts a future `speedread-*` / `speedread__*` name,
-  which is the coordination point for that work.
-- It does not run Phase 2 variants or declare a winner.
+- It does not add an LSP/SCIP layer or a `context` tool. PR #6 is closed
+  without merging. A later speedread tool is recorded as
+  `other_speedread_tools` and does not count as adoption until this spec is
+  revised.
+- It does not run Phase 2 variants, the live baseline, or declare a winner.
 - It does not rewrite `evals/RESULTS.md` or the README charts. There is no
   new live number to put there.
+- It does not change the GitHub Actions workflows. `ci.yml` and `linux.yml`
+  already trigger on `pull_request`, and this fork has never recorded a
+  workflow run. Enabling Actions is an owner setting
+  (the repository Actions page, or Settings → Actions → Allow all actions),
+  not a YAML change.
 
 ## Reproduce
 

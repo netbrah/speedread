@@ -3,9 +3,9 @@
 {"type":"tool_call_update","toolCallId":"c1","status":"completed","rawOutput":{"lines":12},"content":[],"locations":[]}
 {"type":"tool_call","toolCallId":"c2","toolName":"use_tool","kind":"other","status":"pending","rawInput":{"tool_name":"speedread__read","tool_input":{"targets":["src/flask/app.py:628"]}},"content":[],"locations":[]}
 {"type":"tool_call_update","toolCallId":"c2","status":"completed","content":[{"type":"content","content":{"type":"text","text":"628\trv"}}],"locations":[]}
-{"type":"tool_call","toolCallId":"c3","toolName":"run_terminal_cmd","kind":"execute","status":"pending","rawInput":{"command":"cat src/flask/app.py | head"},"content":[],"locations":[]}
+{"type":"tool_call","toolCallId":"c3","toolName":"run_terminal_command","kind":"execute","status":"pending","rawInput":{"command":"cat src/flask/app.py | head"},"content":[],"locations":[]}
 {"type":"tool_call_update","toolCallId":"c3","status":"completed","locations":[]}
-{"type":"tool_call","toolCallId":"c4","toolName":"run_terminal_cmd","kind":"execute","status":"pending","rawInput":{"command":"cat /tmp/x && pytest"},"content":[],"locations":[]}
+{"type":"tool_call","toolCallId":"c4","toolName":"run_terminal_command","kind":"execute","status":"pending","rawInput":{"command":"cat /tmp/x && pytest"},"content":[],"locations":[]}
 {"type":"tool_call","toolCallId":"c5","toolName":"search_replace","kind":"edit","status":"pending","rawInput":{"path":"a.py","old_string":"x","new_string":"y"},"content":[],"locations":[]}
 {"type":"tool_call","toolCallId":"c6","toolName":"use_tool","kind":"other","status":"pending","rawInput":{"tool_name":"speedread__context","tool_input":{"query":"where is the dict"}},"content":[],"locations":[]}
 {"type":"text","data":"The dict is created on line 628."}

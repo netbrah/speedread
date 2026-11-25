@@ -1,0 +1,110 @@
+{
+  "suite": "speedread-pin-qa",
+  "description": "Extra read-only questions on the pinned bench commits, added so the description baseline has enough tasks for the pre-registered decision rule. Prompts do not mention speedread, trace, or MCP tools. Each grader is a line that evals/corpora.json also checks.",
+  "tasks": [
+    {
+      "id": "flask-test-client",
+      "repo": "flask",
+      "category": "control: one symbol",
+      "prompt": "In src/flask/app.py, on which line is Flask.test_client defined? Answer with the line number.",
+      "graders": ["\\b758\\b"],
+      "reference": "Line 758."
+    },
+    {
+      "id": "flask-url-for",
+      "repo": "flask",
+      "category": "control: one symbol",
+      "prompt": "In src/flask/app.py, on which line is Flask.url_for defined? Answer with the line number.",
+      "graders": ["\\b1105\\b"],
+      "reference": "Line 1105."
+    },
+    {
+      "id": "flask-wsgi-app",
+      "repo": "flask",
+      "category": "large file, one symbol",
+      "prompt": "In src/flask/app.py, on which line is Flask.wsgi_app defined? Answer with the line number.",
+      "graders": ["\\b1569\\b"],
+      "reference": "Line 1569."
+    },
+    {
+      "id": "gin-engine-new",
+      "repo": "gin",
+      "category": "control: one symbol",
+      "prompt": "In gin.go, on which line is func New defined? Answer with the line number.",
+      "graders": ["\\b215\\b"],
+      "reference": "Line 215."
+    },
+    {
+      "id": "gin-is-aborted",
+      "repo": "gin",
+      "category": "control: one symbol",
+      "prompt": "In context.go, on which line is Context.IsAborted defined? Answer with the line number.",
+      "graders": ["\\b208\\b"],
+      "reference": "Line 208."
+    },
+    {
+      "id": "gin-router-get",
+      "repo": "gin",
+      "category": "control: one symbol",
+      "prompt": "In routergroup.go, on which line is RouterGroup.GET defined? Answer with the line number.",
+      "graders": ["\\b142\\b"],
+      "reference": "Line 142."
+    },
+    {
+      "id": "ripgrep-glob-flag",
+      "repo": "ripgrep",
+      "category": "large file, one type",
+      "prompt": "In crates/core/flags/defs.rs, on which line is the struct named Glob defined (the type, not a method)? Answer with the line number.",
+      "graders": ["\\b2581\\b"],
+      "reference": "Line 2581, `struct Glob;`."
+    },
+    {
+      "id": "ripgrep-json-flag",
+      "repo": "ripgrep",
+      "category": "large file, one type",
+      "prompt": "In crates/core/flags/defs.rs, on which line is the struct named JSON defined? Answer with the line number.",
+      "graders": ["\\b3811\\b"],
+      "reference": "Line 3811, `struct JSON;`."
+    },
+    {
+      "id": "alamofire-cancel-all",
+      "repo": "Alamofire",
+      "category": "control: one symbol",
+      "prompt": "In Source/Core/Session.swift, on which line is cancelAllRequests declared? Answer with the line number.",
+      "graders": ["\\b272\\b"],
+      "reference": "Line 272."
+    },
+    {
+      "id": "sap-run",
+      "repo": "swift-argument-parser",
+      "category": "control: tiny protocol",
+      "prompt": "In Sources/ArgumentParser/Parsable Types/ParsableCommand.swift, on which line is the protocol requirement `run() throws` declared? Answer with the line number.",
+      "graders": ["\\b32\\b"],
+      "reference": "Line 32."
+    },
+    {
+      "id": "zod-base64-kind",
+      "repo": "zod",
+      "category": "control: one line",
+      "prompt": "In packages/zod/src/v3/types.ts, on which line of the ZodStringCheck union is the kind \"base64\" declared? Answer with the line number.",
+      "graders": ["\\b585\\b"],
+      "reference": "Line 585."
+    },
+    {
+      "id": "ripgrep-line-number-flag",
+      "repo": "ripgrep",
+      "category": "large file, one type",
+      "prompt": "In crates/core/flags/defs.rs, on which line is the struct named LineNumber defined? Answer with the line number.",
+      "graders": ["\\b3976\\b"],
+      "reference": "Line 3976, `struct LineNumber;`."
+    },
+    {
+      "id": "sap-command-name",
+      "repo": "swift-argument-parser",
+      "category": "control: tiny protocol",
+      "prompt": "In Sources/ArgumentParser/Parsable Types/ParsableCommand.swift, on which line is the protocol requirement `_commandName` declared? Answer with the line number.",
+      "graders": ["\\b23\\b"],
+      "reference": "Line 23."
+    }
+  ]
+}

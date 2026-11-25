@@ -2,7 +2,7 @@
 """Description A/B trials on Grok CLI (primary runner for this harness).
 
     python3 evals/grok_eval.py --bench <dir> --tasks evals/agent_tasks.json \
-        --conditions baseline,dropin --trials 5 --models grok-build,grok-4.7 \
+        --conditions baseline,dropin --trials 5 --models grok-4.7,grok-4.7-build-fast \
         --description current --out <run-dir>
 
 Headless invocation, per the Grok CLI docs:
@@ -20,6 +20,13 @@ adds one guidance sentence; it is not an adoption claim.
 Token and cost totals come from ``grok usage <session-id>`` in the trial's
 ``GROK_HOME``. The streaming ``end`` event is kept as a labeled fallback.
 Adoption is computed from the NDJSON tool events by evals/adoption.py.
+``--trust`` is set on every invocation: a fresh git checkout does not load
+project MCP servers until the folder is trusted.
+
+The exclusive arm still removes ``read_file``. Grok then refuses to start,
+because ``search_replace`` requires a Read tool unless
+``[toolset.search_replace] skip_read_before_edit = true``. That key is set
+only for exclusive. If any session still fails to initialize, the run stops.
 
 A trial that errors, times out, or is skipped is written to trials.jsonl.
 It is not dropped. Adoption's denominator is every scheduled trial that
@@ -46,30 +53,76 @@ sys.path.insert(0, str(HERE))
 import adoption  # noqa: E402
 import desc_variant  # noqa: E402
 from agent_eval import grade as grade_regex  # noqa: E402
-from grok_transcript import parse_streaming_json  # noqa: E402
+from grok_transcript import normalize_usage, parse_streaming_json  # noqa: E402
 
 UNPROMPTED = {"dropin", "available"}
-# Built-in tool ids from the Grok headless docs. Shell is run_terminal_cmd.
-# Exclusive removes readers and leaves the shell and search_replace.
+# Built-in tool ids. The live shell id on grok 1.0.92 is run_terminal_command.
+# Exclusive removes readers and leaves the shell and search_replace. search_replace
+# still needs the skip_read_before_edit param or session init fails.
 _ISOLATION = "Agent,web_search,web_fetch"
 _EXCLUSIVE = "read_file,grep,list_dir,glob,Agent,web_search,web_fetch"
+# grok usage reports the default agent model under this id, not the -m flag.
+USAGE_MODEL_ALIAS = {"grok-4.7": "grok-4.7-build"}
+_INIT_MARKERS = (
+    "couldn't start session",
+    "could not start session",
+    "failed to initialize",
+    "failed to start session",
+    "tool requirement",
+    "requires a read",
+    "invalid tool configuration",
+    "invalid toolset",
+)
 
 
 def condition_setup(cond):
     """Return (launch_speedread, extra argv)."""
+    # --disallowed-tools removes built-in ids only. MCP catalog keys are hidden
+    # with --deny MCPTool(...). Until trace is deleted upstream, every arm that
+    # launches speedread denies speedread__trace (and context, which did not land)
+    # so the model is offered map, search, and read.
+    hide = ["--deny", "MCPTool(speedread__trace)", "--deny", "MCPTool(speedread__context)"]
     if cond == "baseline":
         return False, ["--disallowed-tools", _ISOLATION, "--deny", "MCPTool(speedread__*)"]
     if cond in UNPROMPTED or cond == "preferred":
-        return True, ["--disallowed-tools", _ISOLATION]
+        return True, ["--disallowed-tools", _ISOLATION, *hide]
     if cond in ("exclusive", "speedread"):
         return True, [
             "--disallowed-tools", _EXCLUSIVE,
             "--deny", "Read", "--deny", "Grep",
+            *hide,
         ]
     raise ValueError(f"unknown condition {cond}")
 
 
-def prepare_grok_home(real_home, speedread_bin, variant, rss_log, use_mcp):
+def grok_argv(prompt, model, cwd, session_id, cond, max_turns):
+    """Headless command. ``--trust`` is not optional on a fresh checkout."""
+    _, extra = condition_setup(cond)
+    return [
+        "grok", "--no-auto-update", "--trust", "-p", prompt, "-m", model,
+        "--output-format", "streaming-json", "--always-approve",
+        "--cwd", str(cwd), "-s", session_id, "--max-turns", str(max_turns),
+        *extra,
+    ]
+
+
+def tail(text, n=400):
+    """Last ``n`` characters. A bare ``[-n]`` is an index and raises on short strings."""
+    return (text or "")[-n:]
+
+
+def initialization_failure(rec):
+    """True when Grok never started the session (toolset/config), not when a trial merely erred."""
+    blob = " ".join([
+        rec.get("stderr_tail") or "",
+        rec.get("error") or "",
+        " ".join(rec.get("errors") or []),
+        rec.get("stop_reason") or "",
+    ]).lower()
+    return any(marker in blob for marker in _INIT_MARKERS)
+
+
+def prepare_grok_home(real_home, speedread_bin, variant, rss_log, use_mcp, skip_read_before_edit=False):
     home = Path(tempfile.mkdtemp(prefix="speedread-grok-"))
     if real_home.is_dir():
         for name in ("auth.json", "mcp_credentials.json"):
@@ -77,7 +130,10 @@ def prepare_grok_home(real_home, speedread_bin, variant, rss_log, use_mcp):
             if src.exists():
                 (home / name).symlink_to(src)
     if use_mcp:
-        (home / "config.toml").write_text(desc_variant.grok_config(speedread_bin, variant, rss_log=rss_log))
+        (home / "config.toml").write_text(desc_variant.grok_config(
+            speedread_bin, variant, rss_log=rss_log, skip_read_before_edit=skip_read_before_edit,
+            variant_out=home / "description.json",
+        ))
     else:
         (home / "config.toml").write_text(
             "# baseline trial: no MCP servers, so speedread is not on the tool list\n"
@@ -93,48 +149,12 @@ def grok_usage(session_id, env):
     except (OSError, subprocess.TimeoutExpired) as ex:
         return {}, f"grok usage failed: {ex}"
     if proc.returncode != 0:
-        return {}, (proc.stderr or proc.stdout or "grok usage failed")[-400:]
+        return {}, tail(proc.stderr or proc.stdout or "grok usage failed")
     try:
         payload = json.loads(proc.stdout)
     except json.JSONDecodeError:
         return {}, "grok usage did not return JSON"
-    sess = payload.get("session") or {}
-    ticks = sess.get("costUsdTicks")
-    return {
-        "input_tokens": sess.get("inputTokens"),
-        "output_tokens": sess.get("outputTokens"),
-        "cache_read_tokens": sess.get("cachedReadTokens"),
-        "cache_creation_tokens": sess.get("cacheCreationTokens"),
-        "reasoning_tokens": sess.get("reasoningTokens"),
-        "total_tokens": sess.get("totalTokens"),
-        "model_calls": sess.get("modelCalls"),
-        "cost_usd_ticks": ticks,
-        "cost_usd": (ticks / 1e10) if isinstance(ticks, int) else None,
-        "cost_is_partial": bool(sess.get("costIsPartial")),
-        "usage_is_incomplete": bool(sess.get("usageIsIncomplete")),
-        "primary_model": sess.get("primaryModelId"),
-        "usage_source": "grok usage",
-    }, ""
-
-
-def stream_usage(end):
-    usage = (end or {}).get("usage") or {}
-    if not usage:
-        return {}
-    ticks = end.get("total_cost_usd_ticks")
-    cost = end.get("total_cost_usd")
-    return {
-        "input_tokens": usage.get("input_tokens"),
-        "output_tokens": usage.get("output_tokens"),
-        "cache_read_tokens": usage.get("cache_read_input_tokens"),
-        "cache_creation_tokens": usage.get("cache_creation_input_tokens"),
-        "reasoning_tokens": usage.get("reasoning_tokens"),
-        "total_tokens": usage.get("total_tokens"),
-        "model_calls": end.get("num_turns"),
-        "cost_usd_ticks": ticks,
-        "cost_usd": cost if isinstance(cost, (int, float)) else (ticks / 1e10 if isinstance(ticks, int) else None),
-        "usage_source": "streaming-json end event",
-    }
+    return payload.get("session") or {}, ""
 
 
 def read_rss(path):
@@ -149,7 +169,7 @@ def read_rss(path):
 
 def run_trial(job, args, out_dir, bench):
     task, cond, trial, model = job
-    use_mcp, extra = condition_setup(cond)
+    use_mcp, _extra = condition_setup(cond)
     repo = bench / task["repo"]
     rec = {
         "task": task["id"], "condition": cond, "trial": trial, "model": model,
@@ -177,14 +197,12 @@ def run_trial(job, args, out_dir, bench):
     rss_path = out_dir / "rss" / f"{task['id']}__{cond}__{trial}__{model}.txt"
     rss_path.parent.mkdir(parents=True, exist_ok=True)
     real_home = Path(os.environ.get("GROK_HOME", Path.home() / ".grok"))
-    home = prepare_grok_home(real_home, args.speedread, args.description, rss_path if use_mcp else None, use_mcp)
+    home = prepare_grok_home(
+        real_home, args.speedread, args.description, rss_path if use_mcp else None, use_mcp,
+        skip_read_before_edit=cond in ("exclusive", "speedread"),
+    )
     env = {**os.environ, "GROK_HOME": str(home)}
-    cmd = [
-        "grok", "--no-auto-update", "-p", prompt, "-m", model,
-        "--output-format", "streaming-json", "--always-approve",
-        "--cwd", str(repo), "-s", session_id, "--max-turns", str(args.max_turns),
-        *extra,
-    ]
+    cmd = grok_argv(prompt, model, repo, session_id, cond, args.max_turns)
     t0 = time.time()
     try:
         proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True, env=env, timeout=args.timeout)
@@ -207,11 +225,8 @@ def run_trial(job, args, out_dir, bench):
         score, passed, hits = grade_regex(task, answer)
     else:
         score, passed, hits = None, None, None
-    usage, usage_err = grok_usage(session_id, env)
-    source = "grok usage"
-    if not usage:
-        usage = stream_usage(parsed["end"])
-        source = usage.get("usage_source", "missing")
+    session, usage_err = grok_usage(session_id, env)
+    usage = normalize_usage(session=session or None, end=None if session else parsed["end"])
     api_ms = None
     end = parsed["end"] or {}
     for key in ("duration_api_ms", "durationApiMs"):
@@ -225,13 +240,13 @@ def run_trial(job, args, out_dir, bench):
         session_id=session_id, answer=(answer or "").strip()[:4000],
         score=score, **({"pass": passed} if passed is not None else {"pass": False}),
         grader_hits=hits, stop_reason=parsed.get("stop_reason"),
-        stderr_tail=(err or "")[-400], usage_error=usage_err, usage_source=source,
+        stderr_tail=tail(err), usage_error=usage_err,
         bad_lines=parsed["bad_lines"], errors=parsed["errors"][:3],
         peak_rss_kib=read_rss(rss_path) if use_mcp else None,
         **adopt, **{k: usage.get(k) for k in (
-            "input_tokens", "output_tokens", "cache_read_tokens", "cache_creation_tokens",
-            "reasoning_tokens", "total_tokens", "cost_usd_ticks", "cost_usd",
-            "cost_is_partial", "usage_is_incomplete", "primary_model")},
+            "input_tokens", "input_includes_cache", "output_tokens", "cache_read_tokens",
+            "cache_creation_tokens", "reasoning_tokens", "total_tokens", "cost_usd_ticks",
+            "cost_usd", "cost_is_partial", "usage_is_incomplete", "usage_model", "usage_source")},
     )
     if usage.get("model_calls"):
         rec["model_calls"] = usage["model_calls"]
@@ -316,6 +331,22 @@ def execute(args, tasks, jobs, bench, coding=False):
             with lock:
                 fh.write(json.dumps(rec) + "\n")
                 fh.flush()
+            if initialization_failure(rec):
+                pool.shutdown(wait=False, cancel_futures=True)
+                raise SystemExit(
+                    "session failed to initialize "
+                    f"({rec.get('task')} {rec.get('condition')} {rec.get('model')}): "
+                    f"{rec.get('stderr_tail') or rec.get('error')}"
+                )
+            if rec.get("condition") == "baseline" and (
+                rec.get("used_speedread") or rec.get("other_speedread_calls")
+            ):
+                pool.shutdown(wait=False, cancel_futures=True)
+                raise SystemExit(
+                    "baseline trial called a speedread tool; the deny leaked "
+                    f"({rec.get('task')} {rec.get('model')}): "
+                    f"{rec.get('tools')}"
+                )
             print(
                 f"[{n:>3}/{len(jobs)}] {rec.get('task','?'):<28} {rec.get('condition','?'):<9} "
                 f"{rec.get('model','?'):<12} {rec.get('status')} pass={int(bool(rec.get('pass')))} "
@@ -340,7 +371,7 @@ def main():
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--conditions", default="baseline,dropin")
     ap.add_argument("--trials", type=int, default=5)
-    ap.add_argument("--models", default="grok-build")
+    ap.add_argument("--models", default="grok-4.7")
     ap.add_argument("--description", default="current")
     ap.add_argument("--speedread", default="speedread")
     ap.add_argument("--workers", type=int, default=2)

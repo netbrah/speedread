@@ -10,7 +10,10 @@
         {"path": "src/flask/app.py", "line": 969, "contains": "def dispatch_request"},
         {"path": "src/flask/app.py", "line": 995, "contains": "def full_dispatch_request"},
         {"path": "src/flask/app.py", "line": 1024, "contains": "def finalize_request"},
-        {"path": "src/flask/app.py", "line": 1369, "contains": "def preprocess_request"}
+        {"path": "src/flask/app.py", "line": 1369, "contains": "def preprocess_request"},
+        {"path": "src/flask/app.py", "line": 758, "contains": "def test_client"},
+        {"path": "src/flask/app.py", "line": 1105, "contains": "def url_for"},
+        {"path": "src/flask/app.py", "line": 1569, "contains": "def wsgi_app"}
       ]
     },
     "gin": {
@@ -21,7 +24,10 @@
         {"path": "auth.go", "line": 60, "contains": "AbortWithStatus"},
         {"path": "auth.go", "line": 109, "contains": "AbortWithStatus"},
         {"path": "recovery.go", "line": 115, "contains": "AbortWithStatus"},
-        {"path": "context.go", "line": 1, "contains": "package gin"}
+        {"path": "context.go", "line": 5, "contains": "package gin"},
+        {"path": "gin.go", "line": 215, "contains": "func New("},
+        {"path": "context.go", "line": 208, "contains": "func (c *Context) IsAborted"},
+        {"path": "routergroup.go", "line": 142, "contains": "func (group *RouterGroup) GET("}
       ]
     },
     "ripgrep": {
@@ -29,7 +35,10 @@
       "commit": "435f59fc4b43af3ab32f34d53fa34978f393fe52",
       "sentinels": [
         {"path": "crates/core/flags/defs.rs", "line": 2362, "contains": "struct FixedStrings"},
-        {"path": "crates/ignore/src/walk.rs", "line": 1428, "contains": "pub fn run"}
+        {"path": "crates/ignore/src/walk.rs", "line": 1428, "contains": "pub fn run"},
+        {"path": "crates/core/flags/defs.rs", "line": 2581, "contains": "struct Glob;"},
+        {"path": "crates/core/flags/defs.rs", "line": 3811, "contains": "struct JSON;"},
+        {"path": "crates/core/flags/defs.rs", "line": 3976, "contains": "struct LineNumber;"}
       ]
     },
     "zod": {
@@ -37,7 +46,8 @@
       "commit": "19c40d2072288b4cafec851e9d056a72a88e5973",
       "sentinels": [
         {"path": "packages/zod/src/v3/types.ts", "line": 583, "contains": "kind: \"ip\""},
-        {"path": "packages/zod/src/v3/types.ts", "line": 584, "contains": "kind: \"cidr\""}
+        {"path": "packages/zod/src/v3/types.ts", "line": 584, "contains": "kind: \"cidr\""},
+        {"path": "packages/zod/src/v3/types.ts", "line": 585, "contains": "kind: \"base64\""}
       ]
     },
     "vscode": {
@@ -51,14 +61,17 @@
       "url": "https://github.com/Alamofire/Alamofire.git",
       "commit": "dea4bab91767a971d6e112bc955c6a82295589b7",
       "sentinels": [
-        {"path": "Source/Core/Session.swift", "line": 136, "contains": "startRequestsImmediately: Bool = true"}
+        {"path": "Source/Core/Session.swift", "line": 136, "contains": "startRequestsImmediately: Bool = true"},
+        {"path": "Source/Core/Session.swift", "line": 272, "contains": "func cancelAllRequests"}
       ]
     },
     "swift-argument-parser": {
       "url": "https://github.com/apple/swift-argument-parser.git",
       "commit": "d225b6fe8aed45478d1e36e770bf269c5d48d3a9",
       "sentinels": [
-        {"path": "Sources/ArgumentParser/Parsable Types/ParsableCommand.swift", "line": 16, "contains": "CommandConfiguration"}
+        {"path": "Sources/ArgumentParser/Parsable Types/ParsableCommand.swift", "line": 16, "contains": "CommandConfiguration"},
+        {"path": "Sources/ArgumentParser/Parsable Types/ParsableCommand.swift", "line": 32, "contains": "func run() throws"},
+        {"path": "Sources/ArgumentParser/Parsable Types/ParsableCommand.swift", "line": 23, "contains": "_commandName"}
       ]
     },
     "chromium": {
@@ -79,6 +92,12 @@
         {"path": "url/gurl.h", "line": 159, "contains": "Resolve"},
         {"path": "base/version.h", "line": 54, "contains": "CompareTo"},
         {"path": "base/command_line.h", "line": 16, "contains": "BASE_COMMAND_LINE_H_"},
+        {"path": "base/command_line.h", "line": 38, "contains": "namespace base"},
+        {"path": "url/gurl.h", "line": 92, "contains": "is_valid"},
+        {"path": "url/gurl.h", "line": 232, "contains": "IsStandard"},
+        {"path": "url/gurl.h", "line": 236, "contains": "IsAboutBlank"},
+        {"path": "base/version.h", "line": 45, "contains": "IsValid"},
+        {"path": "base/version.h", "line": 63, "contains": "GetString"},
         {"path": "content/browser/renderer_host/render_frame_host_impl.cc", "line": 18234, "contains": "DidCommitNavigation"},
         {"path": "content/renderer/render_frame_impl.cc", "line": 4029, "contains": "DidCommitNavigation"}
       ]

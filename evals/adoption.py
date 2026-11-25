@@ -58,7 +58,8 @@ NATIVE_READ = {
     "read_file", "list_dir", "glob_file_search",
 }
 
-SHELL_TOOLS = {"bash", "shell", "run_terminal_cmd"}
+# Grok 1.0.92's live shell id is run_terminal_command (Bash maps to that name).
+SHELL_TOOLS = {"bash", "shell", "run_terminal_command", "run_terminal_cmd"}
 
 EDIT_TOOLS = {
     "edit", "create", "str_replace_editor", "write", "apply_patch", "str_replace",
@@ -89,25 +90,24 @@ def effective_name(tool, args=None):
     return name
 
 
-def is_trace_tool(name):
-    for prefix in _SPEEDREAD_PREFIXES:
-        if isinstance(name, str) and name.startswith(prefix):
-            return name[len(prefix):] == "trace"
-    return False
+# Only these three count as adoption. trace is leaving; context (PR #6) did not land.
+# Any other speedread leaf is recorded, not counted.
+_COUNTED_LEAVES = {"read", "search", "map"}
+
+
+def speedread_leaf(name):
+    """The tool leaf after a speedread prefix, or None if this is not a speedread tool."""
+    if not name or not isinstance(name, str):
+        return None
+    n = name.strip()
+    for prefix in ("mcp__speedread__", "mcp_speedread_", "speedread__", "speedread-"):
+        if n.startswith(prefix):
+            return n[len(prefix):]
+    return None
 
 
 def is_speedread_name(name):
-    if not name or not isinstance(name, str):
-        return False
-    n = name.strip()
-    if n in {"search_tool", "use_tool"}:
-        return False
-    if n.startswith(_SPEEDREAD_PREFIXES):
-        return True
-    # Claude-style mcp__speedread__read, if a harness emits it.
-    if n.startswith("mcp__speedread__") or n.startswith("mcp_speedread_"):
-        return True
-    return False
+    return speedread_leaf(name) in _COUNTED_LEAVES
 
 
 def _unwrap_use_tool(tool, args):
@@ -229,12 +229,16 @@ def summarize_calls(calls):
     """
     counts = {"speedread": 0, "native": 0, "shell": 0, "other": 0}
     tools = []
+    other_speedread = []
     for c in calls:
         tool = c.get("tool")
         kind = classify_call(tool, c.get("args") or {})
         counts[kind] += 1
         name, _ = _unwrap_use_tool(tool, c.get("args") or {})
         tools.append(name)
+        leaf = speedread_leaf(name)
+        if leaf and leaf not in _COUNTED_LEAVES:
+            other_speedread.append(name)
     reading = counts["speedread"] + counts["native"] + counts["shell"]
 
     def share(k):
@@ -252,6 +256,8 @@ def summarize_calls(calls):
         "speedread_share": share("speedread"),
         "native_share": share("native"),
         "shell_share": share("shell"),
+        "other_speedread_calls": len(other_speedread),
+        "other_speedread_tools": other_speedread,
     }
 
 

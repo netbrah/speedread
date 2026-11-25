@@ -31,8 +31,8 @@ ROOT = HERE.parent
 PENDING = HERE / "results" / "description-baseline" / "PENDING.md"
 
 # Pre-registered in docs/specs/description-ab.md. Do not shrink this for cost.
-PRIMARY = "grok-build"
-REPLICATION = "grok-4.7"
+PRIMARY = "grok-4.7"
+REPLICATION = "grok-4.7-build-fast"
 QA_TRIALS = 5
 EXCLUSIVE_TRIALS = 1
 CODING_TRIALS = 4
@@ -113,8 +113,8 @@ def print_plan(spec):
         "coding_trials_per_task": CODING_TRIALS,
         "tasks": {
             "suite3": "evals/agent_tasks.json (10)",
-            "suite3b": "evals/relationship_tasks.json (4)",
-            "chromium": "evals/chromium_tasks.json (8)",
+            "pin": "evals/pin_tasks.json (13)",
+            "chromium": "evals/chromium_tasks.json (14)",
             "coding_descriptive": "evals/coding_tasks.json (8), not in the ship rule",
         },
         "decision_trials_per_arm_per_model": 22 * QA_TRIALS,
@@ -147,7 +147,7 @@ def live(args, spec):
     ]
     suites = [
         ("suite3", HERE / "agent_tasks.json"),
-        ("suite3b", HERE / "relationship_tasks.json"),
+        ("pin", HERE / "pin_tasks.json"),
         ("chromium", HERE / "chromium_tasks.json"),
     ]
     for name, tasks in suites:

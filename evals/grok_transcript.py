@@ -13,6 +13,74 @@ the ``end`` event is only a fallback the runner labels as such.
 import json
 
 
+def normalize_usage(session=None, end=None):
+    """One token record per answer. ``input_tokens`` includes cache.
+
+    ``grok usage`` is the source when its session object has token fields.
+    There ``inputTokens`` already includes cached reads (a 1.0.92 smoke:
+    15004 = 6172 uncached + 8832 ``cachedReadTokens``). Adding the cache
+    field again double-counts.
+
+    The streaming ``end`` event is the fallback, and its ``input_tokens``
+    excludes cache (same smoke: 11617 + 35456 cache_read + 255 output =
+    47328 ``total_tokens``). Those buckets are folded into the same
+    inclusive ``input_tokens`` so the two sources are not mixed.
+    ``cache_read_tokens`` is always a subset, never an addend.
+    """
+    session = session or {}
+    end = end or {}
+    has_ledger = any(session.get(k) is not None for k in ("inputTokens", "outputTokens", "totalTokens"))
+    if has_ledger:
+        inclusive = session.get("inputTokens")
+        output = session.get("outputTokens")
+        total = session.get("totalTokens")
+        if total is None and inclusive is not None and output is not None:
+            total = inclusive + output
+        return {
+            "input_tokens": inclusive,
+            "input_includes_cache": True,
+            "output_tokens": output,
+            "cache_read_tokens": session.get("cachedReadTokens"),
+            "cache_creation_tokens": session.get("cacheCreationTokens"),
+            "reasoning_tokens": session.get("reasoningTokens"),
+            "total_tokens": total,
+            "model_calls": session.get("modelCalls"),
+            "cost_usd_ticks": session.get("costUsdTicks"),
+            "cost_usd": (session["costUsdTicks"] / 1e10) if isinstance(session.get("costUsdTicks"), int) else None,
+            "cost_is_partial": bool(session.get("costIsPartial")),
+            "usage_is_incomplete": bool(session.get("usageIsIncomplete")),
+            "usage_model": session.get("primaryModelId"),
+            "usage_source": "grok usage",
+        }
+    usage = end.get("usage") or {}
+    if not usage:
+        return {"input_includes_cache": True, "usage_source": "missing"}
+    uncached = usage.get("input_tokens") or 0
+    cache = usage.get("cache_read_input_tokens") or 0
+    created = usage.get("cache_creation_input_tokens") or 0
+    output = usage.get("output_tokens")
+    inclusive = uncached + cache + created
+    total = usage.get("total_tokens")
+    if total is None and output is not None:
+        total = inclusive + (output or 0)
+    ticks = end.get("total_cost_usd_ticks")
+    cost = end.get("total_cost_usd")
+    return {
+        "input_tokens": inclusive,
+        "input_includes_cache": True,
+        "output_tokens": output,
+        "cache_read_tokens": usage.get("cache_read_input_tokens"),
+        "cache_creation_tokens": usage.get("cache_creation_input_tokens"),
+        "reasoning_tokens": usage.get("reasoning_tokens"),
+        "total_tokens": total,
+        "model_calls": end.get("num_turns"),
+        "cost_usd_ticks": ticks,
+        "cost_usd": cost if isinstance(cost, (int, float)) else (ticks / 1e10 if isinstance(ticks, int) else None),
+        "usage_model": None,
+        "usage_source": "streaming-json end event",
+    }
+
+
 def parse_streaming_json(text):
     calls, order = {}, []
     answer, errors = [], []

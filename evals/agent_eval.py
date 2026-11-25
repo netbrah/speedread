@@ -312,7 +312,8 @@ def main():
     if args.description != "current":
         desc_variant.load_variant(args.description)
         cfg = out_dir / "speedread-mcp.json"
-        cfg.write_text(json.dumps(desc_variant.copilot_mcp_config(args.speedread, args.description)))
+        cfg.write_text(json.dumps(desc_variant.copilot_mcp_config(
+            args.speedread, args.description, variant_out=out_dir / "description.json")))
         args.mcp_config = str(cfg)
     if "dropin" in conds or args.dropin_trials:
         for t in tasks:

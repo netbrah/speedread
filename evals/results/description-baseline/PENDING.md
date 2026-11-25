@@ -6,7 +6,9 @@ No trial in this PR was produced by a model. Do not read the fixture under
 `evals/fixtures/grok_streaming/` as a result.
 
 The run is specified in [docs/specs/description-ab.md](../../../docs/specs/description-ab.md).
-It has not been started here because this environment has no `grok` binary.
+The tool set is map, search, and read (37 tasks; joint power about 90% under
+the pre-registered alternative). It has not been started here because this
+environment has no `grok` binary.
 
 ```bash
 python3 evals/run_baseline.py --bench /path/to/bench

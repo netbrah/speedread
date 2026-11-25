@@ -66,6 +66,54 @@
       "prompt": "In content/renderer/render_frame_impl.cc, on which line does RenderFrameImpl::DidCommitNavigation begin in this tree? Answer with the starting line number.",
       "graders": ["\\b4029\\b"],
       "reference": "Line 4029, from evals/fork/big-chromium.txt on this commit."
+    },
+    {
+      "id": "chromium-gurl-is-valid",
+      "repo": "chromium",
+      "category": "control: small header",
+      "prompt": "In url/gurl.h, on which line is GURL::is_valid() declared? Answer with the line number.",
+      "graders": ["\\b92\\b"],
+      "reference": "Line 92."
+    },
+    {
+      "id": "chromium-gurl-about-blank",
+      "repo": "chromium",
+      "category": "control: small header",
+      "prompt": "In url/gurl.h, on which line is GURL::IsAboutBlank() declared? Answer with the line number.",
+      "graders": ["\\b236\\b"],
+      "reference": "Line 236."
+    },
+    {
+      "id": "chromium-gurl-is-standard",
+      "repo": "chromium",
+      "category": "control: small header",
+      "prompt": "In url/gurl.h, on which line is GURL::IsStandard() declared? Answer with the line number.",
+      "graders": ["\\b232\\b"],
+      "reference": "Line 232."
+    },
+    {
+      "id": "chromium-version-is-valid",
+      "repo": "chromium",
+      "category": "control: tiny header",
+      "prompt": "In base/version.h, on which line is Version::IsValid() declared? Answer with the line number.",
+      "graders": ["\\b45\\b"],
+      "reference": "Line 45."
+    },
+    {
+      "id": "chromium-version-get-string",
+      "repo": "chromium",
+      "category": "control: tiny header",
+      "prompt": "In base/version.h, on which line is Version::GetString() declared? Answer with the line number.",
+      "graders": ["\\b63\\b"],
+      "reference": "Line 63."
+    },
+    {
+      "id": "chromium-command-line-namespace",
+      "repo": "chromium",
+      "category": "control: one line",
+      "prompt": "In base/command_line.h, on which line does the namespace base open? Answer with the line number.",
+      "graders": ["\\b38\\b"],
+      "reference": "Line 38."
     }
   ]
 }

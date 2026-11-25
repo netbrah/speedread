@@ -397,25 +397,28 @@ impl Server {
             return Ok(());
         };
         for name in over.tools.keys() {
-            if !self.tool_router.map.contains_key(name.as_str()) {
-                let mut known: Vec<&str> =
-                    self.tool_router.map.keys().map(|k| k.as_ref()).collect();
-                known.sort_unstable();
-                return Err(format!(
-                    "description file names unknown tool {name:?}; this server has {}",
-                    known.join(", ")
-                ));
+            if self.tool_router.map.contains_key(name.as_str()) {
+                continue;
             }
+            // trace is being removed and context did not land. A variant may
+            // still name either; ignore it instead of refusing to start.
+            if name == "trace" || name == "context" {
+                continue;
+            }
+            let mut known: Vec<&str> = self.tool_router.map.keys().map(|k| k.as_ref()).collect();
+            known.sort_unstable();
+            return Err(format!(
+                "description file names unknown tool {name:?}; this server has {}",
+                known.join(", ")
+            ));
         }
         if let Some(text) = over.instructions {
             self.instructions_override = Some(text);
         }
         for (name, desc) in over.tools {
-            let route = self
-                .tool_router
-                .map
-                .get_mut(name.as_str())
-                .expect("checked above");
+            let Some(route) = self.tool_router.map.get_mut(name.as_str()) else {
+                continue;
+            };
             route.attr.description = Some(std::borrow::Cow::Owned(desc));
         }
         Ok(())

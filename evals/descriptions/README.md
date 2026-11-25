@@ -2,7 +2,10 @@
 
 Tool descriptions the model sees are product behavior. The shipped text lives
 only in `src/server.rs` (`INSTRUCTIONS`, `READ_DESC`, `SEARCH_DESC`,
-`MAP_DESC`, `TRACE_DESC`). This directory does not copy that text.
+`MAP_DESC`). This directory does not copy that text. The harness covers
+`read`, `search`, and `map`. `trace` is being removed in another PR;
+`context` did not land. A variant may omit both. If a file still names
+either, the loader drops that key before the server reads it.
 
 A variant is one JSON file here, `<id>.json`:
 
@@ -12,17 +15,17 @@ A variant is one JSON file here, `<id>.json`:
   "tools": {
     "read": "optional replacement of that tool's description",
     "search": "...",
-    "map": "...",
-    "trace": "..."
+    "map": "..."
   }
 }
 ```
 
-Omitted tools keep the shipped description. An unknown tool name, or a file
-that sets neither field, makes `speedread mcp` exit before it serves. The
-server does this only when `SPEEDREAD_DESCRIPTION_FILE` points at the file.
-An ordinary launch does not set that variable, and `tools/list` stays
-byte-identical to `tests/fixtures/default_tool_text.json`.
+Omitted tools keep the shipped description. An unknown tool name other than
+`trace` or `context`, or a file that sets neither field, makes `speedread mcp`
+exit before it serves. The server does this only when
+`SPEEDREAD_DESCRIPTION_FILE` points at the file. An ordinary launch does not
+set that variable. The lock for the three tool descriptions and the
+instructions is `tests/fixtures/default_tool_text.json`.
 
 The id `current` is not a file. It means "do not set the variable".
 

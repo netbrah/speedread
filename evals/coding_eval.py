@@ -45,10 +45,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from agent_eval import COMMON, session_usage, tok  # noqa: E402
-from adoption import classify_call, effective_name, is_speedread_name, is_trace_tool, prompt_violations  # noqa: E402
+from adoption import classify_call, effective_name, is_speedread_name, prompt_violations  # noqa: E402
 
 CONDITIONS = ("baseline", "available", "preferred", "exclusive")
-PREFER = ("\n\nUse the speedread MCP tools (read, search, trace, map) to read, search and navigate code; "
+PREFER = ("\n\nUse the speedread MCP tools (read, search, map) to read, search and navigate code; "
           "use the built-in tools only to edit files and run commands.")
 EDIT_TOOLS = {"edit", "create", "str_replace_editor", "write", "apply_patch", "str_replace", "search_replace"}
 NO_SUBAGENTS = ["task", "web_fetch", "web_search"]
@@ -234,7 +234,6 @@ def analyze(task, events, ws):
         "native_read_calls": sum(1 for t in reads if kind(t) == "native"),
         "bash_read_calls": sum(1 for t in reads if kind(t) == "shell"),
         "used_speedread": bool(sr), "speedread_share": (len(sr) / len(reads)) if reads else None,
-        "trace_calls": sum(1 for t in sr if is_trace_tool(effective_name(t["tool"], t.get("args")))),
         "read_result_tokens": sum(tok(t.get("result") or "") for t in reads),
         "tool_result_tokens": sum(tok(t.get("result") or "") for t in tools),
         "shown_source_bytes": shown, "repeated_source_bytes": repeated,
@@ -306,7 +305,7 @@ def median(xs):
 
 METRICS = ("input_tokens", "output_tokens", "cost_aiu", "api_ms", "session_ms", "model_calls", "tool_calls",
            "read_calls", "edit_calls", "read_result_tokens", "shown_source_bytes", "repeated_source_bytes",
-           "cc_read_tokens", "cc_read_tokens_resent", "trace_calls")
+           "cc_read_tokens", "cc_read_tokens_resent")
 
 
 def summarize(recs, tasks):
@@ -372,7 +371,6 @@ def markdown(s, meta):
             ("Source bytes shown / task", "mean_shown_source_bytes", "{:,.0f}", True),
             ("Repeated source bytes / task", "mean_repeated_source_bytes", "{:,.0f}", True),
             ("Used speedread (adoption)", "adoption", "{:.0%}", False), ("Share of reads via speedread", "speedread_share", "{:.0%}", False),
-            ("Mean trace calls", "mean_trace_calls", "{:.1f}", False),
             ("Decisive line shown", "decisive_seen", "{:.0%}", False)]
     for label, key, fmt, delta in rows:
         vals = []
@@ -465,7 +463,8 @@ def main():
         import desc_variant
         desc_variant.load_variant(args.description)
         cfg = out_dir / "speedread-mcp.json"
-        cfg.write_text(json.dumps(desc_variant.copilot_mcp_config(args.speedread, args.description)))
+        cfg.write_text(json.dumps(desc_variant.copilot_mcp_config(
+            args.speedread, args.description, variant_out=out_dir / "description.json")))
         args.mcp_config = str(cfg)
     if any(c in ("available", "dropin") for c in conds):
         for t in tasks:

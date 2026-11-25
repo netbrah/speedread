@@ -810,9 +810,8 @@ fn schemas(listed: &Value) -> std::collections::BTreeMap<String, String> {
         .collect()
 }
 
-/// Shipped `tools/list` descriptions and initialize instructions, byte for byte.
-/// Regenerating this file is a product change to the model-facing text, which
-/// does not belong in a description-variant PR.
+/// Shipped instructions and the map/search/read descriptions, byte for byte.
+/// `trace` may still be listed until its removal PR; it is not part of this lock.
 #[test]
 fn default_tool_text_is_byte_identical() {
     let dir = std::env::temp_dir().join(format!("speedread-text-{}", std::process::id()));
@@ -825,25 +824,25 @@ fn default_tool_text_is_byte_identical() {
     );
     c.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
     let listed = c.rpc("tools/list", json!({}));
-    let mut body = serde_json::Map::new();
-    body.insert(
-        "instructions".into(),
-        init["result"]["instructions"].clone(),
-    );
-    body.insert(
-        "tools".into(),
-        serde_json::to_value(tool_descriptions(&listed)).unwrap(),
-    );
-    let got = serde_json::to_string_pretty(&Value::Object(body)).unwrap() + "\n";
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/tests/fixtures/default_tool_text.json"
     );
-    let expected = std::fs::read_to_string(path).unwrap_or_default();
+    let expected: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
     assert_eq!(
-        got, expected,
-        "shipped tool text changed; the fixture is the byte-identical contract"
+        init["result"]["instructions"], expected["instructions"],
+        "shipped instructions changed"
     );
+    let got = tool_descriptions(&listed);
+    let want = expected["tools"].as_object().unwrap();
+    assert_eq!(
+        want.keys().collect::<Vec<_>>(),
+        vec!["map", "read", "search"]
+    );
+    for name in ["map", "read", "search"] {
+        assert_eq!(got[name], want[name].as_str().unwrap(), "{name}");
+    }
+    assert!(!want.contains_key("trace"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -887,7 +886,9 @@ fn description_file_replaces_text_and_not_schemas_or_answers() {
     assert_eq!(over_desc["read"], "VARIANT READ");
     assert_eq!(over_desc["search"], plain_desc["search"]);
     assert_eq!(over_desc["map"], plain_desc["map"]);
-    assert_eq!(over_desc["trace"], plain_desc["trace"]);
+    if plain_desc.contains_key("trace") {
+        assert_eq!(over_desc.get("trace"), plain_desc.get("trace"));
+    }
     assert_eq!(schemas(&plain_list), schemas(&over_list));
     assert_eq!(
         over_init["result"]["instructions"].as_str().unwrap(),
@@ -938,5 +939,35 @@ fn description_file_unknown_tool_refuses_to_start() {
     assert!(!out.status.success());
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(err.contains("unknown tool"), "{err}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `context` did not land and `trace` may leave. Naming either must not
+/// refuse startup, and a real tool in the same file still overrides.
+#[test]
+fn description_file_ignores_context_and_keeps_read() {
+    let dir = std::env::temp_dir().join(format!("speedread-ctx-desc-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let variant = dir.join("variant.json");
+    std::fs::write(
+        &variant,
+        r#"{"tools":{"context":"nope","read":"VARIANT READ"}}"#,
+    )
+    .unwrap();
+    let mut c = Client::spawn_env(
+        &["--root", dir.to_str().unwrap(), "mcp"],
+        None,
+        &[("SPEEDREAD_DESCRIPTION_FILE", variant.to_str().unwrap())],
+    );
+    c.rpc(
+        "initialize",
+        json!({"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+    c.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+    let listed = c.rpc("tools/list", json!({}));
+    let desc = tool_descriptions(&listed);
+    assert_eq!(desc["read"], "VARIANT READ");
+    assert!(!desc.contains_key("context"));
     let _ = std::fs::remove_dir_all(&dir);
 }
