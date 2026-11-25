@@ -79,11 +79,12 @@ speedread map --symbols                      # structure, with each file's top-l
 speedread search 'handleRequest'             # hits grouped under their enclosing function
 speedread trace '#handleRequest' --depth 2   # callers of callers; --direction callees|refs|impls
 speedread read 'src/app.ts#Server.start' src/util.ts:40-80   # several targets, one call, one budget
+speedread context 'What does handleRequest return?'  # one question; map/search/trace/read stay available
 ```
 
 ## The primitives
 
-Four tools over MCP, mirrored by the CLI:
+Five tools over MCP, mirrored by the CLI. `context` plans a mix of the other four and returns one bundle. The other four are unchanged:
 
 | Primitive | Job | Returns |
 |---|---|---|
@@ -91,6 +92,7 @@ Four tools over MCP, mirrored by the CLI:
 | **search** | locate text | ripgrep's engine; every hit grouped under its enclosing function or class, with line range |
 | **trace** | locate relationships | callers, callees, references, implementations: syntactic and receiver-aware |
 | **read** | obtain exact evidence | batched targets and `path#Symbol`s under one token budget; `path@etag` returns only what changed |
+| **context** | one question | natural language in, one budgeted bundle out (default 8000 tokens). Optional `path` scope |
 
 ### `read`: batched, budgeted, symbol-aware
 

@@ -17,6 +17,7 @@ use std::borrow::Cow;
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::{Deserialize, Deserializer};
 
+use crate::context_tool::{ContextArgs, DESCRIPTION as CONTEXT_DESC};
 use crate::engine::Engine;
 use crate::read::{Mode, ReadRequest};
 use crate::search::{Case, Output, SearchRequest};
@@ -527,6 +528,33 @@ impl Server {
         };
         let limits = engine.limits.clone();
         blocking(ctx, limits, move || crate::trace::trace(&engine, &req)).await
+    }
+
+    #[tool(
+        name = "context",
+        description = CONTEXT_DESC,
+        annotations(title = "Answer with context", read_only_hint = true, destructive_hint = false, idempotent_hint = true, open_world_hint = false)
+    )]
+    async fn context(
+        &self,
+        Parameters(args): Parameters<ContextArgs>,
+        ctx: RequestContext<RoleServer>,
+    ) -> Result<CallToolResult, McpError> {
+        self.ensure_roots(&ctx.peer).await;
+        let engine = match self.engine.scoped(args.base_dir.as_deref()) {
+            Ok(e) => e,
+            Err(msg) => return Ok(text_result(format!("{msg}\n"))),
+        };
+        let req = crate::context_tool::ContextRequest {
+            question: args.question,
+            path: args.path,
+            budget: args.budget,
+        };
+        let limits = engine.limits.clone();
+        blocking(ctx, limits, move || {
+            crate::context_tool::context(&engine, &req)
+        })
+        .await
     }
 }
 

@@ -3,6 +3,7 @@
 
 pub mod block;
 pub mod context;
+pub mod context_tool;
 pub mod diff;
 pub mod engine;
 pub mod json;

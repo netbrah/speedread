@@ -423,7 +423,7 @@ def main() -> None:
     parser.add_argument("--bench", required=True, help="directory containing flask, gin, chromium-subset")
     parser.add_argument("--self", default=".", help="speedread checkout used as the speedread repo")
     parser.add_argument("--speedread", default="target/fast/speedread")
-    parser.add_argument("--arm", choices=("quad", "context"), default="quad")
+    parser.add_argument("--arm", choices=("quad", "context", "both"), default="quad")
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--json", required=True)
     parser.add_argument("--only", action="append", default=[], help="task id, repeatable")
@@ -463,24 +463,33 @@ def main() -> None:
         roots[name] = str(root)
         heads[name] = head
 
-    builder = quad_commands if args.arm == "quad" else context_commands
+    arms = ["quad", "context"] if args.arm == "both" else [args.arm]
+    builders = {"quad": quad_commands, "context": context_commands}
     machine_before = {"nproc": os.cpu_count(), "loadavg": loadavg()}
-    measured = []
+    # Per question, each repeat runs the arms in order (quad then context when
+    # both), so warmup and background noise land on both.
+    collected = {arm: [] for arm in arms}
     for task in tasks:
         root = roots[task["repo"]]
-        commands = builder(binary, root, task["prompt"], suite["budget"], task.get("scope"))
-        runs = []
+        runs = {arm: [] for arm in arms}
         for _ in range(args.runs):
-            steps = [run_cmd(cmd) for cmd in commands]
-            runs.append({"steps": steps})
-        measured.append(summarize_task(task, runs))
+            for arm in arms:
+                commands = builders[arm](
+                    binary, root, task["prompt"], suite["budget"], task.get("scope")
+                )
+                runs[arm].append({"steps": [run_cmd(cmd) for cmd in commands]})
+        for arm in arms:
+            collected[arm].append(summarize_task(task, runs[arm]))
 
     profiles = []
+    profile_arm = "context" if "context" in arms else arms[0]
     for task in tasks:
         if not task.get("profile"):
             continue
         root = roots[task["repo"]]
-        commands = builder(binary, root, task["prompt"], suite["budget"], task.get("scope"))
+        commands = builders[profile_arm](
+            binary, root, task["prompt"], suite["budget"], task.get("scope")
+        )
         for cmd in commands:
             env = os.environ.copy()
             env["SPEEDREAD_STATS"] = "1"
@@ -498,8 +507,39 @@ def main() -> None:
                 }
             )
 
-    passed = [row for row in measured if row["strict_pass"]]
-    answered_tokens = [row["tokens_median"] for row in passed]
+    def pack(arm: str, measured: list[dict]) -> dict:
+        passed = [row for row in measured if row["strict_pass"]]
+        answered_tokens = [row["tokens_median"] for row in passed]
+        return {
+            "arm": arm,
+            "tasks": measured,
+            "aggregate": {
+                "questions": len(measured),
+                "strict_pass": len(passed),
+                "strict_pass_rate": len(passed) / len(measured),
+                "calls_mean": sum(row["calls"] for row in measured) / len(measured),
+                "calls_per_answered": (
+                    sum(row["calls"] for row in passed) / len(passed) if passed else None
+                ),
+                "tokens_median_of_question_medians": median(
+                    [row["tokens_median"] for row in measured]
+                ),
+                "tokens_mean_per_answered": (
+                    sum(answered_tokens) / len(answered_tokens) if answered_tokens else None
+                ),
+                "tokens_median_per_answered": median(answered_tokens) if answered_tokens else None,
+                "latency_median_of_question_medians_s": median(
+                    [row["latency_median_s"] for row in measured]
+                ),
+                "rss_median_of_question_medians_kb": median(
+                    [row["rss_median_kb"] for row in measured]
+                ),
+                "rss_max_of_question_max_kb": max(row["rss_max_kb"] for row in measured),
+                "errors": sum(row["errors"] for row in measured),
+                "nondeterministic": [row["id"] for row in measured if not row["deterministic"]],
+            },
+        }
+
     report = {
         "suite": suite["suite"],
         "arm": args.arm,
@@ -515,36 +555,46 @@ def main() -> None:
         "policy": "quad: orient→map, relate→trace, path+symbol or bare path→read, else one search (symbols if the question asks what/how, matches if it asks where). context: one context call. No live model.",
         "machine_before": machine_before,
         "machine_after": {"nproc": os.cpu_count(), "loadavg": loadavg()},
-        "tasks": measured,
         "profile": profiles,
-        "aggregate": {
-            "questions": len(measured),
-            "strict_pass": len(passed),
-            "strict_pass_rate": len(passed) / len(measured),
-            "calls_mean": sum(row["calls"] for row in measured) / len(measured),
-            "calls_per_answered": (
-                sum(row["calls"] for row in passed) / len(passed) if passed else None
-            ),
-            "tokens_median_of_question_medians": median([row["tokens_median"] for row in measured]),
-            "tokens_mean_per_answered": (
-                sum(answered_tokens) / len(answered_tokens) if answered_tokens else None
-            ),
-            "tokens_median_per_answered": median(answered_tokens) if answered_tokens else None,
-            "latency_median_of_question_medians_s": median(
-                [row["latency_median_s"] for row in measured]
-            ),
-            "rss_median_of_question_medians_kb": median([row["rss_median_kb"] for row in measured]),
-            "rss_max_of_question_max_kb": max(row["rss_max_kb"] for row in measured),
-            "errors": sum(row["errors"] for row in measured),
-            "nondeterministic": [row["id"] for row in measured if not row["deterministic"]],
-        },
+        "arms": {arm: pack(arm, collected[arm]) for arm in arms},
     }
+    # Single-arm reports keep the old top-level shape so the baseline file still reads.
+    if len(arms) == 1:
+        only = report["arms"][arms[0]]
+        report["tasks"] = only["tasks"]
+        report["aggregate"] = only["aggregate"]
     out = Path(args.json)
     out.parent.mkdir(parents=True, exist_ok=True)
     # Full stdout is the audit trail. Drop it from the human summary only.
     out.write_text(json.dumps(report, indent=2) + "\n")
-    print(markdown(report))
+    if len(arms) == 1:
+        print(markdown(report))
+    else:
+        for arm in arms:
+            packed = report["arms"][arm]
+            view = {**report, "arm": arm, "tasks": packed["tasks"], "aggregate": packed["aggregate"]}
+            print(markdown(view))
+            print()
+        print(compare_markdown(report))
     print(f"\nwrote {out}")
+
+
+def compare_markdown(report: dict) -> str:
+    quad = {row["id"]: row for row in report["arms"]["quad"]["tasks"]}
+    ctx = {row["id"]: row for row in report["arms"]["context"]["tasks"]}
+    lines = [
+        "| Question | quad pass | context pass | quad calls | context calls | quad tokens | context tokens | quad s | context s | quad RSS KiB | context RSS KiB |",
+        "|---|:---:|:---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for task_id, left in quad.items():
+        right = ctx[task_id]
+        lines.append(
+            f"| {task_id} | {'yes' if left['strict_pass'] else 'no'} | {'yes' if right['strict_pass'] else 'no'} | "
+            f"{left['calls']} | {right['calls']} | {left['tokens_median']:.0f} | {right['tokens_median']:.0f} | "
+            f"{left['latency_median_s']:.3f} | {right['latency_median_s']:.3f} | "
+            f"{left['rss_median_kb']:.0f} | {right['rss_median_kb']:.0f} |"
+        )
+    return "\n".join(lines)
 
 
 def markdown(report: dict) -> str:

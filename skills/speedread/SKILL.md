@@ -9,7 +9,7 @@ Fork of [https://github.com/brennengreen/speedread](https://github.com/brennengr
 
 speedread returns the *smallest useful unit of code* for the question, sized to a
 token budget: a symbol instead of a file, a skeleton instead of a truncated page, a
-diff instead of a re-read. Four tools (MCP) or the same four commands (CLI).
+diff instead of a re-read. Four tools (`map`, `search`, `trace`, `read`) or the same commands, plus `context` for a natural-language question that plans those four and returns one bundle (default budget 8000).
 
 ## The loop
 

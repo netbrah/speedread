@@ -148,6 +148,13 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// One natural-language question. Plans map, search, trace, or read internally.
+    Context {
+        question: String,
+        /// File or directory scope.
+        #[arg(long)]
+        path: Option<String>,
+    },
     /// Relationships of a symbol: callers, callees, references or implementations.
     Trace {
         /// `#Name`, `Type.method`, `path#Name` or `path:LINE`.
@@ -453,6 +460,14 @@ fn run() -> anyhow::Result<()> {
                 budget: cli_budget,
             };
             print!("{}", speedread::trace::trace(&engine, &req));
+        }
+        Cmd::Context { question, path } => {
+            let req = speedread::context_tool::ContextRequest {
+                question,
+                path,
+                budget: cli_budget,
+            };
+            print!("{}", speedread::context_tool::context(&engine, &req));
         }
         Cmd::Symbols { targets, json } => {
             if json {

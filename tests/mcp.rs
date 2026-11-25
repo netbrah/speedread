@@ -134,7 +134,13 @@ fn mcp_session_end_to_end() {
         .iter()
         .map(|t| t["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names, vec!["map", "read", "search", "trace"]);
+    assert_eq!(names, vec!["context", "map", "read", "search", "trace"]);
+    let ctx = c.call(
+        "context",
+        json!({"question": "In src/lib.rs, how does Point work?"}),
+    );
+    assert!(ctx.contains("intent=read"), "{ctx}");
+    assert!(ctx.contains("struct Point"), "{ctx}");
     for t in tools["result"]["tools"].as_array().unwrap() {
         assert_eq!(t["annotations"]["readOnlyHint"], json!(true));
     }

@@ -1,6 +1,6 @@
 # `context`: one question, one budgeted bundle
 
-Status: design and four-tool baseline. No `context` implementation in this revision.
+Status: implemented. The four primitives are unchanged. Paired numbers are in [the comparison](#paired-comparison).
 
 The fifth tool answers a natural-language question about a repository. It chooses a mix of the existing `map`, `search`, `trace`, and `read` primitives, spends one token budget across that mix, and returns one bundle. The four primitives stay as they are: same behavior, same descriptions, same instructions string.
 
@@ -80,6 +80,30 @@ Aggregate over the 11 questions, all of which passed:
 **RSS limiter.** `speedread --version` peaks at 12360 KiB. Every real command peaks at 99780 KiB, including a 2 ms read of `go.mod` and the 5712-file search. The high-water mark is process startup (engine and thread pool), and the walk does not raise it on this snapshot. Per-question RSS differences below that floor are invisible. A 2× regression would have to clear ~195 MiB.
 
 **Not measured.** Live-model answer sentences, preamble re-send (the README's 18–21k tokens per turn), and fat-LTO latency. Multiplying calls by that preamble would not change this baseline, because every question is already one call. It will matter only if `context` and `quad` diverge on call count.
+
+## Paired comparison
+
+Same 11 questions, both arms, on `target/fast/speedread` built from this revision (`cargo build --profile fast`, not fat-LTO `--release`). Five fresh processes per question. Within each repeat the order is quad, then context, so the arms share warmup. Page cache was warm. A Chromium blob fetch was stopped for the run; load average still read 1.00 because it lags. Errors: 0. Every stdout was identical across its five runs. Raw data: [`evals/results/context-compare.json`](../../evals/results/context-compare.json).
+
+| Question | Pass quad | Pass context | Calls | Tokens quad | Tokens context | Latency s quad | Latency s context |
+|---|:---:|:---:|---:|---:|---:|---:|---:|
+| flask-shell-keys | yes | yes | 1 | 129 | 157 | 0.006 | 0.006 |
+| flask-dispatch-lines | yes | yes | 1 | 2799 | 385 | 0.008 | 0.007 |
+| flask-overview | yes | yes | 1 | 3027 | 3047 | 0.026 | 0.024 |
+| gin-go-version | yes | yes | 1 | 657 | 678 | 0.002 | 0.002 |
+| gin-abort-signature | yes | yes | 1 | 240 | 135 | 0.008 | 0.008 |
+| gin-abort-callers | yes | yes | 1 | 555 | 586 | 0.040 | 0.040 |
+| gin-abort-who-calls | yes | yes | 1 | 555 | 587 | 0.041 | 0.041 |
+| gin-render-methods | yes | yes | 1 | 116 | 187 | 0.006 | 0.006 |
+| speedread-map-budget | yes | yes | 1 | 1738 | 558 | 0.010 | 0.009 |
+| chromium-filepath | yes | yes | 1 | 1474 | 1506 | 0.038 | 0.038 |
+| chromium-basename | yes | yes | 1 | 159 | 180 | 0.005 | 0.005 |
+
+Token min and max equal the median on every question (range 0). Latency ranges are in the JSON. RSS median is 99904 KiB on both arms (one quad run of flask-shell-keys was 99776).
+
+**Verdict.** Success ties at 11/11. External calls tie at 1.00, which was the pre-registered floor: this set never needs a second primitive. Median result tokens are 555 (quad) and 558 (context). That is 3 tokens higher, and the run range is 0, so the pre-registered "not higher than the range" gate misses by the plan header (`context intent=…` plus `plan: …`). Mean result tokens per answered question are 1041 → 728. Two questions explain the mean: `flask-dispatch-lines` 2799 → 385, because `context` does not treat the noun "methods" as a request for symbol bodies; `speedread-map-budget` 1738 → 558, because `context` does not treat the word "default" as a request for symbol bodies. The other nine are a little higher, by the plan header. Latency medians of medians are 8.3 ms and 7.7 ms. Per-question gaps sit inside the run ranges (the gin traces span about 37–46 ms). No measurable latency difference. RSS is the same startup floor on both arms. No RSS difference, and not a 2× regression.
+
+A profile run of `context` on the Chromium class question, not one of the five, took 0.042 s and printed `walks=1 entries=5712 stopped=0 cancelled=0`. Same limiter as the baseline: one full walk of the snapshot. `speedread-map-budget` costs more for quad here than in the pre-implementation baseline (689 tokens) because this tree now contains the design doc and the harness, which also mention `DEFAULT_MAP_BUDGET`. Both arms in this table saw that tree.
 
 ## Chromium snapshot
 
@@ -220,6 +244,13 @@ python3 evals/context_eval.py \
   --speedread target/fast/speedread \
   --arm quad --runs 5 \
   --json evals/results/context-baseline.json
+
+# both arms, interleaved, after context exists:
+python3 evals/context_eval.py \
+  --bench /tmp/bench --self . \
+  --speedread target/fast/speedread \
+  --arm both --runs 5 \
+  --json evals/results/context-compare.json
 ```
 
 `<bench>` must contain `flask` at `49943b5a94413a530761350f04e896f76e8d620e`, `gin` at `0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646`, and `chromium-subset` as the 5712-file snapshot of Chromium `8c02738014f004d4917273d70a6596094938f870` described above. The speedread question is anchored to the text of `DEFAULT_MAP_BUDGET`, not to whatever commit is checked out later. `tiktoken` is required.
