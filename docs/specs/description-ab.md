@@ -20,12 +20,16 @@ command. The numbers below are the pre-registered plan, not results.
 The harness tool set is **map, search, and read**. `trace` is being removed
 in a separate PR; this one does not edit `TRACE_DESC` or the other shipped
 description constants. `context` (PR #6) was closed without merging, so it is
-not a tool and not an adoption event. Until `trace` is gone from the server,
-every arm that launches speedread passes `--deny MCPTool(speedread__trace)`
-and `--deny MCPTool(speedread__context)`. `--disallowed-tools` removes
-built-in ids only; it does not drop an MCP catalog key. The no-speedread arm
-denies `MCPTool(speedread__*)`. A baseline trial that still calls `map`,
-`search`, or `read` is an invalid deny leak.
+not a tool and not an adoption event. The process Grok launches is
+`evals/mcp_allow.py` in front of `speedread mcp`. It drops every other tool
+from `tools/list` and refuses a call to one, so the catalog is map, search,
+and read. A preflight lists tools through that proxy and aborts the run if
+anything else is present. `--deny MCPTool(speedread__trace)` does not hide
+the tool: on grok 1.0.92 it only blocks a later call, and `available_commands`
+plus `search_tool` still show `speedread__trace`. `--disallowed-tools`
+removes built-in ids only. The no-speedread arm denies
+`MCPTool(speedread__*)`. A baseline trial that still calls `map`, `search`,
+or `read` is an invalid deny leak.
 
 ## Current path
 
@@ -58,12 +62,15 @@ Per-session tokens and cost are `grok usage <session-id>` (`costUsdTicks` is
 USD × 10^10; a missing cost is unreported, not zero). Built-in readers are
 removed with `--disallowed-tools` (ids such as `read_file`, `grep`,
 `list_dir`; the live shell id is `run_terminal_command`). MCP tools are
-catalog keys `server__tool`, hidden with `--deny MCPTool(...)`, and the
-model invokes them through `use_tool`. Adoption reads that inner name.
-The exclusive arm also writes
-`[toolset.search_replace] skip_read_before_edit = true` into the trial
-config, after the MCP table, because dropping `read_file` otherwise makes
-`search_replace` an invalid toolset and the session never starts. If any
+catalog keys `server__tool`. The model invokes them through `use_tool`.
+Adoption reads that inner name. `--deny MCPTool(...)` blocks a call and
+does not remove the key from the catalog; `evals/mcp_allow.py` does.
+Exclusive denies `read_file`, `grep`, `list_dir`, `run_terminal_command`,
+`search_replace`, and `write`. grok 1.0.92 ignores
+`[toolset.search_replace] skip_read_before_edit` and refuses to start when
+`search_replace` is still enabled and `read_file` is not. That deny list is
+the one that starts on this CLI (the same list as the definition-token
+harness). The trial config does not write `skip_read_before_edit`. If any
 session fails to initialize, the driver records that trial and aborts the
 run.
 
@@ -95,20 +102,25 @@ be a second implementation of the framing the server already speaks.
 
 **Shape C — each driver splices strings.** Rejected. Callers would own the prose.
 
-Shape A is the one this harness uses. The JSON file is the only copy of a
-variant. `evals/desc_variant.py` is the only code that turns an id into the
+Shape A is how a variant's text is applied. The JSON file is the only copy of
+a variant. `evals/desc_variant.py` is the only code that turns an id into the
 env var (Grok `config.toml` or a Copilot MCP config). `current` is not a
-file: the env var is left unset, so the process is an ordinary `speedread mcp`
-plus, when a trial asks for it, `SPEEDREAD_RSS_LOG` (a single write of
-`VmHWM` at exit; it does not change answers). The sibling track that is
-shortening the definitions drops `evals/descriptions/lean.json` and passes
-`--description lean`. That file is not in this change, and the constants in
-`src/server.rs` are not edited. `tests/fixtures/default_tool_text.json` is the
-byte-identical `tools/list` / instructions snapshot; `cargo test --test mcp`
-fails if a launch without the env var drifts from it, and a second test checks
-that an override changes only the named strings and not the schema or the
-`read` answer. The same `read` via the CLI is identical with the env var set
-and unset, because the CLI never consults descriptions.
+file: the env var is left unset. The process Grok launches is
+`evals/mcp_allow.py`, which forwards to `speedread mcp` and removes every
+tool except map, search, and read from `tools/list`. That filter stays after
+`trace` is deleted; it does not rewrite description text. `SPEEDREAD_RSS_LOG`
+is a single write of `VmHWM` at exit and does not change answers. The sibling
+track that is shortening the definitions drops `evals/descriptions/lean.json`
+and passes `--description lean`. That file is not in this change, and the
+constants in `src/server.rs` are not edited.
+`tests/fixtures/default_tool_text.json` locks the `map`, `search`, and `read`
+descriptions byte for byte. Instructions are checked separately: the fixture
+string, or that string with `` `trace` follows callers, callees, references and implementations; ``
+removed (the trace-removal PR's only instructions edit). There is no default
+variant file. A second test checks that an override changes only the named
+strings and not the schema or the `read` answer. The same `read` via the CLI
+is identical with the env var set and unset, because the CLI never consults
+descriptions.
 
 `list_tools` and `call_tool` now use the instance router. With the env var
 unset that router is the one `Self::tool_router()` built at startup, which is
@@ -314,7 +326,7 @@ depends on.
 | vscode | `2242ebbb54efeeb0129e08e919e7e8d43033cd83` | tag 1.139.0, published the day of the old Copilot run; `textModel.ts:487` is the null check |
 | Alamofire | `dea4bab91767a971d6e112bc955c6a82295589b7` | `Session.swift:136` is `startRequestsImmediately: Bool = true` (file is 1,441 lines) |
 | swift-argument-parser | `d225b6fe8aed45478d1e36e770bf269c5d48d3a9` | `ParsableCommand.swift:16` is the `configuration` requirement |
-| chromium | `3a7520d2d79d` | the commit `evals/fork/big-chromium.txt` and `docs/specs/eval.md` already used |
+| chromium | `3a7520d2d79d6569d3a11f968d32b20665fa4db3` | full object name of the commit `evals/fork/big-chromium.txt` and `docs/specs/eval.md` cited as `3a7520d2d79d`. A prefix is not fetchable from googlesource |
 
 Chromium, exactly:
 
@@ -325,7 +337,7 @@ git init chromium && git remote add origin https://chromium.googlesource.com/chr
 # (png, jpg, jpeg, gif, webp, ico, icns, bmp, psd, mp3, mp4, wav, ogg, webm, mov,
 #  avi, flac, ttf, otf, woff, woff2, eot, zip, tar, gz, tgz, bz2, xz, 7z, rar,
 #  apk, aab, dmg, iso, pdf)
-git -c protocol.version=2 fetch --filter=blob:none --depth 1 origin 3a7520d2d79d
+git -c protocol.version=2 fetch --filter=blob:none --depth 1 origin 3a7520d2d79d6569d3a11f968d32b20665fa4db3
 git checkout --detach FETCH_HEAD
 ```
 
@@ -406,6 +418,14 @@ would make it a result, or an inconclusive one.
 
 ```bash
 python3 evals/run_baseline.py --bench /path/to/bench
+```
+
+The trace-not-visible and exclusive-starts check, on a machine with grok
+1.0.92. It is two short sessions plus the filtered `tools/list` preflight.
+It is not the baseline:
+
+```bash
+python3 evals/grok_eval.py --live-check --speedread "$PWD/target/fast/speedread"
 ```
 
 Needs Rust 1.90+, a C compiler, Grok CLI signed in or `XAI_API_KEY`, and

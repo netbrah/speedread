@@ -1,7 +1,7 @@
 {
   "suite": "speedread-chromium-qa",
-  "commit": "3a7520d2d79d",
-  "description": "Read-only questions on Chromium at 3a7520d2d79d. Graders are line numbers and version fields read from that tree (chrome/VERSION and the headers below were fetched from the commit; the two large-file lines are the symbol ranges in evals/fork/big-chromium.txt). Prompts do not mention speedread, trace, or MCP tools. fetch_corpora.py --check confirms each sentinel on a checkout.",
+  "commit": "3a7520d2d79d6569d3a11f968d32b20665fa4db3",
+  "description": "Read-only questions on Chromium at 3a7520d2d79d6569d3a11f968d32b20665fa4db3 (the full name of the tree previously cited as 3a7520d2d79d). Graders are line numbers and version fields read from that tree (chrome/VERSION and the headers below were fetched from the commit; the two large-file lines are the symbol ranges in evals/fork/big-chromium.txt). Prompts do not mention speedread, trace, or MCP tools. fetch_corpora.py --check confirms each sentinel on a checkout.",
   "tasks": [
     {
       "id": "chromium-version",

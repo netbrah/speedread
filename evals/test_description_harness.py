@@ -2,8 +2,10 @@
 """Dry checks for the description harness. No model calls."""
 
 import json
+import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 
@@ -12,7 +14,9 @@ sys.path.insert(0, str(HERE))
 
 import adoption  # noqa: E402
 import desc_variant  # noqa: E402
+import fetch_corpora  # noqa: E402
 import grok_eval  # noqa: E402
+import mcp_allow  # noqa: E402
 import stats  # noqa: E402
 from grok_transcript import normalize_usage, parse_streaming_json  # noqa: E402
 
@@ -186,28 +190,30 @@ class SmokeShapeTests(unittest.TestCase):
         # The bug was `(err or "")[-400]`, which raises IndexError below 400 chars.
         self.assertEqual(("" or "")[-400:], "")
 
-    def test_argv_trusts_the_checkout_and_exclusive_config_is_valid(self):
+    def test_argv_trusts_the_checkout_and_exclusive_denies_edit_tools(self):
         cmd = grok_eval.grok_argv("Say ok.", "grok-4.7", "/tmp/repo", "11111111-1111-4111-8111-111111111111", "dropin", 4)
         self.assertIn("--trust", cmd)
         self.assertNotIn("read_file", ",".join(cmd))
         exclusive = grok_eval.grok_argv("Say ok.", "grok-4.7", "/tmp/repo", "11111111-1111-4111-8111-111111111111", "exclusive", 4)
-        disallowed = exclusive[exclusive.index("--disallowed-tools") + 1]
-        self.assertIn("read_file", disallowed)
-        self.assertNotIn("run_terminal_command", disallowed)
-        self.assertNotIn("search_replace", disallowed)
+        disallowed = exclusive[exclusive.index("--disallowed-tools") + 1].split(",")
+        for tool in grok_eval._EXCLUSIVE_DENY:
+            self.assertIn(tool, disallowed)
+        self.assertEqual(disallowed[:6], list(grok_eval._EXCLUSIVE_DENY))
+        # Present as a call block only. The catalog filter is mcp_allow.py, in the config below.
         self.assertIn("MCPTool(speedread__trace)", exclusive)
-        self.assertIn("MCPTool(speedread__context)", exclusive)
-        dropin = grok_eval.grok_argv("Say ok.", "grok-4.7", "/tmp/repo", "11111111-1111-4111-8111-111111111111", "dropin", 4)
-        self.assertIn("MCPTool(speedread__trace)", dropin)
-        cfg = desc_variant.grok_config("/bin/speedread", "current", skip_read_before_edit=True)
-        self.assertIn("[toolset.search_replace]", cfg)
-        self.assertIn("skip_read_before_edit = true", cfg)
-        # The env map must stay inside the MCP server table, not under toolset.
-        self.assertLess(cfg.index("[mcp_servers.speedread]"), cfg.index("[toolset.search_replace]"))
+        cfg = desc_variant.grok_config("/bin/speedread", "current")
+        self.assertNotIn("skip_read_before_edit", cfg)
+        self.assertNotIn("[toolset.search_replace]", cfg)
+        self.assertIn("mcp_allow.py", cfg)
+        self.assertIn("map,search,read", cfg)
 
     def test_init_failure_aborts_and_a_short_error_does_not(self):
         self.assertTrue(grok_eval.initialization_failure({
             "stderr_tail": "Couldn't start session: search_replace requires a Read tool",
+            "errors": [],
+        }))
+        self.assertTrue(grok_eval.initialization_failure({
+            "stderr_tail": "Couldn't create session",
             "errors": [],
         }))
         self.assertFalse(grok_eval.initialization_failure({
@@ -271,6 +277,102 @@ class StatsTests(unittest.TestCase):
         table = stats.adoption_table(recs, arm="dropin", n=200)
         self.assertIn("trial adoption", table)
         self.assertIn("1.000", table)
+
+
+class FilterTests(unittest.TestCase):
+    def test_tools_list_keeps_map_search_read_and_drops_trace(self):
+        read = {"name": "read", "description": "trace is a word in this description"}
+        line = json.dumps({
+            "jsonrpc": "2.0", "id": 1,
+            "result": {"tools": [read, {"name": "trace", "description": "the tool"}, {"name": "map", "description": "m"}, {"name": "search", "description": "s"}]},
+        }, separators=(",", ":")) + "\n"
+        filtered = mcp_allow.filter_tools_message(line, set(mcp_allow.ALLOW))
+        names = [tool["name"] for tool in json.loads(filtered)["result"]["tools"]]
+        self.assertEqual(names, ["read", "map", "search"])
+        self.assertIn("trace is a word in this description", filtered)
+        self.assertNotIn('"name":"trace"', filtered)
+        self.assertIsNotNone(mcp_allow.blocked_call(
+            '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"trace","arguments":{}}}\n',
+            set(mcp_allow.ALLOW),
+        ))
+        self.assertIsNone(mcp_allow.blocked_call(
+            '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"read","arguments":{}}}\n',
+            set(mcp_allow.ALLOW),
+        ))
+
+    def test_preflight_fails_when_the_server_still_lists_trace(self):
+        fake = Path(tempfile.mkdtemp()) / "fake_mcp.py"
+        fake.write_text(textwrap.dedent("""\
+            import json, sys
+            for line in sys.stdin:
+                msg = json.loads(line)
+                method = msg.get("method")
+                if method == "initialize":
+                    body = {"protocolVersion": "2025-06-18", "capabilities": {"tools": {}}, "serverInfo": {"name": "fake", "version": "0"}}
+                    sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": body}) + "\\n")
+                elif method == "tools/list":
+                    tools = [{"name": name, "description": "d"} for name in ("map", "read", "search", "trace")]
+                    sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"tools": tools}}) + "\\n")
+                elif method == "notifications/initialized":
+                    continue
+                else:
+                    continue
+                sys.stdout.flush()
+        """))
+        raw = mcp_allow.listed_names([sys.executable, str(fake)])
+        self.assertIn("trace", raw)
+        self.assertIsNotNone(mcp_allow.catalog_error(raw))
+        filtered = mcp_allow.listed_names([
+            sys.executable, str(Path(mcp_allow.__file__).resolve()),
+            "--allow", "map,search,read", "--", sys.executable, str(fake),
+        ])
+        self.assertIsNone(mcp_allow.catalog_error(filtered))
+        self.assertEqual(set(filtered), {"map", "search", "read"})
+
+    def test_session_stream_with_trace_is_not_a_three_tool_catalog(self):
+        leaked = '{"available_commands":[{"name":"speedread__map"},{"name":"speedread__search"},{"name":"speedread__read"},{"name":"speedread__trace"}]}\n'
+        self.assertIn("trace", grok_eval.catalog_problem(leaked))
+        clean = '{"available_commands":[{"name":"speedread__map"},{"name":"speedread__search"},{"name":"speedread__read"}]}\n'
+        self.assertIsNone(grok_eval.catalog_problem(clean))
+
+    def test_exclusive_argv_starts_on_a_fake_grok_that_requires_no_search_replace(self):
+        """The fake grok fails the way 1.0.92 did: search_replace without read_file."""
+        script = Path(tempfile.mkdtemp()) / "fake-grok.py"
+        script.write_text(textwrap.dedent("""\
+            import sys
+            argv = sys.argv
+            disallowed = ""
+            if "--disallowed-tools" in argv:
+                disallowed = argv[argv.index("--disallowed-tools") + 1]
+            denied = set(disallowed.split(","))
+            if "read_file" in denied and "search_replace" not in denied:
+                sys.stderr.write("Couldn't create session: search_replace requires a Read tool\\n")
+                sys.exit(1)
+            sys.stdout.write('{"available_commands":[{"name":"speedread__map"},{"name":"speedread__search"},{"name":"speedread__read"}]}\\n')
+            sys.exit(0)
+        """))
+        exclusive = grok_eval.grok_argv("pong", "grok-4.7", "/tmp/repo", "11111111-1111-4111-8111-111111111111", "exclusive", 1)
+        exclusive[0] = sys.executable
+        exclusive.insert(1, str(script))
+        started = subprocess.run(exclusive, capture_output=True, text=True)
+        self.assertEqual(started.returncode, 0, started.stderr)
+        self.assertIsNone(grok_eval.catalog_problem(started.stdout))
+        broken = [sys.executable, str(script), "--disallowed-tools", "read_file,grep,list_dir"]
+        failed = subprocess.run(broken, capture_output=True, text=True)
+        self.assertEqual(failed.returncode, 1)
+        self.assertIn("Couldn't create session", failed.stderr)
+
+
+class PinTests(unittest.TestCase):
+    def test_fetcher_requires_full_shas_and_chromium_is_pinned(self):
+        with self.assertRaises(SystemExit):
+            fetch_corpora.require_full_sha("3a7520d2d79d", "chromium")
+        full = "3a7520d2d79d6569d3a11f968d32b20665fa4db3"
+        self.assertEqual(fetch_corpora.require_full_sha(full, "chromium"), full)
+        lock = json.loads((HERE / "corpora.json").read_text())
+        for name, spec in lock["repos"].items():
+            fetch_corpora.require_full_sha(spec["commit"], name)
+        self.assertEqual(lock["repos"]["chromium"]["commit"], full)
 
 
 if __name__ == "__main__":

@@ -24,10 +24,16 @@ Omitted tools keep the shipped description. An unknown tool name other than
 `trace` or `context`, or a file that sets neither field, makes `speedread mcp`
 exit before it serves. The server does this only when
 `SPEEDREAD_DESCRIPTION_FILE` points at the file. An ordinary launch does not
-set that variable. The lock for the three tool descriptions and the
-instructions is `tests/fixtures/default_tool_text.json`.
+set that variable. `map`, `search`, and `read` are locked byte for byte in
+`tests/fixtures/default_tool_text.json`. Instructions are locked separately:
+the fixture holds today's string, and the test also accepts that string with
+the clause `` `trace` follows callers, callees, references and implementations; ``
+removed, which is the only instructions edit in the trace-removal PR. Tool
+descriptions are not part of that edit, so the same lock passes before and
+after it merges.
 
-The id `current` is not a file. It means "do not set the variable".
+The id `current` is not a file. It means "do not set the variable", so there
+is no default variant file to update when instructions change.
 
 ## Slot for a shorter description
 

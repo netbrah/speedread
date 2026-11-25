@@ -15,7 +15,7 @@ python3 evals/run_baseline.py --bench /path/to/bench
 ```
 
 That command builds `target/fast/speedread`, fetches every repo in
-`evals/corpora.json` (including Chromium at `3a7520d2d79d`), then runs the
+`evals/corpora.json` (including Chromium at `3a7520d2d79d6569d3a11f968d32b20665fa4db3`), then runs the
 pre-registered baseline. Until that command has written `trials.jsonl` files
 next to this note, there is no adoption number, no success number, and no
 latency or RSS number from this harness.

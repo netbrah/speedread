@@ -1,5 +1,5 @@
 {
-  "note": "Commits that satisfy the committed graders. Shallow fetch is enough. Chromium is the short hash already used by evals/fork/big-chromium.txt and docs/specs/eval.md; a partial checkout that drops the listed extensions is the tree the agent tasks grade.",
+  "note": "Commits that satisfy the committed graders. Every commit is a full 40-character SHA; evals/fetch_corpora.py rejects a prefix. Chromium's full object name is the tree evals/fork/big-chromium.txt and docs/specs/eval.md called 3a7520d2d79d. A partial checkout that drops the listed extensions is the tree the agent tasks grade.",
   "repos": {
     "flask": {
       "url": "https://github.com/pallets/flask.git",
@@ -76,7 +76,7 @@
     },
     "chromium": {
       "url": "https://chromium.googlesource.com/chromium/src.git",
-      "commit": "3a7520d2d79d",
+      "commit": "3a7520d2d79d6569d3a11f968d32b20665fa4db3",
       "partial": true,
       "omit_extensions": [
         "png", "jpg", "jpeg", "gif", "webp", "ico", "icns", "bmp", "psd",

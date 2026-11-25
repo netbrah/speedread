@@ -810,8 +810,17 @@ fn schemas(listed: &Value) -> std::collections::BTreeMap<String, String> {
         .collect()
 }
 
-/// Shipped instructions and the map/search/read descriptions, byte for byte.
-/// `trace` may still be listed until its removal PR; it is not part of this lock.
+/// The one clause PR #13 deletes from `INSTRUCTIONS`. Tool descriptions are
+/// not part of that edit. Accepting either form lets this lock pass on
+/// current main and after that PR merges, with no fixture edit in between.
+const TRACE_INSTRUCTIONS_CLAUSE: &str =
+    "`trace` follows callers, callees, references and implementations; ";
+
+/// `map` / `search` / `read` descriptions, byte for byte.
+/// Instructions must be the locked string, or that string with
+/// [`TRACE_INSTRUCTIONS_CLAUSE`] removed. `trace` may still be listed; it is
+/// not part of this lock. There is no default variant file: `current` means
+/// the shipped server text.
 #[test]
 fn default_tool_text_is_byte_identical() {
     let dir = std::env::temp_dir().join(format!("speedread-text-{}", std::process::id()));
@@ -829,9 +838,16 @@ fn default_tool_text_is_byte_identical() {
         "/tests/fixtures/default_tool_text.json"
     );
     let expected: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
-    assert_eq!(
-        init["result"]["instructions"], expected["instructions"],
-        "shipped instructions changed"
+    let locked = expected["instructions"].as_str().unwrap();
+    let without_trace_clause = locked.replacen(TRACE_INSTRUCTIONS_CLAUSE, "", 1);
+    let got_instructions = init["result"]["instructions"].as_str().unwrap();
+    assert!(
+        got_instructions == locked || got_instructions == without_trace_clause,
+        "shipped instructions are neither the lock nor the lock with the trace clause removed"
+    );
+    assert_ne!(
+        locked, without_trace_clause,
+        "the lock must still contain the trace clause so both forms are distinct"
     );
     let got = tool_descriptions(&listed);
     let want = expected["tools"].as_object().unwrap();

@@ -23,10 +23,21 @@ Adoption is computed from the NDJSON tool events by evals/adoption.py.
 ``--trust`` is set on every invocation: a fresh git checkout does not load
 project MCP servers until the folder is trusted.
 
-The exclusive arm still removes ``read_file``. Grok then refuses to start,
-because ``search_replace`` requires a Read tool unless
-``[toolset.search_replace] skip_read_before_edit = true``. That key is set
-only for exclusive. If any session still fails to initialize, the run stops.
+The process named in the trial MCP config is ``evals/mcp_allow.py``, which
+forwards to ``speedread mcp`` and drops every tool except map, search, and
+read from ``tools/list``. ``--deny MCPTool(speedread__trace)`` does not do
+that: on grok 1.0.92 it only blocks a later call, and the name stays in
+``available_commands`` and ``search_tool``.
+
+Exclusive denies ``read_file``, ``grep``, ``list_dir``,
+``run_terminal_command``, ``search_replace``, and ``write``. Grok 1.0.92
+ignores ``skip_read_before_edit`` and will not start a session that still
+has ``search_replace`` and no Read tool. Denying the edit tools is the
+config that starts. If any session still fails to initialize, the run stops.
+
+One live check, not the baseline:
+
+    python3 evals/grok_eval.py --live-check --speedread "$PWD/target/fast/speedread"
 
 A trial that errors, times out, or is skipped is written to trials.jsonl.
 It is not dropped. Adoption's denominator is every scheduled trial that
@@ -38,6 +49,7 @@ import argparse
 import json
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -52,18 +64,29 @@ sys.path.insert(0, str(HERE))
 
 import adoption  # noqa: E402
 import desc_variant  # noqa: E402
+import mcp_allow  # noqa: E402
 from agent_eval import grade as grade_regex  # noqa: E402
 from grok_transcript import normalize_usage, parse_streaming_json  # noqa: E402
 
 UNPROMPTED = {"dropin", "available"}
-# Built-in tool ids. The live shell id on grok 1.0.92 is run_terminal_command.
-# Exclusive removes readers and leaves the shell and search_replace. search_replace
-# still needs the skip_read_before_edit param or session init fails.
 _ISOLATION = "Agent,web_search,web_fetch"
-_EXCLUSIVE = "read_file,grep,list_dir,glob,Agent,web_search,web_fetch"
+# Same exclusive set as evals/definition_agent.py on cursor/definition-token-baseline-552c.
+# search_replace and write are denied so Grok does not demand a Read tool.
+# The shell id on grok 1.0.92 is run_terminal_command.
+_EXCLUSIVE_DENY = (
+    "read_file",
+    "grep",
+    "list_dir",
+    "run_terminal_command",
+    "search_replace",
+    "write",
+)
+_EXCLUSIVE = ",".join(_EXCLUSIVE_DENY + ("Agent", "web_search", "web_fetch"))
 # grok usage reports the default agent model under this id, not the -m flag.
 USAGE_MODEL_ALIAS = {"grok-4.7": "grok-4.7-build"}
 _INIT_MARKERS = (
+    "couldn't create session",
+    "could not create session",
     "couldn't start session",
     "could not start session",
     "failed to initialize",
@@ -73,25 +96,28 @@ _INIT_MARKERS = (
     "invalid tool configuration",
     "invalid toolset",
 )
+_CATALOG = {"map", "search", "read"}
+_PROBE_PROMPT = "Reply with the single word pong. Do not call any tool."
 
 
 def condition_setup(cond):
-    """Return (launch_speedread, extra argv)."""
-    # --disallowed-tools removes built-in ids only. MCP catalog keys are hidden
-    # with --deny MCPTool(...). Until trace is deleted upstream, every arm that
-    # launches speedread denies speedread__trace (and context, which did not land)
-    # so the model is offered map, search, and read.
-    hide = ["--deny", "MCPTool(speedread__trace)", "--deny", "MCPTool(speedread__context)"]
+    """Return (launch_speedread, extra argv).
+
+    ``--deny MCPTool(speedread__trace)`` does not remove trace from the
+    catalog. grok 1.0.92 still lists it in ``available_commands`` and returns
+    it from ``search_tool``; the flag only rejects the call, which skews
+    unprompted choice. The catalog the agent sees is whatever
+    ``evals/mcp_allow.py`` left in ``tools/list`` (map, search, read). The
+    deny below is a call block in case a session is started without that
+    filter. It is not how the tool is hidden.
+    """
+    block_call = ["--deny", "MCPTool(speedread__trace)", "--deny", "MCPTool(speedread__context)"]
     if cond == "baseline":
         return False, ["--disallowed-tools", _ISOLATION, "--deny", "MCPTool(speedread__*)"]
     if cond in UNPROMPTED or cond == "preferred":
-        return True, ["--disallowed-tools", _ISOLATION, *hide]
+        return True, ["--disallowed-tools", _ISOLATION, *block_call]
     if cond in ("exclusive", "speedread"):
-        return True, [
-            "--disallowed-tools", _EXCLUSIVE,
-            "--deny", "Read", "--deny", "Grep",
-            *hide,
-        ]
+        return True, ["--disallowed-tools", _EXCLUSIVE, *block_call]
     raise ValueError(f"unknown condition {cond}")
 
 
@@ -122,7 +148,7 @@ def initialization_failure(rec):
     return any(marker in blob for marker in _INIT_MARKERS)
 
 
-def prepare_grok_home(real_home, speedread_bin, variant, rss_log, use_mcp, skip_read_before_edit=False):
+def prepare_grok_home(real_home, speedread_bin, variant, rss_log, use_mcp):
     home = Path(tempfile.mkdtemp(prefix="speedread-grok-"))
     if real_home.is_dir():
         for name in ("auth.json", "mcp_credentials.json"):
@@ -131,8 +157,7 @@ def prepare_grok_home(real_home, speedread_bin, variant, rss_log, use_mcp, skip_
                 (home / name).symlink_to(src)
     if use_mcp:
         (home / "config.toml").write_text(desc_variant.grok_config(
-            speedread_bin, variant, rss_log=rss_log, skip_read_before_edit=skip_read_before_edit,
-            variant_out=home / "description.json",
+            speedread_bin, variant, rss_log=rss_log, variant_out=home / "description.json",
         ))
     else:
         (home / "config.toml").write_text(
@@ -199,7 +224,6 @@ def run_trial(job, args, out_dir, bench):
     real_home = Path(os.environ.get("GROK_HOME", Path.home() / ".grok"))
     home = prepare_grok_home(
         real_home, args.speedread, args.description, rss_path if use_mcp else None, use_mcp,
-        skip_read_before_edit=cond in ("exclusive", "speedread"),
     )
     env = {**os.environ, "GROK_HOME": str(home)}
     cmd = grok_argv(prompt, model, repo, session_id, cond, args.max_turns)
@@ -358,6 +382,130 @@ def execute(args, tasks, jobs, bench, coding=False):
     return out_dir
 
 
+def speedread_names(text):
+    """Speedread catalog names from a grok streaming-json session.
+
+    Walks ``available_commands`` / ``availableCommands`` and also any
+    ``speedread__*`` token in the raw stream, which is where grok 1.0.92
+    listed ``speedread__trace`` during the smoke.
+    """
+    names = []
+
+    def walk(obj):
+        if isinstance(obj, dict):
+            for key in ("available_commands", "availableCommands"):
+                value = obj.get(key)
+                if not isinstance(value, list):
+                    continue
+                for item in value:
+                    if isinstance(item, str):
+                        names.append(item)
+                    elif isinstance(item, dict):
+                        for field in ("name", "tool"):
+                            if isinstance(item.get(field), str):
+                                names.append(item[field])
+            for value in obj.values():
+                walk(value)
+        elif isinstance(obj, list):
+            for value in obj:
+                walk(value)
+
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if not line or line[0] not in "{[":
+            continue
+        try:
+            walk(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    names.extend(re.findall(r"speedread__[A-Za-z0-9_]+", text or ""))
+    return names
+
+
+def _leaf(name):
+    if "speedread__" in name:
+        return name.split("speedread__", 1)[1]
+    if name.startswith("speedread-"):
+        return name.split("-", 1)[1]
+    return None
+
+
+def catalog_problem(text):
+    """None when the session stream offered exactly map, search, and read."""
+    leaves = {leaf for leaf in (_leaf(name) for name in speedread_names(text)) if leaf}
+    if not leaves:
+        return "no speedread tool in the session stream; cannot prove the catalog"
+    extra = sorted(leaves - _CATALOG)
+    missing = sorted(_CATALOG - leaves)
+    if extra or missing:
+        return f"catalog leaves {sorted(leaves)}; wanted exactly map, search, read"
+    return None
+
+
+def make_probe_repo():
+    repo = Path(tempfile.mkdtemp(prefix="speedread-probe-"))
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    (repo / "README.md").write_text("probe\n")
+    subprocess.run(["git", "add", "README.md"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=probe@example.com", "-c", "user.name=probe", "commit", "-q", "-m", "probe"],
+        cwd=repo, check=True,
+    )
+    return repo
+
+
+def run_probe(cond, speedread, model, repo):
+    """One max-turns=1 session. Does not write a baseline trial."""
+    real_home = Path(os.environ.get("GROK_HOME", Path.home() / ".grok"))
+    home = prepare_grok_home(real_home, speedread, "current", None, True)
+    env = {**os.environ, "GROK_HOME": str(home)}
+    cmd = grok_argv(_PROBE_PROMPT, model, repo, str(uuid.uuid4()), cond, 1)
+    try:
+        proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True, env=env, timeout=180)
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
+    return proc
+
+
+def live_check(speedread, model):
+    """Prove the filtered catalog hides trace and that exclusive starts.
+
+    This is the command to run on a machine with grok 1.0.92. It is not the
+    baseline and it does not score a task.
+    """
+    root = Path(tempfile.mkdtemp(prefix="speedread-catalog-"))
+    try:
+        names = mcp_allow.preflight(speedread, root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    print(f"filtered tools/list {names}", flush=True)
+    repo = make_probe_repo()
+    problems = []
+    try:
+        for cond in ("dropin", "exclusive"):
+            proc = run_probe(cond, speedread, model, repo)
+            blob = f"{proc.stderr or ''}\n{proc.stdout or ''}"
+            init = initialization_failure({"stderr_tail": blob, "errors": []})
+            if proc.returncode != 0 or init:
+                problems.append(
+                    f"{cond}: session did not start (exit {proc.returncode}): {tail(proc.stderr or proc.stdout)}"
+                )
+                continue
+            problem = catalog_problem(proc.stdout)
+            if problem:
+                problems.append(f"{cond}: {problem}")
+                continue
+            print(f"{cond}: started, catalog is map/search/read", flush=True)
+    finally:
+        shutil.rmtree(repo, ignore_errors=True)
+    if problems:
+        for line in problems:
+            print(line, file=sys.stderr, flush=True)
+        return 1
+    print("live check ok: trace is not in the catalog, exclusive started", flush=True)
+    return 0
+
+
 def plan_jobs(tasks, conditions, trials, models, seed):
     jobs = [(t, c, i, m) for m in models for t in tasks for c in conditions for i in range(trials)]
     random.Random(seed).shuffle(jobs)
@@ -366,9 +514,13 @@ def plan_jobs(tasks, conditions, trials, models, seed):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--bench", type=Path, required=True)
-    ap.add_argument("--tasks", type=Path, required=True)
-    ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--bench", type=Path)
+    ap.add_argument("--tasks", type=Path)
+    ap.add_argument("--out", type=Path)
+    ap.add_argument(
+        "--live-check", action="store_true",
+        help="two short sessions: dropin catalog is map/search/read, and exclusive starts. Not the baseline.",
+    )
     ap.add_argument("--conditions", default="baseline,dropin")
     ap.add_argument("--trials", type=int, default=5)
     ap.add_argument("--models", default="grok-4.7")
@@ -383,8 +535,20 @@ def main():
     ap.add_argument("--venvs", type=Path, default=None)
     ap.add_argument("--keep", action="store_true")
     args = ap.parse_args()
+    if args.live_check:
+        model = next(m for m in args.models.split(",") if m)
+        return live_check(args.speedread, model)
+    if not args.bench or not args.tasks or not args.out:
+        ap.error("--bench, --tasks, and --out are required")
     if args.description != "current":
         desc_variant.load_variant(args.description)
+    if any(condition_setup(c)[0] for c in args.conditions.split(",") if c):
+        catalog_root = Path(tempfile.mkdtemp(prefix="speedread-catalog-"))
+        try:
+            names = mcp_allow.preflight(args.speedread, catalog_root)
+        finally:
+            shutil.rmtree(catalog_root, ignore_errors=True)
+        print(f"filtered tools/list {names}", flush=True)
     suite = json.loads(args.tasks.read_text())
     tasks = [t for t in suite["tasks"] if not args.only or t["id"] in args.only.split(",")]
     conds = [c for c in args.conditions.split(",") if c]

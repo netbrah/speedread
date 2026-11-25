@@ -5,8 +5,11 @@
     python3 evals/fetch_corpora.py --dest /path/to/bench --check
     python3 evals/fetch_corpora.py --dest /path/to/bench --only flask,gin
 
-Each repo is a shallow fetch of the commit in evals/corpora.json. Chromium is
-commit 3a7520d2d79d from https://chromium.googlesource.com/chromium/src.git
+Each repo is a shallow fetch of the commit in evals/corpora.json. Every pin
+is a full 40-character SHA. Chromium is
+3a7520d2d79d6569d3a11f968d32b20665fa4db3 from
+https://chromium.googlesource.com/chromium/src.git. A 12-character prefix is
+rejected: googlesource answers ``couldn't find remote ref``.
 with a blobless fetch and a sparse checkout that drops the extensions listed
 in that file (images, media, fonts, archives). After checkout the script
 checks the sentinel lines the graders depend on.
@@ -20,9 +23,13 @@ as if the trees were the same.
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
+
+# googlesource (and a depth-1 fetch of a short hash) does not resolve a prefix.
+FULL_SHA = re.compile(r"^[0-9a-fA-F]{40}$")
 
 HERE = Path(__file__).resolve().parent
 LOCK = HERE / "corpora.json"
@@ -36,20 +43,23 @@ def have(dest):
     return (dest / ".git").is_dir()
 
 
+def require_full_sha(commit, name):
+    """Abort unless ``commit`` is a full 40-character object name."""
+    if not isinstance(commit, str) or FULL_SHA.fullmatch(commit) is None:
+        raise SystemExit(f"{name}: commit must be a full 40-character SHA, got {commit!r}")
+    return commit.lower()
+
+
 def fetch_commit(dest, url, commit):
     dest.mkdir(parents=True, exist_ok=True)
     if not have(dest):
         run(["git", "init", "-q", str(dest)])
         run(["git", "-C", str(dest), "remote", "add", "origin", url])
-    # A short hash is what the Chromium pin is. fetch accepts it when the
-    # server can resolve it; if it cannot, the error names the remote.
     run(["git", "-C", str(dest), "fetch", "-q", "--depth", "1", "origin", commit])
     run(["git", "-C", str(dest), "checkout", "-q", "--detach", "FETCH_HEAD"])
     got = subprocess.run(["git", "-C", str(dest), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
-    if not got.startswith(commit) and commit not in got:
-        # Annotated pins are full hashes. A short pin must be a prefix.
-        if not got.startswith(commit):
-            raise SystemExit(f"{dest.name}: fetched {got}, wanted prefix {commit}")
+    if got != commit:
+        raise SystemExit(f"{dest.name}: fetched {got}, wanted {commit}")
     return got
 
 
@@ -78,6 +88,8 @@ def fetch_chromium(dest, spec):
     ])
     run(["git", "-C", str(dest), "checkout", "-q", "--detach", "FETCH_HEAD"])
     got = subprocess.run(["git", "-C", str(dest), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+    if got != spec["commit"]:
+        raise SystemExit(f"chromium: fetched {got}, wanted {spec['commit']}")
     files = sum(1 for p in dest.rglob("*") if p.is_file() and ".git" not in p.parts)
     du = subprocess.run(["du", "-sh", str(dest)], capture_output=True, text=True).stdout.split()
     size = du[0] if du else "?"
@@ -120,6 +132,7 @@ def main():
     failed = False
     for name in names:
         spec = lock["repos"][name]
+        spec["commit"] = require_full_sha(spec["commit"], name)
         dest = args.dest / name
         if not args.check:
             print(f"fetch {name} {spec['commit']}", flush=True)
