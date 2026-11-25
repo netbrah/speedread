@@ -1,0 +1,861 @@
+{
+ "rows": [
+  {
+   "family": "narrow",
+   "repo": "speedread",
+   "label": "render_file",
+   "oracle_files": 5,
+   "oracle_truncated": false,
+   "required_symbols": 8,
+   "modes": {
+    "matches": {
+     "ok": true,
+     "calls": 8,
+     "tokens": 5436,
+     "failed": [],
+     "followups": 7,
+     "search_tokens": 486,
+     "bytes": 1578
+    },
+    "symbols": {
+     "ok": true,
+     "calls": 1,
+     "tokens": 5108,
+     "failed": [],
+     "followups": 0,
+     "search_tokens": 5108,
+     "bytes": 19731
+    },
+    "auto": {
+     "ok": true,
+     "calls": 8,
+     "tokens": 5436,
+     "failed": [],
+     "followups": 7,
+     "search_tokens": 486,
+     "bytes": 1578
+    }
+   },
+   "census": {
+    "distinct": 8,
+    "inlineable": 8,
+    "body_tokens": 6394,
+    "response_tokens": 6843,
+    "overflow": true,
+    "complete": true
+   }
+  },
+  {
+   "family": "narrow",
+   "repo": "flask",
+   "label": "dispatch_request",
+   "oracle_files": 1,
+   "oracle_truncated": false,
+   "required_symbols": 3,
+   "modes": {
+    "matches": {
+     "ok": true,
+     "calls": 4,
+     "tokens": 1388,
+     "failed": [],
+     "followups": 3,
+     "search_tokens": 139,
+     "bytes": 513
+    },
+    "symbols": {
+     "ok": true,
+     "calls": 1,
+     "tokens": 1273,
+     "failed": [],
+     "followups": 0,
+     "search_tokens": 1273,
+     "bytes": 5935
+    },
+    "auto": {
+     "ok": true,
+     "calls": 1,
+     "tokens": 1273,
+     "failed": [],
+     "followups": 0,
+     "search_tokens": 1273,
+     "bytes": 5935
+    }
+   },
+   "census": {
+    "distinct": 3,
+    "inlineable": 3,
+    "body_tokens": 1615,
+    "response_tokens": 1750,
+    "overflow": false,
+    "complete": true
+   }
+  },
+  {
+   "family": "narrow",
+   "repo": "gin",
+   "label": "AbortWithStatusJSON",
+   "oracle_files": 3,
+   "oracle_truncated": false,
+   "required_symbols": 3,
+   "modes": {
+    "matches": {
+     "ok": true,
+     "calls": 4,
+     "tokens": 954,
+     "failed": [],
+     "followups": 3,
+     "search_tokens": 205,
+     "bytes": 631
+    },
+    "symbols": {
+     "ok": true,
+     "calls": 1,
+     "tokens": 804,
+     "failed": [],
+     "followups": 0,
+     "search_tokens": 804,
+     "bytes": 2539
+    },
+    "auto": {
+     "ok": true,
+     "calls": 1,
+     "tokens": 804,
+     "failed": [],
+     "followups": 0,
+     "search_tokens": 804,
+     "bytes": 2539
+    }
+   },
+   "census": {
+    "distinct": 3,
+    "inlineable": 3,
+    "body_tokens": 870,
+    "response_tokens": 1050,
+    "overflow": false,
+    "complete": true
+   }
+  },
+  {
+   "family": "narrow",
+   "repo": "ripgrep",
+   "label": "build_parallel",
+   "oracle_files": 4,
+   "oracle_truncated": false,
+   "required_symbols": 10,
+   "modes": {
+    "matches": {
+     "ok": true,
+     "calls": 11,
+     "tokens": 3594,
+     "failed": [],
+     "followups": 10,
+     "search_tokens": 473,
+     "bytes": 1665
+    },
+    "symbols": {
+     "ok": true,
+     "calls": 1,
+     "tokens": 3125,
+     "failed": [],
+     "followups": 0,
+     "search_tokens": 3125,
+     "bytes": 13221
+    },
+    "auto": {
+     "ok": true,
+     "calls": 11,
+     "tokens": 3594,
+     "failed": [],
+     "followups": 10,
+     "search_tokens": 473,
+     "bytes": 1665
+    }
+   },
+   "census": {
+    "distinct": 10,
+    "inlineable": 10,
+    "body_tokens": 4055,
+    "response_tokens": 4459,
+    "overflow": false,
+    "complete": true
+   }
+  },
+  {
+   "family": "wide",
+   "repo": "flask",
+   "label": "url_for",
+   "oracle_files": 47,
+   "oracle_truncated": false,
+   "required_symbols": 17,
+   "modes": {
+    "matches": {
+     "ok": true,
+     "calls": 18,
+     "tokens": 7709,
+     "failed": [],
+     "followups": 17,
+     "search_tokens": 4885,
+     "bytes": 17117
+    },
+    "symbols": {
+     "ok": false,
+     "calls": 3,
+     "tokens": 10624,
+     "failed": [
+      "tests/test_basic.py:1361",
+      "tests/test_basic.py:1373",
+      "tests/test_basic.py:1399",
+      "tests/test_basic.py:1410",
+      "tests/test_basic.py:1425",
+      "tests/test_basic.py:1435",
+      "tests/test_basic.py:1446",
+      "tests/test_basic.py:1491"
+     ],
+     "followups": 2,
+     "search_tokens": 4170,
+     "bytes": 15579
+    },
+    "auto": {
+     "ok": true,
+     "calls": 18,
+     "tokens": 7709,
+     "failed": [],
+     "followups": 17,
+     "search_tokens": 4885,
+     "bytes": 17117
+    }
+   },
+   "census": {
+    "distinct": 48,
+    "inlineable": 48,
+    "body_tokens": 17460,
+    "response_tokens": 22609,
+    "overflow": false,
+    "complete": true
+   }
+  },
+  {
+   "family": "wide",
+   "repo": "gin",
+   "label": "AbortWithStatus",
+   "oracle_files": 8,
+   "oracle_truncated": false,
+   "required_symbols": 9,
+   "modes": {
+    "matches": {
+     "ok": true,
+     "calls": 10,
+     "tokens": 3043,
+     "failed": [],
+     "followups": 9,
+     "search_tokens": 690,
+     "bytes": 2399
+    },
+    "symbols": {
+     "ok": true,
+     "calls": 1,
+     "tokens": 4523,
+     "failed": [],
+     "followups": 0,
+     "search_tokens": 4523,
+     "bytes": 15991
+    },
+    "auto": {
+     "ok": true,
+     "calls": 10,
+     "tokens": 3043,
+     "failed": [],
+     "followups": 9,
+     "search_tokens": 690,
+     "bytes": 2399
+    }
+   },
+   "census": {
+    "distinct": 16,
+    "inlineable": 16,
+    "body_tokens": 5766,
+    "response_tokens": 6380,
+    "overflow": false,
+    "complete": true
+   }
+  },
+  {
+   "family": "wide",
+   "repo": "ripgrep",
+   "label": "ignore",
+   "oracle_files": 15,
+   "oracle_truncated": false,
+   "required_symbols": 113,
+   "modes": {
+    "matches": {
+     "ok": false,
+     "calls": 47,
+     "tokens": 25595,
+     "failed": [
+      "crates/ignore/src/walk.rs:26",
+      "crates/ignore/src/walk.rs:93",
+      "crates/ignore/src/walk.rs:461",
+      "crates/ignore/src/walk.rs:668",
+      "crates/ignore/src/walk.rs:787",
+      "crates/ignore/src/walk.rs:804",
+      "crates/ignore/src/walk.rs:840",
+      "crates/ignore/src/walk.rs:874"
+     ],
+     "followups": 46,
+     "search_tokens": 3882,
+     "bytes": 14373
+    },
+    "symbols": {
+     "ok": false,
+     "calls": 5,
+     "tokens": 17925,
+     "failed": [
+      "crates/ignore/src/dir.rs:69",
+      "crates/ignore/src/dir.rs:101",
+      "crates/ignore/src/dir.rs:123",
+      "crates/ignore/src/dir.rs:192",
+      "crates/ignore/src/dir.rs:200",
+      "crates/ignore/src/dir.rs:276",
+      "crates/ignore/src/dir.rs:298",
+      "crates/ignore/src/dir.rs:323"
+     ],
+     "followups": 4,
+     "search_tokens": 4313,
+     "bytes": 16612
+    },
+    "auto": {
+     "ok": false,
+     "calls": 47,
+     "tokens": 25595,
+     "failed": [
+      "crates/ignore/src/walk.rs:26",
+      "crates/ignore/src/walk.rs:93",
+      "crates/ignore/src/walk.rs:461",
+      "crates/ignore/src/walk.rs:668",
+      "crates/ignore/src/walk.rs:787",
+      "crates/ignore/src/walk.rs:804",
+      "crates/ignore/src/walk.rs:840",
+      "crates/ignore/src/walk.rs:874"
+     ],
+     "followups": 46,
+     "search_tokens": 3882,
+     "bytes": 14373
+    }
+   },
+   "census": {
+    "distinct": 149,
+    "inlineable": 147,
+    "body_tokens": 54608,
+    "response_tokens": 24394,
+    "overflow": true,
+    "complete": true
+   }
+  },
+  {
+   "family": "wide",
+   "repo": "zod",
+   "label": "safeParse",
+   "oracle_files": 189,
+   "oracle_truncated": false,
+   "required_symbols": 84,
+   "modes": {
+    "matches": {
+     "ok": false,
+     "calls": 1,
+     "tokens": 6088,
+     "failed": [
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts"
+     ],
+     "followups": 0,
+     "search_tokens": 6088,
+     "bytes": 20889
+    },
+    "symbols": {
+     "ok": false,
+     "calls": 1,
+     "tokens": 6064,
+     "failed": [
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts"
+     ],
+     "followups": 0,
+     "search_tokens": 6064,
+     "bytes": 21237
+    },
+    "auto": {
+     "ok": false,
+     "calls": 1,
+     "tokens": 6088,
+     "failed": [
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts",
+      "packages/zod/src/v4/classic/tests/string.test.ts"
+     ],
+     "followups": 0,
+     "search_tokens": 6088,
+     "bytes": 20889
+    }
+   },
+   "census": {
+    "distinct": 764,
+    "inlineable": 761,
+    "body_tokens": 285803,
+    "response_tokens": 270338,
+    "overflow": true,
+    "complete": true
+   }
+  }
+ ],
+ "cells": [
+  {
+   "n": 1,
+   "k": 25,
+   "tokens": 53807,
+   "calls": 103,
+   "success": 6,
+   "inlined": 0,
+   "matched": 8,
+   "eligible": false
+  },
+  {
+   "n": 1,
+   "k": 40,
+   "tokens": 53807,
+   "calls": 103,
+   "success": 6,
+   "inlined": 0,
+   "matched": 8,
+   "eligible": false
+  },
+  {
+   "n": 1,
+   "k": 50,
+   "tokens": 53807,
+   "calls": 103,
+   "success": 6,
+   "inlined": 0,
+   "matched": 8,
+   "eligible": false
+  },
+  {
+   "n": 1,
+   "k": 60,
+   "tokens": 53807,
+   "calls": 103,
+   "success": 6,
+   "inlined": 0,
+   "matched": 8,
+   "eligible": false
+  },
+  {
+   "n": 1,
+   "k": 75,
+   "tokens": 53807,
+   "calls": 103,
+   "success": 6,
+   "inlined": 0,
+   "matched": 8,
+   "eligible": false
+  },
+  {
+   "n": 1,
+   "k": 100,
+   "tokens": 53807,
+   "calls": 103,
+   "success": 6,
+   "inlined": 0,
+   "matched": 8,
+   "eligible": false
+  },
+  {
+   "n": 2,
+   "k": 25,
+   "tokens": 53807,
+   "calls": 103,
+   "success": 6,
+   "inlined": 0,
+   "matched": 8,
+   "eligible": false
+  },
+  {
+   "n": 2,
+   "k": 40,
+   "tokens": 53807,
+   "calls": 103,
+   "success": 6,
+   "inlined": 0,
+   "matched": 8,
+   "eligible": false
+  },
+  {
+   "n": 2,
+   "k": 50,
+   "tokens": 53807,
+   "calls": 103,
+   "success": 6,
+   "inlined": 0,
+   "matched": 8,
+   "eligible": false
+  },
+  {
+   "n": 2,
+   "k": 60,
+   "tokens": 53807,
+   "calls": 103,
+   "success": 6,
+   "inlined": 0,
+   "matched": 8,
+   "eligible": false
+  },
+  {
+   "n": 2,
+   "k": 75,
+   "tokens": 53807,
+   "calls": 103,
+   "success": 6,
+   "inlined": 0,
+   "matched": 8,
+   "eligible": false
+  },
+  {
+   "n": 2,
+   "k": 100,
+   "tokens": 53807,
+   "calls": 103,
+   "success": 6,
+   "inlined": 0,
+   "matched": 8,
+   "eligible": false
+  },
+  {
+   "n": 3,
+   "k": 25,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 3,
+   "k": 40,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 3,
+   "k": 50,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 3,
+   "k": 60,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 3,
+   "k": 75,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 3,
+   "k": 100,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 4,
+   "k": 25,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 4,
+   "k": 40,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 4,
+   "k": 50,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 4,
+   "k": 60,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 4,
+   "k": 75,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 4,
+   "k": 100,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 6,
+   "k": 25,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 6,
+   "k": 40,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 6,
+   "k": 50,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 6,
+   "k": 60,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 6,
+   "k": 75,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 6,
+   "k": 100,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 8,
+   "k": 25,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 8,
+   "k": 40,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 8,
+   "k": 50,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 8,
+   "k": 60,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 8,
+   "k": 75,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 8,
+   "k": 100,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 12,
+   "k": 25,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 12,
+   "k": 40,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 12,
+   "k": 50,
+   "tokens": 53542,
+   "calls": 97,
+   "success": 6,
+   "inlined": 2,
+   "matched": 6,
+   "eligible": true
+  },
+  {
+   "n": 12,
+   "k": 60,
+   "tokens": 53073,
+   "calls": 87,
+   "success": 6,
+   "inlined": 3,
+   "matched": 5,
+   "eligible": true
+  },
+  {
+   "n": 12,
+   "k": 75,
+   "tokens": 53073,
+   "calls": 87,
+   "success": 6,
+   "inlined": 3,
+   "matched": 5,
+   "eligible": true
+  },
+  {
+   "n": 12,
+   "k": 100,
+   "tokens": 53073,
+   "calls": 87,
+   "success": 6,
+   "inlined": 3,
+   "matched": 5,
+   "eligible": true
+  }
+ ],
+ "winner": {
+  "n": 3,
+  "k": 25,
+  "tokens": 53542,
+  "calls": 97,
+  "success": 6,
+  "inlined": 2,
+  "matched": 6,
+  "eligible": true,
+  "tie_band": 30,
+  "best_tokens": 53073
+ }
+}

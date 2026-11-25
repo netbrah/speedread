@@ -48,6 +48,7 @@ A feature merges into the fork's default behavior only when, against the previou
 | 06 | [Backlog: entity correspondence, import-aware lookup, Git input layer](06-backlog.md) | backlog | sem, weave, gix |
 | 07 | [Distribution: one plugin for every agent host](07-distribution.md) | shipped | host plugin formats (Claude, Cursor, Grok Build, Perplexity, Agent Plugins) |
 | 08 | [The MCP server is not fenced](08-unfenced-server.md) | shipped | — |
+| 09 | [Adaptive search output](09-adaptive-search-output.md) | experiment, opt-in | — |
 | — | [Implementation plan](plan.md) | living | — |
 | — | [Evaluation log](eval.md) | living | — |
 

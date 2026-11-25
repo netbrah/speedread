@@ -89,6 +89,8 @@ enum OutputArg {
     Files,
     /// Matches plus the header lines of the enclosing loops, conditions and branches.
     Scopes,
+    /// Inline enclosing symbols when few of them fit the budget; otherwise matches.
+    Auto,
 }
 
 #[derive(Subcommand)]
@@ -392,6 +394,7 @@ fn run() -> anyhow::Result<()> {
                     OutputArg::Symbols => Output::Symbols,
                     OutputArg::Files => Output::Files,
                     OutputArg::Scopes => Output::Scopes,
+                    OutputArg::Auto => Output::Auto,
                 },
                 budget,
                 max_matches: 5000,
