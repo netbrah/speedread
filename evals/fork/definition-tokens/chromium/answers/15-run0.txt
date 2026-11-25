@@ -1,0 +1,191 @@
+2,181 matches in 674 files for structural `std::make_unique<$T>()` (cpp)
+1 file larger than 1 MiB not parsed. `make_unique` also appears on 1 line inside macro bodies that do not parse as code; those were not matched (a text search shows them).
+==> content/app/content_main_runner_impl.cc @28b54f250daf71ed (5 matches)
+[851-854] std::unique_ptr<ContentMainRunnerImpl> ContentMainRunnerImpl::Create() (in content)
+853	  return std::make_unique<ContentMainRunnerImpl>();	$T=ContentMainRunnerImpl
+[867-1143] int ContentMainRunnerImpl::Initialize(ContentMainParams params) (in content)
+955	    exit_manager_ = std::make_unique<base::AtExitManager>();	$T=base::AtExitManager
+[1259-1455] int ContentMainRunnerImpl::RunBrowser(MainFunctionParams main_params, bool start_minimal_browser) (in content)
+1289	        std::make_unique<BrowserMemoryCoordinatorImpl>();	$T=BrowserMemoryCoordinatorImpl
+1317	            std::make_unique<base::DefaultClock>());	$T=base::DefaultClock
+1410	        std::make_unique<discardable_memory::DiscardableSharedMemoryManager>();	$T=discardable_memory::DiscardableSharedMemoryManager
+==> content/app/mojo_ipc_support.cc @987e4bbdd799044a (1 match)
+[36-41] std::unique_ptr<StartupDataImpl> MojoIpcSupport::CreateBrowserStartupData() (in content)
+37	  auto startup_data = std::make_unique<StartupDataImpl>();	$T=StartupDataImpl
+==> content/browser/accent_color_browsertest.cc @705c84a77af1863d (1 match)
+[39-42] void SetUpOnMainThread() override (in content.SystemAccentColorTest)
+41	    browser_client_ = std::make_unique<BrowserClientForAccentColorTest>();	$T=BrowserClientForAccentColorTest
+==> content/browser/accessibility/browser_accessibility_android_unittest.cc @4572af1b79a0f03b (1 match)
+[175-181] void BrowserAccessibilityAndroidTest::SetUp() (in content)
+177	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+==> content/browser/accessibility/browser_accessibility_fuzzer.cc @78a11ba296f7e001 (3 matches)
+[30-50] Env() (in Env)
+42	    task_environment_ = std::make_unique<content::BrowserTaskEnvironment>();	$T=content::BrowserTaskEnvironment
+45	    content_client_ = std::make_unique<content::TestContentClient>();	$T=content::TestContentClient
+47	        std::make_unique<content::TestContentBrowserClient>();	$T=content::TestContentBrowserClient
+==> content/browser/accessibility/browser_accessibility_manager_unittest.cc @5ce2ba97abef8af0 (1 match)
+[119-123] void BrowserAccessibilityManagerTest::SetUp() (in content)
+122	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+==> content/browser/accessibility/browser_accessibility_state_impl_android.cc @eda3c9d25ef1a922 (1 match)
+[486-490] std::unique_ptr<BrowserAccessibilityStateImpl> BrowserAccessibilityStateImpl::Create() (in content)
+489	  return std::make_unique<BrowserAccessibilityStateImplAndroid>();	$T=BrowserAccessibilityStateImplAndroid
+==> content/browser/accessibility/browser_accessibility_state_impl_auralinux.cc @272df5cda9b3adbf (1 match)
+[226-230] std::unique_ptr<BrowserAccessibilityStateImpl> BrowserAccessibilityStateImpl::Create() (in content)
+229	  return std::make_unique<BrowserAccessibilityStateImplAuralinux>();	$T=BrowserAccessibilityStateImplAuralinux
+==> content/browser/accessibility/browser_accessibility_state_impl_chromeos.cc @c8e06430802f21c4 (1 match)
+[35-39] std::unique_ptr<BrowserAccessibilityStateImpl> BrowserAccessibilityStateImpl::Create() (in content)
+38	  return std::make_unique<BrowserAccessibilityStateImplChromeOS>();	$T=BrowserAccessibilityStateImplChromeOS
+==> content/browser/accessibility/browser_accessibility_state_impl_win.cc @d75a40aa031990e1 (1 match)
+[782-786] std::unique_ptr<BrowserAccessibilityStateImpl> BrowserAccessibilityStateImpl::Create() (in content)
+785	  return std::make_unique<BrowserAccessibilityStateImplWin>();	$T=BrowserAccessibilityStateImplWin
+==> content/browser/accessibility/browser_accessibility_unittest.cc @4dd23d6116b92a18 (15 matches)
+[80-83] void BrowserAccessibilityTest::SetUp() (in content)
+82	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+[221-325] TEST_F(BrowserAccessibilityTest, ViewsAndWebTreesProduceDistinctAcceleratedWidgets) (in content)
+280	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+285	  auto web_delegate = std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+291	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+[327-400] TEST_F(BrowserAccessibilityTest, GetDelegateForNativeViewUsesRootFrameOnlyForWebContent) (in content)
+374	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+378	  auto web_delegate = std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+383	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+[457-523] TEST_F(BrowserAccessibilityTest, NonWebContentBoundsDoNotComposeAcrossTrees) (in content)
+498	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+503	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+[525-590] TEST_F(BrowserAccessibilityTest, WebContentBoundsComposeAcrossTrees) (in content)
+566	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+570	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+[592-675] TEST_F(BrowserAccessibilityTest, WebContentHostedInViewsIsAnchoredByItsOwnView) (in content)
+634	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+639	  auto web_delegate = std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+[677-744] TEST_F(BrowserAccessibilityTest, ViewsAXWebBoundsStopAtRootFrame) (in content)
+719	      std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+723	  auto web_delegate = std::make_unique<ui::TestAXPlatformTreeManagerDelegate>();	$T=ui::TestAXPlatformTreeManagerDelegate
+==> content/browser/accessibility/cross_platform_accessibility_browsertest.cc @b747305103ac42a0 (2 matches)
+[331-338] void CrossPlatformAccessibilityBrowserTest::SetUpOnMainThread() (in content)
+333	  com_initializer_ = std::make_unique<base::win::ScopedCOMInitializer>();	$T=base::win::ScopedCOMInitializer
+[1367-1516] IN_PROC_BROWSER_TEST_F(CrossPlatformAccessibilityBrowserTest, GetBoundsRectOOPIFAndIframe) (in content)
+1373	        auto response = std::make_unique<net::test_server::BasicHttpResponse>();	$T=net::test_server::BasicHttpResponse
+==> content/browser/accessibility/dump_accessibility_browsertest_base.cc @e221f33363e26ac3 (2 matches)
+[101-103] AXTreeChangeWaiter() : loop_runner_(std::make_unique<base::RunLoop>()), loop_runner_quit_closure_(loop_runner_->QuitClosure()) (in content.(anonymous).AXTreeChangeWaiter)
+102	      : loop_runner_(std::make_unique<base::RunLoop>()),	$T=base::RunLoop
+[848-886] std::unique_ptr<net::test_server::HttpResponse> DumpAccessibilityTestBase::HandleMaterialDesignRequest(const net::test_server::HttpRequest& request) (in content)
+874	  auto response = std::make_unique<net::test_server::BasicHttpResponse>();	$T=net::test_server::BasicHttpResponse
+==> content/browser/accessibility/dump_accessibility_tree_browsertest.cc @e16d613fbb064efd (1 match)
+[97-100] void DumpAccessibilityTreeTest::SetUpOnMainThread() (in content)
+98	  ukm_recorder_ = std::make_unique<ukm::TestAutoSetUkmRecorder>();	$T=ukm::TestAutoSetUkmRecorder
+==> content/browser/accessibility/web_contents_accessibility_base.cc @673be93a6e4662ad (1 match)
+[1727-1808] void WebContentsAccessibilityBase:: PopulateAccessibilityNodeInfoTextWithFormatting(JNIEnv* env, const JavaRef<jobject>& info, const ScopedJavaLocalRef<jobject>& obj, BrowserAccess… (in content)
+1742	    style_data = std::make_unique<AXStyleData>();	$T=AXStyleData
+==> content/browser/ai/echo_ai_manager_impl.cc @eaaf35891ef867f0 (1 match)
+[521-535] template <typename AIClientRemote, typename AIPendingRemote, typename EchoAIClient> void EchoAIManagerImpl::ReturnAIClientCreationResult(mojo::Remote<AIClientRemote> client_remote) (in content)
+527	  mojo::MakeSelfOwnedReceiver(std::make_unique<EchoAIClient>(),	$T=EchoAIClient
+==> content/browser/android/java/gin_java_method_invocation_helper.cc @2d6287ed803800e5 (1 match)
+[161-166] void GinJavaMethodInvocationHelper::SetInvocationError(mojom::GinJavaBridgeError error) (in content)
+164	  primitive_result_ = std::make_unique<base::ListValue>();	$T=base::ListValue
+==> content/browser/android/java/gin_java_method_invocation_helper_unittest.cc @e320a11b2b3c010b (5 matches)
+[120-131] TEST_F(GinJavaMethodInvocationHelperTest, RetrievalOfObjectsNoObjects) (in content)
+127	      std::make_unique<NullObjectDelegate>(), "foo", no_objects);	$T=NullObjectDelegate
+[133-166] TEST_F(GinJavaMethodInvocationHelperTest, RetrievalOfObjectsHaveObjects) (in content)
+162	      std::make_unique<NullObjectDelegate>(), "foo", objects);	$T=NullObjectDelegate
+[215-233] TEST_F(GinJavaMethodInvocationHelperTest, HandleObjectIsGone) (in content)
+217	  auto object_delegate_unique = std::make_unique<ObjectIsGoneObjectDelegate>();	$T=ObjectIsGoneObjectDelegate
+[266-284] TEST_F(GinJavaMethodInvocationHelperTest, HandleMethodNotFound) (in content)
+269	      std::make_unique<MethodNotFoundObjectDelegate>();	$T=MethodNotFoundObjectDelegate
+[323-343] TEST_F(GinJavaMethodInvocationHelperTest, HandleGetClassInvocation) (in content)
+325	  auto object_delegate_unique = std::make_unique<GetClassObjectDelegate>();	$T=GetClassObjectDelegate
+==> content/browser/android/nfc_host_unittest.cc @9bff6a09e9a21fff (1 match)
+[41-50] void SetUp() override (in content.NFCHostTest)
+45	        std::make_unique<MockPermissionController>();	$T=MockPermissionController
+==> content/browser/android/overscroll_controller_android_unittest.cc @cd7bb9d680c713ce (3 matches)
+[100-110] OverscrollControllerAndroidUnitTest() (in content.OverscrollControllerAndroidUnitTest)
+102	    std::unique_ptr<MockGlow> glow_ptr = std::make_unique<MockGlow>();	$T=MockGlow
+103	    std::unique_ptr<MockRefresh> refresh_ptr = std::make_unique<MockRefresh>();	$T=MockRefresh
+104	    compositor_ = std::make_unique<MockCompositor>();	$T=MockCompositor
+==> content/browser/android/synchronous_compositor_host.cc @30fa6680ac52ab91 (2 matches)
+[228-262] scoped_refptr<SynchronousCompositor::FrameFuture> SynchronousCompositorHost::DemandDrawHwAsync(const gfx::Size& viewport_size, const gfx::Rect& viewport_rect_for_tile_priority, con… (in content)
+240	    auto frame_ptr = std::make_unique<Frame>();	$T=Frame
+[264-319] SynchronousCompositor::Frame SynchronousCompositorHost::DemandDrawHw(const gfx::Size& viewport_size, const gfx::Rect& viewport_rect_for_tile_priority, const gfx::Transform& transfo… (in content)
+310	  frame.frame = std::make_unique<viz::CompositorFrame>();	$T=viz::CompositorFrame
+==> content/browser/android/synchronous_compositor_sync_call_bridge.cc @0df328d20e1ef087 (2 matches)
+[42-75] bool SynchronousCompositorSyncCallBridge::ReceiveFrameOnIOThread(int layer_tree_frame_sink_id, uint32_t metadata_version, std::optional<viz::LocalSurfaceId> local_surface_id, std::… (in content)
+52	  auto frame_ptr = std::make_unique<SynchronousCompositor::Frame>();	$T=SynchronousCompositor::Frame
+68	    frame_ptr->frame = std::make_unique<viz::CompositorFrame>();	$T=viz::CompositorFrame
+==> content/browser/android/tracing_controller_android.cc @25b7d82fa886f2ee (1 match)
+[118-168] void TracingControllerAndroid::StopTracing(JNIEnv* env, const JavaRef<jstring>& jfilepath, bool compress_file, bool use_protobuf, const base::android::JavaRef<jobject>& callback) (in content)
+158	        std::make_unique<tracing::TracePacketTokenizer>());	$T=tracing::TracePacketTokenizer
+==> content/browser/audio/audio_service_browsertest.cc @1dbcbdb53a2d9751 (1 match)
+[117-121] std::unique_ptr<media::AudioLog> CreateAudioLog(media::AudioLogFactory::AudioComponent component, int component_id) override (in content.LocalMockAudioManager)
+120	    return std::make_unique<NiceMock<MockAudioLog>>();	$T=NiceMock<MockAudioLog>
+==> content/browser/back_forward_cache/back_forward_cache_metrics.cc @b283467a648f1ab6 (2 matches)
+[146-150] BackForwardCacheMetrics::BackForwardCacheMetrics(int64_t document_sequence_number) : document_sequence_number_(document_sequence_number), page_store_result_(std::make_unique<BackFo… (in content)
+150	          std::make_unique<BackForwardCacheCanStoreDocumentResult>()) {}	$T=BackForwardCacheCanStoreDocumentResult
+[160-311] void BackForwardCacheMetrics::DidCommitNavigation(NavigationRequest* navigation, bool back_forward_cache_allowed) (in content)
+305	      std::make_unique<BackForwardCacheCanStoreDocumentResult>();	$T=BackForwardCacheCanStoreDocumentResult
+==> content/browser/back_forward_cache_browsertest.cc @4a089b9c7a27028a (3 matches)
+[281-291] void BackForwardCacheBrowserTest::SetUpOnMainThread() (in content)
+288	  ukm_recorder_ = std::make_unique<ukm::TestAutoSetUkmRecorder>();	$T=ukm::TestAutoSetUkmRecorder
+289	  histogram_tester_ = std::make_unique<base::HistogramTester>();	$T=base::HistogramTester
+[611-620] [[nodiscard]] bool WaitUntilThemeColorChange() (in content.ThemeColorObserver)
+614	    loop_ = std::make_unique<base::RunLoop>();	$T=base::RunLoop
+==> content/browser/back_forward_cache_features_browsertest.cc @2a2681ec985db7e3 (6 matches)
+[121-127] void SetUpOnMainThread() override (in content.(anonymous).BackForwardCacheBinderBrowserTest)
+123	    browser_client_ = std::make_unique<BrowserClient>();	$T=BrowserClient
+[1340-1344] void SetUpOnMainThread() override (in content.BackForwardCacheWebHidTest)
+1342	    test_client_ = std::make_unique<HidBrowserTestContentBrowserClient>();	$T=HidBrowserTestContentBrowserClient
+[3201-3221] std::unique_ptr<net::test_server::HttpResponse> RequestHandlerForUpdateWorker(const net::test_server::HttpRequest& request) (in content.(anonymous))
+3208	  auto http_response = std::make_unique<net::test_server::BasicHttpResponse>();	$T=net::test_server::BasicHttpResponse
+[3759-3763] void SetUpOnMainThread() override (in content.BackForwardCacheWebBluetoothTest)
+3761	    test_client_ = std::make_unique<BluetoothBrowserTestContentBrowserClient>();	$T=BluetoothBrowserTestContentBrowserClient
+[3804-3848] IN_PROC_BROWSER_TEST_F(BackForwardCacheWebBluetoothTest, DoesNotCacheIfRequestDeviceWasCalled) (in content)
+3821	        return std::make_unique<BluetoothChooser>();	$T=BluetoothChooser
+[4272-4277] void SetUpOnMainThread() override (in content.SensorBackForwardCacheBrowserTest)
+4273	    provider_ = std::make_unique<device::FakeSensorProvider>();	$T=device::FakeSensorProvider
+==> content/browser/back_forward_cache_limit_browsertest.cc @11366762b8bf1ff4 (1 match)
+[217-222] void SetUpOnMainThread() override (in content.BackForwardCacheLimitForPrioritizedPagesBrowserTest)
+220	    test_client_ = std::make_unique<	$T=MockContentBrowserClientWithPrioritizedBackForwardCacheEntry
+==> content/browser/back_forward_cache_no_store_browsertest.cc @6f60793270464ec3 (2 matches)
+[1277-1281] void SetUpOnMainThread() override (in content.BackForwardCacheBrowserTestRestoreCacheControlNoStoreUnlessCookieChange)
+1280	        std::make_unique<CookieDisabledContentBrowserClient>();	$T=CookieDisabledContentBrowserClient
+[2436-2443] std::unique_ptr<net::test_server::HttpResponse> RedirectToUrl(const GURL& gurl, const net::test_server::HttpRequest& request) (in content)
+2439	  auto http_response = std::make_unique<net::test_server::BasicHttpResponse>();	$T=net::test_server::BasicHttpResponse
+==> content/browser/background_fetch/background_fetch_context.cc @f19bced1c7831751 (1 match)
+[36-56] BackgroundFetchContext::BackgroundFetchContext(base::WeakPtr<StoragePartitionImpl> storage_partition, const scoped_refptr<ServiceWorkerContextWrapper>& service_worker_context, scop… (in content)
+44	          std::make_unique<BackgroundFetchRegistrationNotifier>()),	$T=BackgroundFetchRegistrationNotifier
+==> content/browser/background_fetch/background_fetch_data_manager_unittest.cc @bfe8e51753ec6ae9 (1 match)
+[755-769] void DidGetMetadata(base::OnceClosure quit_closure, std::unique_ptr<proto::BackgroundFetchMetadata>* out_metadata, const std::vector<std::string>& data, blink::ServiceWorkerStatusC… (in content.BackgroundFetchDataManagerTest)
+763	      auto metadata = std::make_unique<proto::BackgroundFetchMetadata>();	$T=proto::BackgroundFetchMetadata
+==> content/browser/background_fetch/background_fetch_delegate_proxy_unittest.cc @59bb4623ebc09dab (1 match)
+[133-137] FakeBackgroundFetchDelegate* GetBackgroundFetchDelegate() override (in content.(anonymous).FakeTestBrowserContext)
+135	      delegate_ = std::make_unique<FakeBackgroundFetchDelegate>();	$T=FakeBackgroundFetchDelegate
+==> content/browser/background_fetch/background_fetch_registration_notifier_unittest.cc @eee7281ae52b35af (10 matches)
+[119-120] BackgroundFetchRegistrationNotifierTest() : notifier_(std::make_unique<BackgroundFetchRegistrationNotifier>()) (in content.(anonymous).BackgroundFetchRegistrationNotifierTest)
+120	      : notifier_(std::make_unique<BackgroundFetchRegistrationNotifier>()) {}	$T=BackgroundFetchRegistrationNotifier
+[161-183] TEST_F(BackgroundFetchRegistrationNotifierTest, NotifySingleObserver) (in content.(anonymous))
+162	  auto observer = std::make_unique<TestRegistrationObserver>();	$T=TestRegistrationObserver
+[185-223] TEST_F(BackgroundFetchRegistrationNotifierTest, NotifyMultipleObservers) (in content.(anonymous))
+187	  primary_observers.push_back(std::make_unique<TestRegistrationObserver>());	$T=TestRegistrationObserver
+188	  primary_observers.push_back(std::make_unique<TestRegistrationObserver>());	$T=TestRegistrationObserver
+189	  primary_observers.push_back(std::make_unique<TestRegistrationObserver>());	$T=TestRegistrationObserver
+191	  auto secondary_observer = std::make_unique<TestRegistrationObserver>();	$T=TestRegistrationObserver
+[225-252] TEST_F(BackgroundFetchRegistrationNotifierTest, NotifyFollowingObserverInitiatedRemoval) (in content.(anonymous))
+227	  auto observer = std::make_unique<TestRegistrationObserver>();	$T=TestRegistrationObserver
+[254-270] TEST_F(BackgroundFetchRegistrationNotifierTest, NotifyWithoutObservers) (in content.(anonymous))
+255	  auto observer = std::make_unique<TestRegistrationObserver>();	$T=TestRegistrationObserver
+[272-280] TEST_F(BackgroundFetchRegistrationNotifierTest, NotifyRecordsUnavailable) (in content.(anonymous))
+273	  auto observer = std::make_unique<TestRegistrationObserver>();	$T=TestRegistrationObserver
+[282-308] TEST_F(BackgroundFetchRegistrationNotifierTest, NotifyRequestCompleted) (in content.(anonymous))
+283	  auto observer = std::make_unique<TestRegistrationObserver>();	$T=TestRegistrationObserver
+==> content/browser/background_fetch/background_fetch_test_browser_context.cc @5e4f85a78699748b (1 match)
+[17-23] MockBackgroundFetchDelegate* BackgroundFetchTestBrowserContext::GetBackgroundFetchDelegate() (in content)
+20	    delegate_ = std::make_unique<MockBackgroundFetchDelegate>();	$T=MockBackgroundFetchDelegate
+==> content/browser/background_fetch/mock_background_fetch_delegate.cc @afa266d930c89b7d (1 match)
+[26-32] MockBackgroundFetchDelegate::TestResponseBuilder::TestResponseBuilder(int response_code) : response_(std::make_unique<TestResponse>()) (in content)
+28	    : response_(std::make_unique<TestResponse>()) {	$T=TestResponse
+==> content/browser/background_fetch/storage/create_metadata_task.cc @fbbb98cc720c51f4 (1 match)
+[247-294] void CreateMetadataTask::InitializeMetadataProto() (in content.background_fetch)
+248	  metadata_proto_ = std::make_unique<proto::BackgroundFetchMetadata>();	$T=proto::BackgroundFetchMetadata
+==> content/browser/background_fetch/storage/get_metadata_task.cc @4716534ef9fe5768 (1 match)
+[76-92] void GetMetadataTask::ProcessMetadata(const std::string& metadata) (in content.background_fetch)
+77	  metadata_proto_ = std::make_unique<proto::BackgroundFetchMetadata>();	$T=proto::BackgroundFetchMetadata
+… 637 more files: content/browser/background_sync/background_sync_manager.cc (1), content/browser/background_sync/background_sync_scheduler.cc (1), content/browser/background_sync/background_sync_service_impl_test_harness.cc (1), content/browser/battery_monitor_browsertest.cc (1), content/browser/blob_storage/blob_url_browsertest.cc (4), content/browser/bluetooth/bluetooth_allowed_devices_unittest.cc (4), content/browser/bluetooth/web_bluetooth_service_impl_browsertest.cc (1), content/browser/bluetooth/web_bluetooth_service_impl_unittest.cc (5), content/browser/browser_child_process_host_impl.cc (2), content/browser/browser_context_impl.cc (2), content/browser/browser_main_loop.cc (15), content/browser/browser_main_loop_unittest.cc (3), …. Narrow with path/glob or raise budget.

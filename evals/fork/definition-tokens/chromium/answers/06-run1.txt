@@ -1,0 +1,189 @@
+==> content/browser/renderer_host/render_frame_host_impl.cc:18234-18421 @7bf9540fd7d97ab2 (21,167 lines) content.RenderFrameHostImpl.DidCommitNavigation
+18234	// Called when the renderer navigates. For every frame loaded, we'll get this
+18235	// notification containing parameters identifying the navigation.
+18236	void RenderFrameHostImpl::DidCommitNavigation(
+18237	    NavigationRequest* committing_navigation_request,
+18238	    mojom::DidCommitProvisionalLoadParamsPtr params,
+18239	    mojom::DidCommitProvisionalLoadInterfaceParamsPtr interface_params) {
+18240	  base::TimeTicks did_commit_ipc_received_time = base::TimeTicks().Now();
+18241	  CHECK(params);
+18242	  TRACE_EVENT("navigation", "RenderFrameHostImpl::DidCommitNavigation",
+18243	              ChromeTrackEvent::kRenderFrameHost, this, "params", params);
+18244	
+18245	#if BUILDFLAG(IS_ANDROID)
+18246	  // Batch service binding updates for renderer processes of the page going to
+18247	  // be hidden and/or going to BFCache.
+18248	  base::android::ScopedServiceBindingBatch scoped_service_binding_batch;
+18249	#endif
+18250	
+18251	  // BackForwardCacheImpl::CanStoreRenderFrameHost prevents placing the pages
+18252	  // with in-flight navigation requests in the back-forward cache and it's not
+18253	  // possible to start/commit a new one after the RenderFrameHost is in the
+18254	  // BackForwardCache (see the check IsInactiveAndDisallowActivation in
+18255	  // RFH::DidCommitSameDocumentNavigation() and RFH::BeginNavigation()) so it
+18256	  // isn't possible to get a DidCommitNavigation IPC from the renderer in
+18257	  // kInBackForwardCache state. Trigger a renderer kill if we receive an
+18258	  // unexpected DidCommit message.
+18259	  if (IsInBackForwardCache()) {
+18260	    if (render_view_host()->DidReceiveBackForwardCacheAck()) {
+18261	      bad_message::ReceivedBadMessage(
+18262	          GetProcess(), bad_message::RFH_DID_COMMIT_NAVIGATION_WHILE_BFCACHED);
+18263	    } else {
+18264	      // The renderer might not have realized that it's in BFCache when it sent
+18265	      // the DidCommitNavigation call, since we haven't received the BFCache
+18266	      // ACK. In this case, just evict from BFCache instead of killing the
+18267	      // renderer.
+18268	      IsInactiveAndDisallowActivation(
+18269	          DisallowActivationReasonId::kDidCommitNavigation);
+18270	    }
+18271	    // Return early in any case.
+18272	    return;
+18273	  }
+18274	
+18275	  // TODO(https://crbug.com/445585641): Make this enforceable on Android.
+18276	#if !BUILDFLAG(IS_ANDROID)
+18277	  if (base::FeatureList::IsEnabled(kCheckDocumentSequenceNumber)) {
+18278	    if (params->document_sequence_number == -1) {
+18279	      bad_message::ReceivedBadMessage(
+18280	          GetProcess(), bad_message::RFH_INVALID_DOCUMENT_SEQUENCE_NUMBER);
+18281	      return;
+18282	    }
+18283	  }
+18284	#endif
+18285	
+18286	  std::unique_ptr<NavigationRequest> request;
+18287	  // TODO(crbug.com/40546539): a `committing_navigation_request` is not
+18288	  // present if and only if this is a synchronous re-navigation to about:blank
+18289	  // initiated by Blink. In all other cases it should be non-null and present in
+18290	  // the map of NavigationRequests.
+18291	  if (committing_navigation_request) {
+18292	    committing_navigation_request->IgnoreCommitInterfaceDisconnection();
+18293	    if (!MaybeInterceptCommitCallback(committing_navigation_request, &params,
+18294	                                      &interface_params)) {
+18295	      return;
+18296	    }
+18297	
+18298	    auto find_request =
+18299	        navigation_requests_.find(committing_navigation_request);
+18300	    CHECK(find_request != navigation_requests_.end());
+18301	
+18302	    request = std::move(find_request->second);
+18303	    navigation_requests_.erase(committing_navigation_request);
+18304	
+18305	    if (request->IsNavigationStarted()) {
+18306	      main_frame_request_ids_ = {params->request_id,
+18307	                                 request->GetGlobalRequestID()};
+18308	      if (deferred_main_frame_load_info_) {
+18309	        ResourceLoadComplete(std::move(deferred_main_frame_load_info_));
+18310	      }
+18311	    }
+18312	  }
+18313	
+18314	  // The commit IPC should be associated with the URL being committed (not with
+18315	  // the *last* committed URL that most other IPCs are associated with).
+18316	  // TODO(crbug.com/40169570): Investigate where the origin should come from
+18317	  // when we remove FrameTree/FrameTreeNode members of this class, and the last
+18318	  // committed origin may be incorrect.
+18319	  ScopedActiveURL scoped_active_url(params->url,
+18320	                                    frame_tree()->root()->current_origin());
+18321	
+18322	  ScopedCommitStateResetter commit_state_resetter(this);
+18323	  RenderProcessHost* process = GetProcess();
+18324	
+18325	  // If we're waiting for a cross-site beforeunload completion callback from
+18326	  // this renderer and we receive a Navigate message from the main frame, then
+18327	  // the renderer was navigating already and sent it before hearing the
+18328	  // blink::mojom::LocalFrame::StopLoading() message. Treat this as an implicit
+18329	  // beforeunload completion callback to allow the pending navigation to
+18330	  // continue.
+18331	  if (is_waiting_for_beforeunload_completion_ &&
+18332	      unload_ack_is_for_navigation_ && !GetParent()) {
+18333	    base::TimeTicks approx_renderer_start_time = send_before_unload_start_time_;
+18334	    ProcessBeforeUnloadCompleted(
+18335	        /*proceed=*/true, /*treat_as_final_completion_callback=*/true,
+18336	        approx_renderer_start_time, base::TimeTicks::Now(),
+18337	        BeforeUnloadExecutionMode::kSync);
+18338	  }
+18339	
+18340	  // When a frame enters pending deletion, it waits for itself and its children
+18341	  // to properly unload. Receiving DidCommitProvisionalLoad() here while the
+18342	  // frame is not active means it comes from a navigation that reached the
+18343	  // ReadyToCommit stage just before the frame entered pending deletion.
+18344	  //
+18345	  // We should ignore this message, because we have already committed to
+18346	  // destroying this RenderFrameHost. Note that we intentionally do not ignore
+18347	  // commits that happen while the current tab is being closed - see
+18348	  // https://crbug.com/805705.
+18349	  if (IsPendingDeletion()) {
+18350	    if (request) {
+18351	      request->set_navigation_discard_reason(
+18352	          NavigationDiscardReason::kInternalCancellation);
+18353	      request->set_error_navigation_trigger(
+18354	          ErrorNavigationTrigger::kCommittedOnPendingDeletion);
+18355	    }
+18356	    return;
+18357	  }
+18358	
+18359	  if (interface_params) {
+18360	    if (broker_holder_) {
+18361	      broker_holder_->broker_receiver().reset();
+18362	    }
+18363	    BindBrowserInterfaceBrokerReceiver(
+18364	        std::move(interface_params->browser_interface_broker_receiver));
+18365	  } else {
+18366	    // If the frame is no longer on the initial empty document, and this is not
+18367	    // a same-document navigation, then both the active document as well as the
+18368	    // global object was replaced in this browsing context. The RenderFrame
+18369	    // should have rebound its BrowserInterfaceBroker to a new pipe, but failed
+18370	    // to do so. Kill the renderer, and reset the old receiver to ensure that
+18371	    // any pending interface requests originating from the previous document,
+18372	    // hence possibly from a different security origin, will no longer be
+18373	    // dispatched.
+18374	    if (!frame_tree_node_->is_on_initial_empty_document()) {
+18375	      if (broker_holder_) {
+18376	        broker_holder_->broker_receiver().reset();
+18377	      }
+18378	      bad_message::ReceivedBadMessage(
+18379	          process, bad_message::RFH_INTERFACE_PROVIDER_MISSING);
+18380	
+18381	      if (request) {
+18382	        request->set_navigation_discard_reason(
+18383	            NavigationDiscardReason::kFailedSecurityCheck);
+18384	      }
+18385	      return;
+18386	    }
+18387	
+18388	    // Otherwise, it is the first real load committed, for which the RenderFrame
+18389	    // is allowed to, and will re-use the existing BrowserInterfaceBroker
+18390	    // connection if the new document is same-origin with the initial empty
+18391	    // document, and therefore the global object is not replaced.
+18392	  }
+18393	
+18394	  if (!DidCommitNavigationInternal(std::move(request), std::move(params),
+18395	                                   /*same_document_params=*/nullptr,
+18396	                                   did_commit_ipc_received_time)) {
+18397	    return;
+18398	  }
+18399	
+18400	  // NOTE: Navigation metrics assume that not much work is done between
+18401	  // DidCommitNavigationInternal() and the end of this function. Avoid adding
+18402	  // code below unless absolutely needed.
+18403	
+18404	  // Since we didn't early return, it's safe to keep the commit state.
+18405	  commit_state_resetter.disable();
+18406	
+18407	  // For a top-level frame, there are potential security concerns associated
+18408	  // with displaying graphics from a previously loaded page after the URL in
+18409	  // the omnibar has been changed. It is unappealing to clear the page
+18410	  // immediately, but if the renderer is taking a long time to issue any
+18411	  // compositor output (possibly because of script deliberately creating this
+18412	  // situation) then we clear it after a while anyway.
+18413	  // See https://crbug.com/497588.
+18414	  if (is_main_frame() && GetView()) {
+18415	    RenderWidgetHostImpl::From(GetView()->GetRenderWidgetHost())->DidNavigate();
+18416	  }
+18417	
+18418	  // TODO(arthursonzogni): This can be removed when RenderDocument will be
+18419	  // implemented. See https://crbug.com/936696.
+18420	  EnsureDescendantsAreUnloading();
+18421	}

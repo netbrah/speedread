@@ -1,0 +1,9 @@
+These Chromium numbers are the 4-tool binary (map, read, search, trace), measured
+before trace was removed. The query list includes four trace queries.
+
+They are kept. They are not the 3-tool baseline. Rerun
+
+  python3 evals/definition_cost.py chromium --binary target/fast/speedread
+
+after the removal PR merges. Search, read, and map answers do not depend on
+the tool-definition text; the trace queries will not exist on that binary.

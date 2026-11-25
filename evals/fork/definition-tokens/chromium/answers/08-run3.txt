@@ -1,0 +1,156 @@
+==> callers of PostTask (base/android/java/src/org/chromium/base/task/PostTask.java:30-489)
+@NullMarked @JNINamespace("base") public class PostTask
+556 call sites in 337 functions, 23 inside closures · syntactic: comments, strings and the definition excluded; λ = inside a closure (may run later or never); 67 other definitions named `PostTask` (16 sites attributed to them left out); ? = receiver unknown; +16211 textual matches in 5,963 files farther away not examined (raise budget)
+base/android/application_status_listener_unittest.cc
+  ? [48-69] void Run() (in base.android.(anonymous).MultiThreadedTest)
+    51	thread_.task_runner()->PostTask(
+base/android/java_handler_thread.cc
+  ? [75-82] void JavaHandlerThread::Stop() (in base.android)
+    77	task_runner()->PostTask(
+base/android/java_handler_thread_unittest.cc
+  ? [65-70] void PostNTasks(int posts_remaining) (in base.(anonymous))
+    67	SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  ? [76-105] void RunTest_AbortDontRunMoreTasks(bool delayed, bool init_java_first) (in base)
+    95	java_thread->task_runner()->PostTask(FROM_HERE, std::move(target));
+    96	java_thread->task_runner()->PostTask(FROM_HERE,
+  ? [125-150] TEST_F(JavaHandlerThreadTest, RunTasksWhileShuttingDownJavaThread) (in base)
+    136	java_thread->task_runner()->PostTask(
+base/android/memory_pressure_listener_android.cc
+  ? [18-34] static void JNI_MemoryPressureListener_OnMemoryPressure(JNIEnv* env, int32_t memory_pressure_level)
+    29	base::SingleThreadTaskRunner::GetMainThreadDefault()->PostTask(
+base/android/pre_freeze_background_memory_trimmer.cc
+  ? [242-264] void PreFreezeBackgroundMemoryTrimmer::PostDelayedBackgroundTaskModern(scoped_refptr<base::SequencedTaskRunner> task_runner, const base::Location& from_here, OnceCallback<void(Memo… (in base.android)
+    252	task_runner->PostTask(
+  ? [279-294] void PreFreezeBackgroundMemoryTrimmer::PostOnFreezeTask(scoped_refptr<base::SequencedTaskRunner> task_runner, const base::Location& from_here, OnceClosure task) (in base.android)
+    286	task_runner->PostTask(
+  ? [542-563] void PreFreezeBackgroundMemoryTrimmer::BackgroundTask::RunNow(std::unique_ptr<PreFreezeBackgroundMemoryTrimmer::BackgroundTask> background_task) (in base.android)
+    547	background_task->task_runner_->PostTask(
+base/android/pre_freeze_background_memory_trimmer_unittest.cc
+  ? [398-438] TEST_F(PreFreezeBackgroundMemoryTrimmerTest, PostDelayedTaskMultiThreaded) (in base.android)
+    407	task_runner->PostTask(
+base/allocator/partition_alloc_support.cc
+  ? [1680-1710] void PartitionAllocMemoryPressureMonitor::Start(scoped_refptr<SingleThreadTaskRunner> main_thread_task_runner) (in base.allocator)
+    1697	watcher_task_runner_->PostTask(
+  ? [1758-1783] void PartitionAllocMemoryPressureMonitor::OnPipeReadable(int read_fd, scoped_refptr<SingleThreadTaskRunner> main_thread_task_runner, base::WeakPtr<PartitionAllocMemoryPressureMonit… (in base.allocator)
+    1778	main_thread_task_runner->PostTask(
+base/allocator/partition_alloc_support_unittest.cc
+  ? [153-177] TEST(PartitionAllocDanglingPtrChecks, CrossTask) (in base.allocator)
+    163	task_environment.GetMainThreadTaskRunner()->PostTask(
+    166	task_environment.GetMainThreadTaskRunner()->PostTask(
+  ? [179-191] TEST(PartitionAllocDanglingPtrChecks, CrossTaskIgnoredFailuresClearsCache) (in base.allocator)
+    187	task_environment.GetMainThreadTaskRunner()->PostTask(
+  ? [202-214] TEST(PartitionAllocDanglingPtrChecks, CrossTaskIgnoresSameTask) (in base.allocator)
+    208	task_environment.GetMainThreadTaskRunner()->PostTask(
+base/cancelable_callback_unittest.cc
+  ? [170-209] TEST(CancelableCallbackTest, PostTask) (in base.(anonymous))
+    180	SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+    186	SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+    198	SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+base/containers/lru_cache_unittest.cc
+  ? [932-964] TEST(LRUCacheMemoryConsumerTest, CrossSequenceConstructionAndDestruction) (in base)
+    951	background_task_runner->PostTask(
+base/debug/asan_service_unittest.cc
+  ? [144-148] void Run() (in base.debug.AsanTaskTraceTest)
+    145	task_runner_->PostTask(
+  ? [151-153] void PostingTask() (in base.debug.AsanTaskTraceTest)
+    152	task_runner_->PostTask(FROM_HERE, BindOnce(&AsanHeapUseAfterFree));
+base/debug/task_trace_unittest.cc
+  ? [30-34] void Run() (in base.debug.ThreeTasksTest)
+    31	task_runner->PostTask(FROM_HERE, base::BindOnce(&ThreeTasksTest::TaskA,
+  ? [36-44] void TaskA() (in base.debug.ThreeTasksTest)
+    42	task_runner->PostTask(FROM_HERE, base::BindOnce(&ThreeTasksTest::TaskB,
+  ? [46-55] void TaskB() (in base.debug.ThreeTasksTest)
+    53	task_runner->PostTask(FROM_HERE, base::BindOnce(&ThreeTasksTest::TaskC,
+base/files/file_descriptor_watcher_posix.cc
+  ? [125-134] void FileDescriptorWatcher::Controller::Watcher::OnFileCanReadWithoutBlocking(int fd) (in base)
+    132	callback_task_runner_->PostTask(
+  ? [136-145] void FileDescriptorWatcher::Controller::Watcher::OnFileCanWriteWithoutBlocking(int fd) (in base)
+    143	callback_task_runner_->PostTask(
+  ? [180-219] FileDescriptorWatcher::Controller::~Controller() (in base)
+    212	io_thread_task_runner_->PostTask(FROM_HERE, std::move(delete_task));
+  ? [221-234] void FileDescriptorWatcher::Controller::StartWatching() (in base)
+    231	io_thread_task_runner_->PostTask(
+base/files/file_path_watcher_fsevents.cc
+  ? [130-186] void FilePathWatcherFSEvents::FSEventsCallback(ConstFSEventStreamRef stream, void* event_watcher, size_t num_events, void* event_paths, const FSEventStreamEventFlags flags[], const… (in base)
+    170	watcher->task_runner()->PostTask(
+  ? [188-195] void FilePathWatcherFSEvents::OnFilePathsChanged(const std::vector<FilePath>& paths) (in base)
+    191	task_runner()->PostTask(
+  ? [215-253] void FilePathWatcherFSEvents::UpdateEventStream(FSEventStreamEventId start_event) (in base)
+    249	task_runner()->PostTask(FROM_HERE,
+  ? [255-265] bool FilePathWatcherFSEvents::ResolveTargetPath() (in base)
+    260	task_runner()->PostTask(FROM_HERE,
+base/files/file_path_watcher_inotify.cc
+  ? [405-440] void InotifyReader::OnInotifyEvent(const inotify_event* event) (in base.(anonymous))
+    434	watcher_entry.task_runner->PostTask(
+base/files/file_path_watcher_unittest.cc
+  ? [1488-1559] TEST_F(FilePathWatcherTest, RacyRecursiveWatch) (in base)
+    1548	subdir_updater.task_runner()->PostTask(FROM_HERE, subdir_update_task);
+base/files/file_path_watcher_win.cc
+  ? [384-477] void CompletionIOPortThread::ThreadMain() (in base.(anonymous))
+    429	watcher_entry.task_runner->PostTask(
+    453	watcher_entry.task_runner->PostTask(
+    464	watcher_entry.task_runner->PostTask(
+    470	watcher_entry.task_runner->PostTask(
+base/files/file_proxy.cc
+  ? [38-45] void PassFile() (in base.FileHelper)
+    42	task_runner_->PostTask(FROM_HERE,
+  ? [253-257] FileProxy::~FileProxy() (in base)
+    255	task_runner_->PostTask(FROM_HERE, BindOnce(&FileDeleter, std::move(file_)));
+base/files/file_util_unittest.cc
+  ? [4479-4508] TEST_F(FileUtilTest, ReadStreamToString_ZeroLengthFile) (in base.(anonymous))
+    4495	write_thread.task_runner()->PostTask(
+  ? [5132-5195] TEST(FileUtilMultiThreadedTest, MultiThreadedTempFiles) (in base.(anonymous))
+    5188	thread->task_runner()->PostTask(FROM_HERE, open_write_close_read);
+base/files/important_file_writer.cc
+  ? [464-490] void ImportantFileWriter::WriteNowWithBackgroundDataProducer(BackgroundDataProducerCallback background_data_producer) (in base)
+    483	CHECK(task_runner->PostTask(FROM_HERE, std::move(write_task)));  λ
+base/files/important_file_writer_cleaner.cc
+  ? [50-69] void ImportantFileWriterCleaner::AddDirectory(const FilePath& directory) (in base)
+    65	task_runner->PostTask(
+base/files/important_file_writer_unittest.cc
+  ? [240-269] TEST_F(ImportantFileWriterTest, CallbackRunsOnWriterThread) (in base)
+    251	file_writer_thread.task_runner()->PostTask(
+base/functional/callback_unittest.cc
+  ? [684-711] TEST_F(CallbackTest, MaybeValidInvalidateWeakPtrsOnOtherSequence) (in base.(anonymous))
+    695	other_thread.task_runner()->PostTask(
+base/functional/concurrent_closures.cc
+  ? [42-50] void ConcurrentClosures::Info::Run() (in base)
+    47	SequencedTaskRunner::GetCurrentDefault()->PostTask(
+base/i18n/locale_holder_unittest.cc
+  ? [165-197] TEST(SequenceCheckedLocaleHolderTest, SequenceValidation) (in base.i18n.(anonymous))
+    178	task_runner->PostTask(
+base/ios/scoped_critical_action_unittest.mm
+  ? [19-183] namespace base::ios
+    160	background_runner->PostTask(FROM_HERE, base::BindOnce(^{
+    173	background_runner->PostTask(FROM_HERE, base::BindOnce(^{
+base/mac/pasteboard_changed_observation.mm
+  ? [53-149] namespace base
+    111	GetMainThreadTaskRunner()->PostTask(
+base/memory/memory_pressure_listener_unittest.cc
+  ? [201-272] TEST(MemoryPressureListenerTest, SuppressionTokenFromNonMainThread) (in base)
+    237	renderer_thread.task_runner()->PostTask(
+    258	renderer_thread.task_runner()->PostTask(
+base/memory/weak_ptr_unittest.cc
+  ? [46-57] static T* NewObject() (in base.(anonymous).OffThreadObjectCreator)
+    51	creator_thread.task_runner()->PostTask(
+  ? [121-128] void CreateArrowFromTarget(Arrow** arrow, Target* target) (in base.(anonymous).BackgroundThread)
+    124	task_runner()->PostTask(
+  ? [130-137] void CreateArrowFromArrow(Arrow** arrow, const Arrow* other) (in base.(anonymous).BackgroundThread)
+    133	task_runner()->PostTask(
+  ? [139-146] void DeleteTarget(Target* object) (in base.(anonymous).BackgroundThread)
+    142	task_runner()->PostTask(
+  ? [148-155] void CopyAndAssignArrow(Arrow* object) (in base.(anonymous).BackgroundThread)
+    151	task_runner()->PostTask(
+  ? [157-164] void CopyAndAssignArrowBase(Arrow* object) (in base.(anonymous).BackgroundThread)
+    160	task_runner()->PostTask(
+  ? [166-173] void DeleteArrow(Arrow* object) (in base.(anonymous).BackgroundThread)
+    169	task_runner()->PostTask(
+  ? [175-184] Target* DeRef(const Arrow* arrow) (in base.(anonymous).BackgroundThread)
+    179	task_runner()->PostTask(
+  ? [186-196] bool Compare(const Arrow* arrow, const Target* target) (in base.(anonymous).BackgroundThread)
+    191	task_runner()->PostTask(
+  ? [532-556] TEST(WeakPtrTest, MaybeValidOnOtherSequence) (in base)
+    540	other_thread.task_runner()->PostTask(
+base/metrics/user_metrics.cc
+… 281 more in: base/memory/weak_ptr_unittest.cc, base/memory_coordinator/async_memory_consumer_registration.cc, base/memory_coordinator/memory_pressure_source.cc, base/memory_coordinator/memory_pressure_source_unittest.cc, base/message_loop/io_watcher_fd_unittest.cc, base/message_loop/message_pump_apple_unittest.mm, base/message_loop/message_pump_epoll_unittest.cc, base/message_loop/message_pump_glib_unittest.cc, …. Raise budget or trace a narrower target.
+not fully searched: 1 file has a line longer than 4 MiB and was read only up to it: third_party/webxr_test_pages/webxr-samples/proposals/opencv/opencv.js

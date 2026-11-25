@@ -1,0 +1,9 @@
+==> src/lib.rs:1-8 @1619622437581e91 (24 lines)
+1	/// Adds two integers.
+2	pub fn add(a: i32, b: i32) -> i32 {
+3	    a + b
+4	}
+5	
+6	pub fn twice(x: i32) -> i32 {
+7	    add(x, x)
+8	}

@@ -1,0 +1,2 @@
+==> data/notes.json:2-2 @18802b1fc4100b61 (6 lines) version
+2	  "version": "1.2.3",

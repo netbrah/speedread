@@ -1,0 +1,8 @@
+{
+  "label": "exclusive-arm init failure reported from grok 1.0.92. search_replace will not start unless a Read tool remains or skip_read_before_edit=true. The shell tool name in that session was run_terminal_command, not bash.",
+  "exit_code": 1,
+  "stderr_tail": "search_replace requires a Read tool unless skip_read_before_edit=true",
+  "stdout": "",
+  "events": [],
+  "session_id": null
+}

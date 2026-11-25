@@ -1,0 +1,548 @@
+{
+  "verdict": "stable",
+  "unit": "tokens",
+  "tokenizer_package": "tiktoken 0.14.0",
+  "encode": "Encoding.encode(text, disallowed_special=())",
+  "runs": 5,
+  "result_sha256": [
+    "457a2cb09ba4a2a7b58bffdcbbaeaae5cd948a42c9221ed63579aac5e7bd3960"
+  ],
+  "result_bytes": 6672,
+  "headline": {
+    "what": "exact JSON of the tools/list result object, sliced from the server's response line",
+    "tokenizer": "o200k_base",
+    "tokens": 1578,
+    "min": 1578,
+    "max": 1578,
+    "median": 1578,
+    "range": 0
+  },
+  "cl100k_base_result_tokens": 1551,
+  "in_the_tools_list_result": [
+    "tool name, description, inputSchema, annotations, and any other field the server put on each tool",
+    "the tools array and the result object's own punctuation"
+  ],
+  "not_in_the_tools_list_result": [
+    "the jsonrpc envelope and id (reported as wire_line_tokens, which does include them)",
+    "initialize instructions (reported separately; they are on initialize, not tools/list)",
+    "client wrapping that turns definitions into a model prompt",
+    "skills/speedread/SKILL.md"
+  ],
+  "tool_names_observed": [
+    "map",
+    "read",
+    "search",
+    "trace"
+  ],
+  "fifth_tool": "counted if present; this script does not special-case map/read/search/trace",
+  "encodings": {
+    "o200k_base": {
+      "result_tokens": 1578,
+      "wire_line_tokens": 1592,
+      "result_other_tokens": 4,
+      "boundary_tokens": 23,
+      "attribution_sums_to_result": true,
+      "instructions_text_tokens": 145,
+      "instructions_json_string_tokens": 146,
+      "tools": [
+        {
+          "name": "map",
+          "attributed_tokens": {
+            "description": 57,
+            "inputSchema": 165,
+            "annotations": 29,
+            "other": 10
+          },
+          "attributed_total": 261,
+          "isolated_field_tokens": {
+            "other": 3,
+            "description": 59,
+            "inputSchema": 166,
+            "annotations": 31
+          },
+          "schema_field_descriptions": [
+            {
+              "property": "path",
+              "isolated_tokens": 13,
+              "chars": 64
+            },
+            {
+              "property": "symbols",
+              "isolated_tokens": 8,
+              "chars": 38
+            },
+            {
+              "property": "depth",
+              "isolated_tokens": 14,
+              "chars": 59
+            },
+            {
+              "property": "globs",
+              "isolated_tokens": 13,
+              "chars": 40
+            },
+            {
+              "property": "budget",
+              "isolated_tokens": 9,
+              "chars": 35
+            },
+            {
+              "property": "base_dir",
+              "isolated_tokens": 17,
+              "chars": 103
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "attributed_tokens": {
+            "description": 244,
+            "inputSchema": 165,
+            "annotations": 29,
+            "other": 9
+          },
+          "attributed_total": 447,
+          "isolated_field_tokens": {
+            "other": 3,
+            "description": 246,
+            "inputSchema": 167,
+            "annotations": 31
+          },
+          "schema_field_descriptions": [
+            {
+              "property": "targets",
+              "isolated_tokens": 11,
+              "chars": 47
+            },
+            {
+              "property": "mode",
+              "isolated_tokens": 31,
+              "chars": 129
+            },
+            {
+              "property": "budget",
+              "isolated_tokens": 9,
+              "chars": 35
+            },
+            {
+              "property": "line_numbers",
+              "isolated_tokens": 3,
+              "chars": 13
+            },
+            {
+              "property": "base_dir",
+              "isolated_tokens": 17,
+              "chars": 103
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "attributed_tokens": {
+            "description": 94,
+            "inputSchema": 383,
+            "annotations": 29,
+            "other": 9
+          },
+          "attributed_total": 515,
+          "isolated_field_tokens": {
+            "other": 3,
+            "description": 96,
+            "inputSchema": 385,
+            "annotations": 31
+          },
+          "schema_field_descriptions": [
+            {
+              "property": "pattern",
+              "isolated_tokens": 12,
+              "chars": 53
+            },
+            {
+              "property": "paths",
+              "isolated_tokens": 11,
+              "chars": 47
+            },
+            {
+              "property": "globs",
+              "isolated_tokens": 19,
+              "chars": 54
+            },
+            {
+              "property": "literal",
+              "isolated_tokens": 6,
+              "chars": 22
+            },
+            {
+              "property": "word",
+              "isolated_tokens": 4,
+              "chars": 17
+            },
+            {
+              "property": "case",
+              "isolated_tokens": 11,
+              "chars": 62
+            },
+            {
+              "property": "context",
+              "isolated_tokens": 9,
+              "chars": 34
+            },
+            {
+              "property": "output",
+              "isolated_tokens": 34,
+              "chars": 162
+            },
+            {
+              "property": "budget",
+              "isolated_tokens": 9,
+              "chars": 35
+            },
+            {
+              "property": "ast",
+              "isolated_tokens": 49,
+              "chars": 170
+            },
+            {
+              "property": "lang",
+              "isolated_tokens": 23,
+              "chars": 92
+            },
+            {
+              "property": "base_dir",
+              "isolated_tokens": 17,
+              "chars": 103
+            }
+          ]
+        },
+        {
+          "name": "trace",
+          "attributed_tokens": {
+            "description": 139,
+            "inputSchema": 151,
+            "annotations": 29,
+            "other": 9
+          },
+          "attributed_total": 328,
+          "isolated_field_tokens": {
+            "other": 3,
+            "description": 141,
+            "inputSchema": 153,
+            "annotations": 31
+          },
+          "schema_field_descriptions": [
+            {
+              "property": "target",
+              "isolated_tokens": 19,
+              "chars": 51
+            },
+            {
+              "property": "direction",
+              "isolated_tokens": 3,
+              "chars": 16
+            },
+            {
+              "property": "depth",
+              "isolated_tokens": 13,
+              "chars": 34
+            },
+            {
+              "property": "budget",
+              "isolated_tokens": 9,
+              "chars": 35
+            },
+            {
+              "property": "base_dir",
+              "isolated_tokens": 17,
+              "chars": 103
+            }
+          ]
+        }
+      ]
+    },
+    "cl100k_base": {
+      "result_tokens": 1551,
+      "wire_line_tokens": 1565,
+      "result_other_tokens": 3,
+      "boundary_tokens": 25,
+      "attribution_sums_to_result": true,
+      "instructions_text_tokens": 144,
+      "instructions_json_string_tokens": 145,
+      "tools": [
+        {
+          "name": "map",
+          "attributed_tokens": {
+            "description": 57,
+            "inputSchema": 160,
+            "annotations": 29,
+            "other": 8
+          },
+          "attributed_total": 254,
+          "isolated_field_tokens": {
+            "other": 3,
+            "description": 59,
+            "inputSchema": 162,
+            "annotations": 30
+          },
+          "schema_field_descriptions": [
+            {
+              "property": "path",
+              "isolated_tokens": 13,
+              "chars": 64
+            },
+            {
+              "property": "symbols",
+              "isolated_tokens": 8,
+              "chars": 38
+            },
+            {
+              "property": "depth",
+              "isolated_tokens": 14,
+              "chars": 59
+            },
+            {
+              "property": "globs",
+              "isolated_tokens": 13,
+              "chars": 40
+            },
+            {
+              "property": "budget",
+              "isolated_tokens": 9,
+              "chars": 35
+            },
+            {
+              "property": "base_dir",
+              "isolated_tokens": 17,
+              "chars": 103
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "attributed_tokens": {
+            "description": 242,
+            "inputSchema": 162,
+            "annotations": 29,
+            "other": 8
+          },
+          "attributed_total": 441,
+          "isolated_field_tokens": {
+            "other": 3,
+            "description": 244,
+            "inputSchema": 164,
+            "annotations": 30
+          },
+          "schema_field_descriptions": [
+            {
+              "property": "targets",
+              "isolated_tokens": 11,
+              "chars": 47
+            },
+            {
+              "property": "mode",
+              "isolated_tokens": 31,
+              "chars": 129
+            },
+            {
+              "property": "budget",
+              "isolated_tokens": 9,
+              "chars": 35
+            },
+            {
+              "property": "line_numbers",
+              "isolated_tokens": 3,
+              "chars": 13
+            },
+            {
+              "property": "base_dir",
+              "isolated_tokens": 17,
+              "chars": 103
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "attributed_tokens": {
+            "description": 94,
+            "inputSchema": 374,
+            "annotations": 29,
+            "other": 8
+          },
+          "attributed_total": 505,
+          "isolated_field_tokens": {
+            "other": 3,
+            "description": 96,
+            "inputSchema": 376,
+            "annotations": 30
+          },
+          "schema_field_descriptions": [
+            {
+              "property": "pattern",
+              "isolated_tokens": 13,
+              "chars": 53
+            },
+            {
+              "property": "paths",
+              "isolated_tokens": 11,
+              "chars": 47
+            },
+            {
+              "property": "globs",
+              "isolated_tokens": 19,
+              "chars": 54
+            },
+            {
+              "property": "literal",
+              "isolated_tokens": 6,
+              "chars": 22
+            },
+            {
+              "property": "word",
+              "isolated_tokens": 4,
+              "chars": 17
+            },
+            {
+              "property": "case",
+              "isolated_tokens": 11,
+              "chars": 62
+            },
+            {
+              "property": "context",
+              "isolated_tokens": 9,
+              "chars": 34
+            },
+            {
+              "property": "output",
+              "isolated_tokens": 34,
+              "chars": 162
+            },
+            {
+              "property": "budget",
+              "isolated_tokens": 9,
+              "chars": 35
+            },
+            {
+              "property": "ast",
+              "isolated_tokens": 48,
+              "chars": 170
+            },
+            {
+              "property": "lang",
+              "isolated_tokens": 23,
+              "chars": 92
+            },
+            {
+              "property": "base_dir",
+              "isolated_tokens": 17,
+              "chars": 103
+            }
+          ]
+        },
+        {
+          "name": "trace",
+          "attributed_tokens": {
+            "description": 139,
+            "inputSchema": 148,
+            "annotations": 28,
+            "other": 8
+          },
+          "attributed_total": 323,
+          "isolated_field_tokens": {
+            "other": 3,
+            "description": 141,
+            "inputSchema": 150,
+            "annotations": 30
+          },
+          "schema_field_descriptions": [
+            {
+              "property": "target",
+              "isolated_tokens": 19,
+              "chars": 51
+            },
+            {
+              "property": "direction",
+              "isolated_tokens": 3,
+              "chars": 16
+            },
+            {
+              "property": "depth",
+              "isolated_tokens": 13,
+              "chars": 34
+            },
+            {
+              "property": "budget",
+              "isolated_tokens": 9,
+              "chars": 35
+            },
+            {
+              "property": "base_dir",
+              "isolated_tokens": 17,
+              "chars": 103
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "repeated_property_descriptions": [
+    {
+      "text": "Absolute directory that relative paths and the default scope resolve against (default: workspace root).",
+      "occurrences": [
+        "map.base_dir",
+        "read.base_dir",
+        "search.base_dir",
+        "trace.base_dir"
+      ],
+      "copies": 4,
+      "isolated_o200k_tokens_each": 17
+    },
+    {
+      "text": "Max response tokens (default 8000).",
+      "occurrences": [
+        "read.budget",
+        "search.budget"
+      ],
+      "copies": 2,
+      "isolated_o200k_tokens_each": 9
+    }
+  ],
+  "schema_dialect_url": {
+    "url": "https://json-schema.org/draft/2020-12/schema",
+    "occurrences_in_result": 4,
+    "isolated_o200k_tokens": 13,
+    "note": "Inside each inputSchema. Isolated count is not additive with the inputSchema column."
+  },
+  "instructions": {
+    "where": "initialize result.instructions, not inside tools/list",
+    "rooted_text": "speedread: fast, token-budgeted code reading. Prefer its tools over shell cat/sed/head/grep/find/ls and over one-file-at-a-time reads. Batch every file, range and symbol you need into ONE `read` call (`path`, `path:A-B`, `path#Symbol`, `#Symbol`, globs); oversized files come back as skeletons you expand by symbol instead of being cut off. `search` hits show their enclosing function/class; `trace` follows callers, callees, references and implementations; `map` orients you in a repo. After editing a file, read `path@etag` (etag from the `==>` header) to see only what changed.",
+    "rootless_extra": " No project folder is configured here: give absolute paths (`/abs/dir/file.rs#Symbol`), or pass `base_dir` (an absolute directory) to scope a call to one project.",
+    "rootless_o200k_tokens": 185,
+    "rooted_o200k_tokens": 145
+  },
+  "server_version": "0.2.1-netbrah.1",
+  "flags": [
+    "--deadline-ms",
+    "10000",
+    "--cache-mb",
+    "256"
+  ],
+  "binary": "/agent/repos/speedread/target/fast/speedread",
+  "host": {
+    "git_sha": "3b5a695e0d3cfe525c74f3282184b7681406c0e1",
+    "nproc": 4,
+    "uptime_s": "2980.01",
+    "loadavg": "0.00 0.00 0.09 1/298 10376",
+    "uname": "Linux cursor 6.12.113+ #1 SMP PREEMPT_DYNAMIC Mon Nov 23 16:05:51 UTC 2026 x86_64",
+    "cpu_model": "Intel(R) Xeon(R) Processor",
+    "meminfo": {
+      "MemTotal": "16387328 kB",
+      "MemFree": "3390524 kB",
+      "MemAvailable": "10541452 kB",
+      "Buffers": "416152 kB",
+      "Cached": "6097924 kB"
+    },
+    "balloon_mib": 4096.0,
+    "rustc_stable": "rustc 1.100.0 (0ef1bc386 2026-11-09)",
+    "binary_sha256": "656a455eda60145c52c460742a77e023cfdfc2e29d1c92562a9e677765a0e27b"
+  },
+  "limiter": "tokenizer is deterministic; the only noise is a payload that changes between launches"
+}

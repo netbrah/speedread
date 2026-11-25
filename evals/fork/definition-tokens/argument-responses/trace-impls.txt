@@ -1,0 +1,4 @@
+==> implementations of Greeting (src/lib.rs:14-16)
+pub trait Greeting
+1 implementation of Greeting · syntactic: inheritance, conformance and impl clauses
+  src/lib.rs [20-24] impl Greeting for Bot

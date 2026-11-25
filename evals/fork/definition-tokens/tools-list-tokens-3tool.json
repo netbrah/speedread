@@ -1,0 +1,105 @@
+{
+  "verdict": "3-tool surface, sliced from the live 4-tool tools/list",
+  "how": "evals/mcp_allow.py removed every tool whose name is not in definition_plan.TOOLS. Other bytes are the server's.",
+  "tools": [
+    "map",
+    "read",
+    "search"
+  ],
+  "product_tools": [
+    "map",
+    "search",
+    "read"
+  ],
+  "not_edited": [
+    "src/server.rs",
+    "INSTRUCTIONS",
+    "tool descriptions that remain"
+  ],
+  "instructions_still_mention_trace": true,
+  "o200k_base": 1244,
+  "cl100k_base": 1221,
+  "four_tool_o200k_base": 1578,
+  "o200k_delta_vs_four_tool": -334,
+  "runs": 5,
+  "range": 0,
+  "encodings": {
+    "o200k_base": {
+      "result_tokens": 1244,
+      "boundary_tokens": 17,
+      "result_other_tokens": 4,
+      "attribution_sums_to_result": true,
+      "tools": [
+        {
+          "name": "map",
+          "attributed_tokens": {
+            "description": 57,
+            "inputSchema": 165,
+            "annotations": 29,
+            "other": 10
+          },
+          "attributed_total": 261
+        },
+        {
+          "name": "read",
+          "attributed_tokens": {
+            "description": 244,
+            "inputSchema": 165,
+            "annotations": 29,
+            "other": 9
+          },
+          "attributed_total": 447
+        },
+        {
+          "name": "search",
+          "attributed_tokens": {
+            "description": 94,
+            "inputSchema": 383,
+            "annotations": 29,
+            "other": 9
+          },
+          "attributed_total": 515
+        }
+      ]
+    },
+    "cl100k_base": {
+      "result_tokens": 1221,
+      "boundary_tokens": 19,
+      "result_other_tokens": 3,
+      "attribution_sums_to_result": true,
+      "tools": [
+        {
+          "name": "map",
+          "attributed_tokens": {
+            "description": 57,
+            "inputSchema": 160,
+            "annotations": 29,
+            "other": 8
+          },
+          "attributed_total": 254
+        },
+        {
+          "name": "read",
+          "attributed_tokens": {
+            "description": 242,
+            "inputSchema": 162,
+            "annotations": 29,
+            "other": 8
+          },
+          "attributed_total": 441
+        },
+        {
+          "name": "search",
+          "attributed_tokens": {
+            "description": 94,
+            "inputSchema": 374,
+            "annotations": 28,
+            "other": 8
+          },
+          "attributed_total": 504
+        }
+      ]
+    }
+  },
+  "filtered_wire_sha256": "1acc710affc70061d9a4e2a29dc7d3d9da73554eea6ea336d7a06af428491ea9"
+}

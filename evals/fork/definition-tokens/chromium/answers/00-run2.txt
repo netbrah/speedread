@@ -1,0 +1,246 @@
+5,001 matches in 1,126 files for /base::BindOnce/ (stopped at 5,000; narrow with path/glob)
+==> cc/animation/animation_host.cc @ffda280581fdec8c (1 match)
+[690-725] void AnimationHost::TickMutator(base::TimeTicks monotonic_time, const ScrollTree& scroll_tree, bool is_active_tree) (in cc)
+707	  auto on_done = base::BindOnce(
+==> cc/base/delayed_unique_notifier.cc @400508aee26fdae2 (2 matches)
+[29-43] void DelayedUniqueNotifier::Schedule() (in cc)
+39	      base::BindOnce(&DelayedUniqueNotifier::NotifyIfTime,
+[70-95] void DelayedUniqueNotifier::NotifyIfTime() (in cc)
+84	        base::BindOnce(&DelayedUniqueNotifier::NotifyIfTime,
+==> cc/base/unique_notifier.cc @a3c4643fd1f8ab09 (1 match)
+[30-40] void UniqueNotifier::Schedule() (in cc)
+38	      base::BindOnce(&UniqueNotifier::Notify, weak_ptr_factory_.GetWeakPtr()));
+==> cc/benchmarks/micro_benchmark_controller_unittest.cc @e7d201d23663a277 (7 matches)
+[80-90] TEST_F(MicroBenchmarkControllerTest, BenchmarkRan) (in cc.(anonymous))
+84	      base::BindOnce(&IncrementCallCount, base::Unretained(&run_count)));
+[92-121] TEST_F(MicroBenchmarkControllerTest, MultipleBenchmarkRan) (in cc.(anonymous))
+96	      base::BindOnce(&IncrementCallCount, base::Unretained(&run_count)));
+100	      base::BindOnce(&IncrementCallCount, base::Unretained(&run_count)));
+109	      base::BindOnce(&IncrementCallCount, base::Unretained(&run_count)));
+113	      base::BindOnce(&IncrementCallCount, base::Unretained(&run_count)));
+[123-147] TEST_F(MicroBenchmarkControllerTest, BenchmarkImplRan) (in cc.(anonymous))
+131	      base::BindOnce(&IncrementCallCount, base::Unretained(&run_count)));
+[149-177] TEST_F(MicroBenchmarkControllerTest, SendMessage) (in cc.(anonymous))
+161	      base::BindOnce(&IncrementCallCount, base::Unretained(&run_count)));
+==> cc/benchmarks/micro_benchmark_impl.cc @13d491bfac20865b (1 match)
+[32-36] void MicroBenchmarkImpl::NotifyDone(base::DictValue result) (in cc)
+34	      FROM_HERE, base::BindOnce(std::move(callback_), std::move(result)));
+==> cc/benchmarks/rasterize_and_record_benchmark.cc @62ca1a24f08b0df7 (1 match)
+[100-107] std::unique_ptr<MicroBenchmarkImpl> RasterizeAndRecordBenchmark::CreateBenchmarkImpl(scoped_refptr<base::SingleThreadTaskRunner> origin_task_runner) (in cc)
+105	      base::BindOnce(&RasterizeAndRecordBenchmark::RecordRasterResults,
+==> cc/benchmarks/unittest_only_benchmark.cc @c371d313f827dec2 (1 match)
+[42-51] std::unique_ptr<MicroBenchmarkImpl> UnittestOnlyBenchmark::CreateBenchmarkImpl(scoped_refptr<base::SingleThreadTaskRunner> origin_task_runner) (in cc)
+49	      base::BindOnce(&UnittestOnlyBenchmark::RecordImplResults,
+==> cc/input/scrollbar_animation_controller.cc @e03760fe7200697c (1 match)
+[122-136] void ScrollbarAnimationController::PostDelayedAnimation(AnimationChange animation_change) (in cc)
+132	      base::BindOnce(&ScrollbarAnimationController::StartAnimation,
+==> cc/input/scrollbar_controller.cc @ceddb43a73c804ca (1 match)
+[152-158] void ScrollbarController::PostAutoscrollTask(const base::TimeDelta delay) (in cc)
+154	      std::make_unique<base::CancelableOnceClosure>(base::BindOnce(
+==> cc/layers/layer_unittest.cc @cc092ef39ce985a1 (6 matches)
+[1508-1609] TEST_F(LayerTest, DedupesCopyOutputRequestsBySource) (in cc.(anonymous))
+1518	          base::BindOnce(&ReceiveCopyOutputResultAtomic,
+1528	      base::BindOnce(&ReceiveCopyOutputResultAtomic,
+1551	      base::BindOnce(&ReceiveCopyOutputResult,
+1564	      base::BindOnce(&ReceiveCopyOutputResult,
+1577	      base::BindOnce(&ReceiveCopyOutputResult,
+1589	      base::BindOnce(&ReceiveCopyOutputResult,
+==> cc/layers/surface_layer_impl_unittest.cc @8cad134e0c43c3c9 (1 match)
+[306-351] TEST(SurfaceLayerImplTest, WillDrawNotifiesSynchronouslyInCompositeImmediate) (in cc.(anonymous))
+322	            base::BindOnce(
+==> cc/layers/texture_layer.cc @ba2853ee6b844c33 (2 matches)
+[212-242] void TextureLayer::PushDirtyPropertiesTo(LayerImpl* layer, uint8_t dirty_flag, CommitState& commit_state) (in cc)
+232	            base::BindOnce(&TransferableResourceHolder::Return, resource_holder,
+[251-263] TextureLayer::TransferableResourceHolder::~TransferableResourceHolder() (in cc)
+260	          base::BindOnce(std::move(release_callback_), sync_token_, is_lost_));
+==> cc/layers/texture_layer_impl.cc @1b8abfd462d71a81 (1 match)
+[70-142] bool TextureLayerImpl::WillDraw(DrawMode draw_mode, viz::ClientResourceProvider* resource_provider) (in cc)
+104	        evicted_cb = base::BindOnce(&TextureLayerImpl::OnResourceEvicted,
+==> cc/layers/texture_layer_impl_unittest.cc @cc0abb24b43ed277 (2 matches)
+[23-53] TEST(TextureLayerImplTest, VisibleOpaqueRegion) (in cc.(anonymous))
+38	  layer->SetTransferableResource(resource, base::BindOnce(&IgnoreCallback));
+[55-105] TEST(TextureLayerImplTest, Occlusion) (in cc.(anonymous))
+70	                                              base::BindOnce(&IgnoreCallback));
+==> cc/layers/texture_layer_unittest.cc @0ee5fd3103f67e4b (25 matches)
+[438-445] void Wait(const base::Thread& thread) (in cc.(anonymous).TextureLayerTransferableResourceHolderTest)
+443	        base::BindOnce(&base::WaitableEvent::Signal, base::Unretained(&event)));
+[454-460] void CreateImplRef(viz::ReleaseCallback* impl_ref, scoped_refptr<base::SequencedTaskRunner> main_thread_task_runner) (in cc.(anonymous).TextureLayerTransferableResourceHolderTest)
+458	        base::BindOnce(&TextureLayer::TransferableResourceHolder::Return,
+[469-522] TEST_F(TextureLayerTransferableResourceHolderTest, TwoCompositors_BothReleaseThenMain) (in cc.(anonymous))
+476	      base::BindOnce(&TextureLayerTransferableResourceHolderTest::CreateMainRef,
+486	      base::BindOnce(&TextureLayerTransferableResourceHolderTest::CreateImplRef,
+495	      base::BindOnce(&TextureLayerTransferableResourceHolderTest::CreateImplRef,
+517	      base::BindOnce(
+[524-577] TEST_F(TextureLayerTransferableResourceHolderTest, TwoCompositors_MainReleaseBetween) (in cc.(anonymous))
+531	      base::BindOnce(&TextureLayerTransferableResourceHolderTest::CreateMainRef,
+541	      base::BindOnce(&TextureLayerTransferableResourceHolderTest::CreateImplRef,
+550	      base::BindOnce(&TextureLayerTransferableResourceHolderTest::CreateImplRef,
+563	      base::BindOnce(
+[579-633] TEST_F(TextureLayerTransferableResourceHolderTest, TwoCompositors_MainReleasedFirst) (in cc.(anonymous))
+586	      base::BindOnce(&TextureLayerTransferableResourceHolderTest::CreateMainRef,
+596	      base::BindOnce(&TextureLayerTransferableResourceHolderTest::CreateImplRef,
+605	      base::BindOnce(&TextureLayerTransferableResourceHolderTest::CreateImplRef,
+615	      base::BindOnce(
+[724-741] void ReleaseCallback(const gpu::SyncToken& sync_token, bool lost_resource) (in cc.(anonymous).TextureLayerImplWithMailboxThreadedCallback)
+737	              base::BindOnce(
+[743-754] void SetNewFakeResource() (in cc.(anonymous).TextureLayerImplWithMailboxThreadedCallback)
+745	    viz::ReleaseCallback callback = base::BindOnce(
+[945-960] bool PrepareTransferableResource(viz::TransferableResource* resource, viz::ReleaseCallback* release_callback) override (in cc.(anonymous).TextureLayerNoExtraCommitForMailboxTest)
+956	    *release_callback = base::BindOnce(
+[1012-1025] bool PrepareTransferableResource(viz::TransferableResource* resource, viz::ReleaseCallback* release_callback) override (in cc.(anonymous).TextureLayerChangeInvisibleMailboxTest)
+1021	    *release_callback = base::BindOnce(
+[1031-1058] void ResourceReleased(const gpu::SyncToken& sync_token, bool lost_resource) (in cc.(anonymous).TextureLayerChangeInvisibleMailboxTest)
+1042	          base::BindOnce(
+[1179-1195] bool PrepareTransferableResource(viz::TransferableResource* resource, viz::ReleaseCallback* release_callback) override (in cc.(anonymous).TextureLayerReleaseResourcesBase)
+1192	        base::BindOnce(&TextureLayerReleaseResourcesBase::ResourceReleased,
+[1294-1301] void SetNewFakeResource() (in cc.(anonymous).TextureLayerWithResourceMainThreadDeleted)
+1296	    viz::ReleaseCallback callback = base::BindOnce(
+[1361-1368] void SetNewFakeResource() (in cc.(anonymous).TextureLayerWithResourceImplThreadDeleted)
+1363	    viz::ReleaseCallback callback = base::BindOnce(
+[1692-1702] void DidCommitAndDrawFrame() override (in cc.(anonymous).SoftwareTextureLayerLoseFrameSinkTest)
+1700	        base::BindOnce(&SoftwareTextureLayerLoseFrameSinkTest::NextStep,
+[1704-1753] void NextStep() (in cc.(anonymous).SoftwareTextureLayerLoseFrameSinkTest)
+1711	        auto release_callback = base::BindOnce(
+[1755-1761] void DisplayReceivedCompositorFrameOnThread(const viz::CompositorFrame& frame) override (in cc.(anonymous).SoftwareTextureLayerLoseFrameSinkTest)
+1759	        base::BindOnce(&SoftwareTextureLayerLoseFrameSinkTest::VerifyFrame,
+==> cc/metrics/events_metrics_manager_unittest.cc @7033346927bb62dc (2 matches)
+[31-40] EventsMetricsManager::ScopedMonitor::DoneCallback CreateSimpleDoneCallback(std::unique_ptr<EventMetrics> metrics) (in cc.(anonymous))
+33	  return base::BindOnce(
+[176-213] TEST_F(EventsMetricsManagerTest, ScrollUpdateAndEndSavedEvenWithoutCall) (in cc)
+199	          base::BindOnce([](std::unique_ptr<EventMetrics> metrics,
+==> cc/metrics/frame_sequence_tracker_collection.cc @bbb6b23aae0117e9 (1 match)
+[245-256] void FrameSequenceTrackerCollection::StartCustomSequence(int sequence_id) (in cc)
+253	          base::BindOnce(
+==> cc/mojo_embedder/async_layer_tree_frame_sink.cc @46cf28dc13049a83 (3 matches)
+[97-158] bool AsyncLayerTreeFrameSink::BindToClient(LayerTreeFrameSinkClient* client) (in cc.mojo_embedder)
+107	        base::BindOnce(&AsyncLayerTreeFrameSink::OnMojoConnectionError,
+114	        base::BindOnce(&AsyncLayerTreeFrameSink::OnMojoConnectionError,
+[409-434] void AsyncLayerTreeFrameSink::OnNeedsBeginFrames(bool needs_begin_frames) (in cc.mojo_embedder)
+425	          base::BindOnce(&AsyncLayerTreeFrameSink::SendManualBeginFrame,
+==> cc/mojo_embedder/async_layer_tree_frame_sink_unittest.cc @e88a228bf649c64e (2 matches)
+[74-131] TEST(AsyncLayerTreeFrameSinkTest, DidLoseLayerTreeFrameSinkCalledOnConnectionError) (in cc.mojo_embedder.(anonymous))
+106	      FROM_HERE, base::BindOnce(bind_in_background,
+128	      base::BindOnce(detach_in_background, std::move(layer_tree_frame_sink),
+==> cc/mojo_embedder/viz_layer_context.cc @8d48189c0f4fb2cc (1 match)
+[1416-1453] VizLayerContext::VizLayerContext(viz::mojom::CompositorFrameSink& frame_sink, LayerTreeHostImpl& host_impl) : host_impl_(host_impl) (in cc.mojo_embedder)
+1422	  client_receiver_.set_disconnect_with_reason_handler(base::BindOnce(
+==> cc/paint/gpu_raster_pixeltest.cc @5e17586dda3aa5e3 (2 matches)
+[2312-2330] SkBitmap GetExpected(const gfx::Size& image_size) (in cc.(anonymous).GpuRasterTextBlobPixelTest)
+2323	        base::BindOnce(&GpuRasterTextBlobPixelTest::DrawExpectedOnGpuThread,
+[2675-2717] TEST_F(GpuRasterPixelTest, DrawTextMultipleRasterCHROMIUM) (in cc.(anonymous))
+2714	      base::BindOnce(&ClearFontCache, &event));
+==> cc/paint/scoped_raster_flags_unittest.cc @8a74f4443d794e11 (1 match)
+[31-44] ScopedResult GetRasterContent(const DrawImage& draw_image) override (in cc.(anonymous).MockImageProvider)
+43	        base::BindOnce(&MockImageProvider::UnrefImage, base::Unretained(this)));
+==> cc/raster/categorized_worker_pool_unittest.cc @07358ec5eca620d9 (1 match)
+[162-180] TEST_F(CategorizedWorkerPoolTest, AcquiresForegroundResourcesNotBackgroundThreadPriority) (in cc)
+169	  tasks.push_back(base::MakeRefCounted<ClosureTask>(base::BindOnce([]() {
+==> cc/raster/playback_image_provider.cc @8690cae66f6164fb (1 match)
+[40-81] ImageProvider::ScopedResult PlaybackImageProvider::GetRasterContent(const DrawImage& draw_image) (in cc)
+79	      base::BindOnce(&UnrefImageFromCache, std::move(adjusted_image), cache_,
+==> cc/resources/resource_pool.cc @d83b32264823727b (2 matches)
+[477-503] bool ResourcePool::PrepareForExport(const InUsePoolResource& in_use_resource, viz::TransferableResource::ResourceSource resource_source) (in cc)
+500	      base::BindOnce(&ResourcePool::OnResourceReleased,
+[679-691] void ResourcePool::ScheduleEvictExpiredResourcesIn(base::TimeDelta time_from_now) (in cc)
+688	      base::BindOnce(&ResourcePool::EvictExpiredResources,
+==> cc/scheduler/scheduler.cc @a0c98cd6d193a707 (2 matches)
+[471-487] void Scheduler::PostPendingBeginFrameTask() (in cc)
+483	    pending_begin_frame_task_.Reset(base::BindOnce(
+[857-943] void Scheduler::ScheduleBeginImplFrameDeadline() (in cc)
+939	        base::BindOnce(&Scheduler::OnBeginImplFrameDeadline,
+==> cc/slim/frame_sink_impl.cc @7ea3e3a44cd9eed6 (2 matches)
+[97-142] bool FrameSinkImpl::BindToClient(FrameSinkImplClient* client) (in cc.slim)
+114	      base::BindOnce(&FrameSinkImpl::OnContextLost, base::Unretained(this)));
+[161-210] void FrameSinkImpl::UploadUIResource(cc::UIResourceId resource_id, cc::UIResourceBitmap resource_bitmap) (in cc.slim)
+203	      base::BindOnce(&FrameSinkImpl::UIResourceReleased, base::Unretained(this),
+==> cc/slim/layer_tree_impl.cc @58fa3887bba54efd (1 match)
+[194-199] base::OnceClosure LayerTreeImpl::DeferBeginFrame() (in cc.slim)
+197	  return base::BindOnce(&LayerTreeImpl::ReleaseDeferBeginFrame,
+==> cc/slim/slim_layer_tree_compositor_frame_unittest.cc @44a14a21899f8b3d (1 match)
+[90-106] bool PrepareTransferableResource(viz::TransferableResource* transferable_resource, viz::ReleaseCallback* release_callback) override (in cc.slim.(anonymous).StubSharedImageTextureLayerClient)
+103	        base::BindOnce(&StubSharedImageTextureLayerClient::Release,
+==> cc/slim/texture_layer.cc @c13905abab8b8ee1 (2 matches)
+[36-41] viz::ReleaseCallback CreateCallback() (in cc.slim.TextureLayer.TransferableResourceHolder)
+39	    return base::BindOnce(&TransferableResourceHolder::DoReleaseCallback,
+[118-165] void TextureLayer::AppendQuads(viz::CompositorRenderPass& render_pass, FrameData& data, const gfx::Transform& transform_to_root, const gfx::Transform& transform_to_target, const gf… (in cc.slim)
+140	    auto evicted_callback = base::BindOnce(&TextureLayer::OnResourceEvicted,
+==> cc/test/fake_layer_tree_frame_sink.cc @bcade05b0526b2a0 (1 match)
+[70-87] void FakeLayerTreeFrameSink::SubmitCompositorFrame(viz::CompositorFrame frame, bool hit_test_data_changed) (in cc)
+85	      base::BindOnce(&FakeLayerTreeFrameSink::DidReceiveCompositorFrameAck,
+==> cc/test/layer_tree_pixel_test.cc @0a0e93b0ef72f935 (1 match)
+[176-183] std::unique_ptr<viz::CopyOutputRequest> LayerTreePixelTest::CreateCopyOutputRequest() (in cc)
+181	      base::BindOnce(&LayerTreePixelTest::ReadbackResult,
+==> cc/test/layer_tree_test.cc @b46fc80c1146a778 (24 matches)
+[141-151] void InvalidateIfPossible() (in cc.(anonymous).SynchronousLayerTreeFrameSink)
+149	        base::BindOnce(&SynchronousLayerTreeFrameSink::DispatchInvalidation,
+[319-333] void BlockNotifyReadyToActivateForTesting(bool block, bool notify_if_blocked) override (in cc.LayerTreeHostImplForTesting)
+328	            base::BindOnce(&LayerTreeHostImplForTesting::NotifyReadyToActivate,
+[802-819] void LayerTreeTest::EndTest() (in cc)
+817	        base::BindOnce(&LayerTreeTest::RealEndTest, main_thread_weak_ptr_));
+[821-825] void LayerTreeTest::EndTestAfterDelayMs(int delay_milliseconds) (in cc)
+823	      FROM_HERE, base::BindOnce(&LayerTreeTest::EndTest, main_thread_weak_ptr_),
+[827-834] void LayerTreeTest::PostAddNoDamageAnimationToMainThread(Animation* animation_to_receive_animation) (in cc)
+831	      base::BindOnce(&LayerTreeTest::DispatchAddNoDamageAnimation,
+[836-843] void LayerTreeTest::PostAddOpacityAnimationToMainThread(Animation* animation_to_receive_animation) (in cc)
+840	      base::BindOnce(
+[845-852] void LayerTreeTest::PostAddOpacityAnimationToMainThreadInstantly(Animation* animation_to_receive_animation) (in cc)
+849	      base::BindOnce(&LayerTreeTest::DispatchAddOpacityAnimation,
+[854-861] void LayerTreeTest::PostAddOpacityAnimationToMainThreadDelayed(Animation* animation_to_receive_animation) (in cc)
+858	      base::BindOnce(&LayerTreeTest::DispatchAddOpacityAnimation,
+[863-868] void LayerTreeTest::PostSetLocalSurfaceIdToMainThread(const viz::LocalSurfaceId& local_surface_id) (in cc)
+866	      FROM_HERE, base::BindOnce(&LayerTreeTest::DispatchSetLocalSurfaceId,
+[870-875] void LayerTreeTest::PostRequestNewLocalSurfaceIdToMainThread() (in cc)
+873	      base::BindOnce(&LayerTreeTest::DispatchRequestNewLocalSurfaceId,
+[877-885] void LayerTreeTest::PostGetDeferMainFrameUpdateToMainThread(std::unique_ptr<ScopedDeferMainFrameUpdate>* scoped_defer_main_frame_update) (in cc)
+882	      base::BindOnce(&LayerTreeTest::DispatchGetDeferMainFrameUpdate,
+[887-895] void LayerTreeTest::PostReturnDeferMainFrameUpdateToMainThread(std::unique_ptr<ScopedDeferMainFrameUpdate> scoped_defer_main_frame_update) (in cc)
+892	      base::BindOnce(&LayerTreeTest::DispatchReturnDeferMainFrameUpdate,
+[897-902] void LayerTreeTest::PostDeferringCommitsStatusToMainThread(bool is_deferring_commits) (in cc)
+900	      FROM_HERE, base::BindOnce(&LayerTreeTest::DispatchDeferringCommitsStatus,
+[904-908] void LayerTreeTest::PostSetNeedsCommitToMainThread() (in cc)
+906	      FROM_HERE, base::BindOnce(&LayerTreeTest::DispatchSetNeedsCommit,
+[910-914] void LayerTreeTest::PostSetNeedsUpdateLayersToMainThread() (in cc)
+912	      FROM_HERE, base::BindOnce(&LayerTreeTest::DispatchSetNeedsUpdateLayers,
+[916-920] void LayerTreeTest::PostSetNeedsRedrawToMainThread() (in cc)
+918	      FROM_HERE, base::BindOnce(&LayerTreeTest::DispatchSetNeedsRedraw,
+[922-927] void LayerTreeTest::PostSetNeedsRedrawRectToMainThread(const gfx::Rect& damage_rect) (in cc)
+925	      FROM_HERE, base::BindOnce(&LayerTreeTest::DispatchSetNeedsRedrawRect,
+[929-933] void LayerTreeTest::PostSetVisibleToMainThread(bool visible) (in cc)
+931	                              base::BindOnce(&LayerTreeTest::DispatchSetVisible,
+[935-940] void LayerTreeTest::PostSetNeedsCommitWithForcedRedrawToMainThread() (in cc)
+938	      base::BindOnce(&LayerTreeTest::DispatchSetNeedsCommitWithForcedRedraw,
+[942-946] void LayerTreeTest::PostCompositeImmediatelyToMainThread() (in cc)
+944	      FROM_HERE, base::BindOnce(&LayerTreeTest::DispatchCompositeImmediately,
+[948-953] void LayerTreeTest::PostNextCommitWaitsForActivationToMainThread() (in cc)
+951	      base::BindOnce(&LayerTreeTest::DispatchNextCommitWaitsForActivation,
+[968-1026] void LayerTreeTest::DoBeginTest() (in cc)
+1001	        base::BindOnce(&LayerTreeTest::Timeout, base::Unretained(this)));
+[1066-1081] void LayerTreeTest::RealEndTest() (in cc)
+1076	        base::BindOnce(&LayerTreeTest::RealEndTest, main_thread_weak_ptr_));
+[1194-1229] void LayerTreeTest::RunTest(CompositorMode mode) (in cc)
+1214	      base::BindOnce(&LayerTreeTest::DoBeginTest, base::Unretained(this)));
+==> cc/test/pixel_test.cc @ce4edb097b22b2e0 (3 matches)
+[116-155] void PixelTest::RenderReadbackTargetAndAreaToResultBitmap(viz::AggregatedRenderPassList* pass_list, viz::AggregatedRenderPass* target, const gfx::Rect* copy_rect) (in cc)
+128	            base::BindOnce(&PixelTest::ReadbackResult, base::Unretained(this),
+149	        base::BindOnce(&PixelTest::ReadbackResult, base::Unretained(this),
+[253-281] viz::ResourceId PixelTest::AllocateAndFillSoftwareResource(scoped_refptr<viz::RasterContextProvider> context_provider, const gfx::Size& size, const SkBitmap& source) (in cc)
+277	      base::BindOnce(&DeleteSharedImage, std::move(shared_image));
+==> cc/test/pixel_test_output_surface.cc @3ff411754dd27b01 (1 match)
+[39-43] void PixelTestOutputSurface::SwapBuffers(viz::OutputSurfaceFrame frame) (in cc)
+41	      FROM_HERE, base::BindOnce(&PixelTestOutputSurface::SwapBuffersCallback,
+==> cc/test/run_all_perftests.cc @0f20d4bec9dd7fe4 (1 match)
+[11-22] int main(int argc, char** argv)
+21	      base::BindOnce(&cc::CCTestSuite::Run, base::Unretained(&test_suite)));
+==> cc/test/run_all_unittests.cc @2fff0ff046012c41 (1 match)
+[10-18] int main(int argc, char** argv)
+17	      base::BindOnce(&cc::CCTestSuite::Run, base::Unretained(&test_suite)));
+==> cc/test/test_layer_tree_frame_sink.cc @32131de0f7121be1 (2 matches)
+[333-350] void TestLayerTreeFrameSink::SubmitCompositorFrame(viz::CompositorFrame frame, bool hit_test_data_changed) (in cc)
+347	        base::BindOnce(&TestLayerTreeFrameSink::SendCompositorFrameAckToClient,
+[366-380] void TestLayerTreeFrameSink::DidReceiveCompositorFrameAck(std::vector<viz::ReturnedResource> resources) (in cc)
+378	      base::BindOnce(&TestLayerTreeFrameSink::SendCompositorFrameAckToClient,
+==> cc/tiles/checker_image_tracker.cc @ade3876c657cd67c (1 match)
+[383-444] void CheckerImageTracker::ScheduleNextImageDecode() (in cc)
+438	          base::BindOnce(&CheckerImageTracker::DidFinishImageDecode,
+… 1087 more files: cc/tiles/checker_image_tracker_unittest.cc (1), cc/tiles/decoded_image_tracker.cc (1), cc/tiles/decoded_image_tracker_unittest.cc (10), cc/tiles/gpu_image_decode_cache.cc (2), cc/tiles/image_controller.cc (4), cc/tiles/image_controller_unittest.cc (27), cc/tiles/software_image_decode_cache.cc (2), cc/tiles/tile_manager.cc (8), cc/trees/client_layer_tree_host_impl.cc (1), cc/trees/client_layer_tree_host_impl_unittest.cc (1), cc/trees/image_animation_controller.cc (1), cc/trees/layer_tree_frame_sink.cc (2), …. Narrow with path/glob or raise budget.
+not fully searched: 1 file has a line longer than 4 MiB and was read only up to it: tools/perf/testdata/task_output_dir/1/memory.desktop.reference/perf_results.json

@@ -1,0 +1,246 @@
+{
+  "method": "codeload tarball of one commit, delete image/media/font/archive extensions, git init",
+  "url": "https://codeload.github.com/chromium/chromium/tar.gz/3a7520d2d79d6569d3a11f968d32b20665fa4db3",
+  "commit": "3a7520d2d79d6569d3a11f968d32b20665fa4db3",
+  "tarball_sha256": "928a0510a87d927c5d8547c12df282ee15890814765d26ec9bd2395c6516eb7d",
+  "tarball_bytes": 1500794986,
+  "omit_extensions": {
+    "image": [
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".gif",
+      ".webp",
+      ".ico",
+      ".bmp",
+      ".svg",
+      ".icns",
+      ".tif",
+      ".tiff",
+      ".avif"
+    ],
+    "media": [
+      ".mp4",
+      ".webm",
+      ".mp3",
+      ".wav",
+      ".ogg",
+      ".mov",
+      ".avi",
+      ".flac",
+      ".m4a",
+      ".opus",
+      ".mkv",
+      ".aac"
+    ],
+    "font": [
+      ".ttf",
+      ".otf",
+      ".woff",
+      ".woff2",
+      ".eot"
+    ],
+    "archive": [
+      ".zip",
+      ".jar",
+      ".apk",
+      ".aar",
+      ".7z",
+      ".rar",
+      ".iso",
+      ".dmg",
+      ".tar",
+      ".tgz",
+      ".bz2",
+      ".xz",
+      ".gz",
+      ".whl"
+    ]
+  },
+  "removed": {
+    "image": {
+      "files": 42992,
+      "bytes": 656196658,
+      "by_ext": {
+        ".webp": {
+          "files": 246,
+          "bytes": 16909314
+        },
+        ".jpg": {
+          "files": 638,
+          "bytes": 25754039
+        },
+        ".png": {
+          "files": 36884,
+          "bytes": 561789050
+        },
+        ".icns": {
+          "files": 6,
+          "bytes": 832639
+        },
+        ".svg": {
+          "files": 4266,
+          "bytes": 33500309
+        },
+        ".ico": {
+          "files": 104,
+          "bytes": 1099356
+        },
+        ".gif": {
+          "files": 606,
+          "bytes": 11045489
+        },
+        ".tiff": {
+          "files": 6,
+          "bytes": 15270
+        },
+        ".bmp": {
+          "files": 123,
+          "bytes": 3259304
+        },
+        ".jpeg": {
+          "files": 12,
+          "bytes": 562369
+        },
+        ".avif": {
+          "files": 101,
+          "bytes": 1429519
+        }
+      }
+    },
+    "media": {
+      "files": 995,
+      "bytes": 154331264,
+      "by_ext": {
+        ".wav": {
+          "files": 345,
+          "bytes": 16598943
+        },
+        ".mp3": {
+          "files": 36,
+          "bytes": 9595312
+        },
+        ".mp4": {
+          "files": 250,
+          "bytes": 59557503
+        },
+        ".webm": {
+          "files": 245,
+          "bytes": 54710941
+        },
+        ".mov": {
+          "files": 16,
+          "bytes": 5627901
+        },
+        ".ogg": {
+          "files": 63,
+          "bytes": 1624083
+        },
+        ".flac": {
+          "files": 23,
+          "bytes": 6078253
+        },
+        ".avi": {
+          "files": 1,
+          "bytes": 103714
+        },
+        ".mkv": {
+          "files": 2,
+          "bytes": 103950
+        },
+        ".aac": {
+          "files": 4,
+          "bytes": 138544
+        },
+        ".opus": {
+          "files": 2,
+          "bytes": 28256
+        },
+        ".m4a": {
+          "files": 8,
+          "bytes": 163864
+        }
+      }
+    },
+    "font": {
+      "files": 509,
+      "bytes": 30426804,
+      "by_ext": {
+        ".woff2": {
+          "files": 47,
+          "bytes": 2286673
+        },
+        ".ttf": {
+          "files": 309,
+          "bytes": 22743248
+        },
+        ".woff": {
+          "files": 115,
+          "bytes": 3250055
+        },
+        ".otf": {
+          "files": 38,
+          "bytes": 2146828
+        }
+      }
+    },
+    "archive": {
+      "files": 438,
+      "bytes": 67541405,
+      "by_ext": {
+        ".zip": {
+          "files": 307,
+          "bytes": 46289554
+        },
+        ".gz": {
+          "files": 29,
+          "bytes": 738896
+        },
+        ".apk": {
+          "files": 25,
+          "bytes": 1027968
+        },
+        ".jar": {
+          "files": 7,
+          "bytes": 12538164
+        },
+        ".xz": {
+          "files": 12,
+          "bytes": 6296204
+        },
+        ".dmg": {
+          "files": 11,
+          "bytes": 404531
+        },
+        ".7z": {
+          "files": 23,
+          "bytes": 84151
+        },
+        ".rar": {
+          "files": 20,
+          "bytes": 120463
+        },
+        ".tar": {
+          "files": 4,
+          "bytes": 41474
+        }
+      }
+    }
+  },
+  "before_omit": {
+    "files": 517513,
+    "bytes": 4478702917
+  },
+  "after_omit": {
+    "files": 472579,
+    "bytes": 3570206786
+  },
+  "git_init": true,
+  "require_git_note": "speedread's walker sets require_git(false); git init still matches the historical corpus and stops parent-repo ignore rules (.parents in src/walk.rs).",
+  "required_paths_present": [
+    "content/browser/renderer_host/render_frame_host_impl.cc",
+    "content/browser",
+    "content"
+  ],
+  "dest": "target/eval-repos/chromium"
+}

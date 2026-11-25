@@ -1,0 +1,12 @@
+{
+  "label": "exclusive arm after the read and edit tools are denied. speedread__ remains. Built from the names in the grok 1.0.92 smoke, not a second live capture.",
+  "type": "available_commands",
+  "tools": [
+    "search_tool",
+    "use_tool",
+    "speedread__map",
+    "speedread__read",
+    "speedread__search",
+    "speedread__trace"
+  ]
+}

@@ -1,0 +1,12 @@
+Two profiles of a whole-tree search for a string that is not in the timed query list.
+Neither wall time is in chromium/summary.md.
+
+strace.txt
+  strace -c, main thread only. The workers are not attached, so the time is
+  one futex. SPEEDREAD_STATS on that run: walks=1 entries=471431 stopped=0
+  cancelled=0. The walk finished. Do not read the futex line as the cost model.
+
+strace-follow.txt
+  strace -f -c. Workers are attached. The tracer slowed the walk past the
+  10 s deadline (stopped=1, 257492 entries). Syscall mix for that partial
+  walk: futex, read, openat, statx, close, getdents64. Not a timing result.

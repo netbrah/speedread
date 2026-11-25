@@ -1,0 +1,247 @@
+1,959 matches in 97 files for /NavigationThrottle/
+==> content/browser/back_forward_cache/back_forward_cache_subframe_navigation_throttle.cc @9110cf40278dc49f (30 matches)
+[12-22] void BackForwardCacheSubframeNavigationThrottle::MaybeCreateAndAdd(NavigationThrottleRegistry& registry) (in content)
+13	void BackForwardCacheSubframeNavigationThrottle::MaybeCreateAndAdd(
+14	    NavigationThrottleRegistry& registry) {
+20	        new BackForwardCacheSubframeNavigationThrottle(registry)));
+[24-28] BackForwardCacheSubframeNavigationThrottle:: BackForwardCacheSubframeNavigationThrottle(NavigationThrottleRegistry& registry) : NavigationThrottle(registry), WebContentsObserver(re… (in content)
+24	BackForwardCacheSubframeNavigationThrottle::
+25	    BackForwardCacheSubframeNavigationThrottle(
+26	        NavigationThrottleRegistry& registry)
+27	    : NavigationThrottle(registry),
+[30-31] BackForwardCacheSubframeNavigationThrottle:: ~BackForwardCacheSubframeNavigationThrottle() = default; (in content)
+30	BackForwardCacheSubframeNavigationThrottle::
+31	    ~BackForwardCacheSubframeNavigationThrottle() = default;
+[33-35] const char* BackForwardCacheSubframeNavigationThrottle::GetNameForLogging() (in content)
+33	const char* BackForwardCacheSubframeNavigationThrottle::GetNameForLogging() {
+34	  return "BackForwardCacheSubframeNavigationThrottle";
+[37-49] NavigationThrottle::ThrottleCheckResult BackForwardCacheSubframeNavigationThrottle::DeferNavigationIfNeeded() (in content)
+37	NavigationThrottle::ThrottleCheckResult
+38	BackForwardCacheSubframeNavigationThrottle::DeferNavigationIfNeeded() {
+46	    return NavigationThrottle::DEFER;
+48	  return NavigationThrottle::PROCEED;
+[51-61] void BackForwardCacheSubframeNavigationThrottle:: ConfirmNavigationIsNotInBFCachedFrame() (in content)
+51	void BackForwardCacheSubframeNavigationThrottle::
+[63-66] NavigationThrottle::ThrottleCheckResult BackForwardCacheSubframeNavigationThrottle::WillStartRequest() (in content)
+63	NavigationThrottle::ThrottleCheckResult
+64	BackForwardCacheSubframeNavigationThrottle::WillStartRequest() {
+[68-72] NavigationThrottle::ThrottleCheckResult BackForwardCacheSubframeNavigationThrottle::WillRedirectRequest() (in content)
+68	NavigationThrottle::ThrottleCheckResult
+69	BackForwardCacheSubframeNavigationThrottle::WillRedirectRequest() {
+71	  return NavigationThrottle::PROCEED;
+[74-78] NavigationThrottle::ThrottleCheckResult BackForwardCacheSubframeNavigationThrottle::WillFailRequest() (in content)
+74	NavigationThrottle::ThrottleCheckResult
+75	BackForwardCacheSubframeNavigationThrottle::WillFailRequest() {
+77	  return NavigationThrottle::PROCEED;
+[80-84] NavigationThrottle::ThrottleCheckResult BackForwardCacheSubframeNavigationThrottle::WillProcessResponse() (in content)
+80	NavigationThrottle::ThrottleCheckResult
+81	BackForwardCacheSubframeNavigationThrottle::WillProcessResponse() {
+83	  return NavigationThrottle::PROCEED;
+[86-89] NavigationThrottle::ThrottleCheckResult BackForwardCacheSubframeNavigationThrottle::WillCommitWithoutUrlLoader() (in content)
+86	NavigationThrottle::ThrottleCheckResult
+87	BackForwardCacheSubframeNavigationThrottle::WillCommitWithoutUrlLoader() {
+[91-107] void BackForwardCacheSubframeNavigationThrottle::RenderFrameHostStateChanged(RenderFrameHost* render_frame_host, RenderFrameHost::LifecycleState old_state, RenderFrameHost::Lifecyc… (in content)
+91	void BackForwardCacheSubframeNavigationThrottle::RenderFrameHostStateChanged(
+==> content/browser/back_forward_cache/back_forward_cache_subframe_navigation_throttle.h @d93060880c77b402 (8 matches)
+[13-57] class BackForwardCacheSubframeNavigationThrottle : public NavigationThrottle, public WebContentsObserver (in content)
+13	// BackForwardCacheSubframeNavigationThrottle defers subframe navigation before
+22	class BackForwardCacheSubframeNavigationThrottle : public NavigationThrottle,
+[25-25] ~BackForwardCacheSubframeNavigationThrottle() override; (in content.BackForwardCacheSubframeNavigationThrottle)
+25	  ~BackForwardCacheSubframeNavigationThrottle() override;
+[27-28] CONTENT_EXPORT static void MaybeCreateAndAdd(NavigationThrottleRegistry& registry); (in content.BackForwardCacheSubframeNavigationThrottle)
+28	      NavigationThrottleRegistry& registry);
+[31-32] explicit BackForwardCacheSubframeNavigationThrottle(NavigationThrottleRegistry& registry); (in content.BackForwardCacheSubframeNavigationThrottle)
+31	  explicit BackForwardCacheSubframeNavigationThrottle(
+32	      NavigationThrottleRegistry& registry);
+[34-35] const char* GetNameForLogging() override; (in content.BackForwardCacheSubframeNavigationThrottle)
+34	  // NavigationThrottle
+[48-50] NavigationThrottle::ThrottleCheckResult DeferNavigationIfNeeded(); (in content.BackForwardCacheSubframeNavigationThrottle)
+50	  NavigationThrottle::ThrottleCheckResult DeferNavigationIfNeeded();
+==> content/browser/back_forward_cache/back_forward_cache_subframe_navigation_throttle_unittest.cc @d7a7839e6ec8e7a5 (89 matches)
+[27-118] class BackForwardCacheSubframeNavigationThrottleTestBase : public RenderViewHostImplTestHarness, public WebContentsObserver (in content)
+27	class BackForwardCacheSubframeNavigationThrottleTestBase
+[63-81] std::unique_ptr<NavigationThrottle> GetNavigationThrottleFromPausedSubframeNavigation(const GURL& url) (in content.BackForwardCacheSubframeNavigationThrottleTestBase)
+63	  // Returns `BackForwardCacheSubframeNavigationThrottle` for a paused subframe
+65	  std::unique_ptr<NavigationThrottle>
+66	  GetNavigationThrottleFromPausedSubframeNavigation(const GURL& url) {
+70	    // `BackForwardCacheSubframeNavigationThrottle` for this navigation.
+73	    registry_ = std::make_unique<MockNavigationThrottleRegistry>(
+74	        request, MockNavigationThrottleRegistry::RegistrationMode::kHold);
+75	    BackForwardCacheSubframeNavigationThrottle::MaybeCreateAndAdd(*registry_);
+[94-110] void ConfirmIfResumeIsCalled(NavigationThrottle* throttle, RenderFrameHost::LifecycleState old_state, RenderFrameHost::LifecycleState new_state, bool should_resume_be_called) (in content.BackForwardCacheSubframeNavigationThrottleTestBase)
+96	  void ConfirmIfResumeIsCalled(NavigationThrottle* throttle,
+[27-118] class BackForwardCacheSubframeNavigationThrottleTestBase : public RenderViewHostImplTestHarness, public WebContentsObserver (in content)
+117	  std::unique_ptr<MockNavigationThrottleRegistry> registry_;
+[120-162] class BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest : public BackForwardCacheSubframeNavigationThrottleTestBase (in content)
+124	class BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest
+125	    : public BackForwardCacheSubframeNavigationThrottleTestBase {
+[127-148] void SetUp() override (in content.BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest)
+128	    BackForwardCacheSubframeNavigationThrottleTestBase::SetUp();
+131	    throttle_inserter_ = std::make_unique<TestNavigationThrottleInserter>(
+134	            [&](NavigationThrottleRegistry& registry) -> void {
+136	              // registering a `TestNavigationThrottle`, so that
+141	                  std::make_unique<TestNavigationThrottle>(registry);
+143	                  TestNavigationThrottle::WILL_COMMIT_WITHOUT_URL_LOADER,
+144	                  TestNavigationThrottle::SYNCHRONOUS,
+145	                  NavigationThrottle::DEFER);
+[120-162] class BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest : public BackForwardCacheSubframeNavigationThrottleTestBase (in content)
+161	  std::unique_ptr<TestNavigationThrottleInserter> throttle_inserter_;
+[164-174] TEST_F(BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest, CreateThrottleForSubframe) (in content)
+164	TEST_F(BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest,
+170	  MockNavigationThrottleRegistry registry(
+171	      request, MockNavigationThrottleRegistry::RegistrationMode::kHold);
+172	  BackForwardCacheSubframeNavigationThrottle::MaybeCreateAndAdd(registry);
+[176-186] TEST_F(BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest, DoesNotCreateThrottleForMainFrame) (in content)
+176	TEST_F(BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest,
+182	  MockNavigationThrottleRegistry registry(
+183	      request, MockNavigationThrottleRegistry::RegistrationMode::kHold);
+184	  BackForwardCacheSubframeNavigationThrottle::MaybeCreateAndAdd(registry);
+[188-200] TEST_F(BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest, DeferIfInBackForwardCache) (in content)
+188	TEST_F(BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest,
+190	  // Create NavigationThrottle for subframe navigation without URL loader and
+192	  std::unique_ptr<NavigationThrottle> throttle =
+193	      GetNavigationThrottleFromPausedSubframeNavigation(
+198	  EXPECT_EQ(NavigationThrottle::DEFER,
+[202-212] TEST_F(BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest, DoesNotDeferIfNotInBackForwardCache) (in content)
+202	TEST_F(BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest,
+204	  // Create NavigationThrottle for subframe navigation without URL loader.
+205	  std::unique_ptr<NavigationThrottle> throttle =
+206	      GetNavigationThrottleFromPausedSubframeNavigation(
+210	  EXPECT_EQ(NavigationThrottle::PROCEED,
+[214-233] TEST_F(BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest, ResumeNavigationWhenNavigatedBackIfSubframeNavigationWasDeferred) (in content)
+214	TEST_F(BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest,
+216	  // Create NavigationThrottle for subframe navigation without URL loader and
+218	  std::unique_ptr<NavigationThrottle> throttle =
+219	      GetNavigationThrottleFromPausedSubframeNavigation(
+224	  EXPECT_EQ(NavigationThrottle::DEFER,
+[235-252] TEST_F(BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest, DoesNotResumeNavigationWhenNavigatedBackIfSubframeNavigationWasNotDeferred) (in content)
+236	    BackForwardCacheSubframeNavigationThrottleWithoutUrlLoaderTest,
+238	  // Create NavigationThrottle for subframe navigation without URL loader and
+240	  std::unique_ptr<NavigationThrottle> throttle =
+241	      GetNavigationThrottleFromPausedSubframeNavigation(
+[254-273] class BackForwardCacheSubframeNavigationThrottleTest : public BackForwardCacheSubframeNavigationThrottleTestBase (in content)
+258	class BackForwardCacheSubframeNavigationThrottleTest
+259	    : public BackForwardCacheSubframeNavigationThrottleTestBase {
+[275-289] TEST_F(BackForwardCacheSubframeNavigationThrottleTest, DeferInWillStartRequestIfInBFCache) (in content)
+276	// `BackForwardCacheSubframeNavigationThrottle::WillStartRequest()` if the
+278	TEST_F(BackForwardCacheSubframeNavigationThrottleTest,
+280	  // Create NavigationThrottle for subframe navigation with URL loader and set
+282	  std::unique_ptr<NavigationThrottle> throttle =
+283	      GetNavigationThrottleFromPausedSubframeNavigation(
+288	  EXPECT_EQ(NavigationThrottle::DEFER, throttle->WillStartRequest().action());
+[291-304] TEST_F(BackForwardCacheSubframeNavigationThrottleTest, DoesNotDeferInWillStartRequestIfNotInBFCache) (in content)
+292	// `BackForwardCacheSubframeNavigationThrottle::WillStartRequest()` if the
+294	TEST_F(BackForwardCacheSubframeNavigationThrottleTest,
+296	  // Create NavigationThrottle for subframe navigation with URL loader and set
+298	  std::unique_ptr<NavigationThrottle> throttle =
+299	      GetNavigationThrottleFromPausedSubframeNavigation(
+303	  EXPECT_EQ(NavigationThrottle::PROCEED, throttle->WillStartRequest().action());
+[306-321] TEST_F(BackForwardCacheSubframeNavigationThrottleTest, DoesNotDeferInWillProcessResponseIfNotInBFCache) (in content)
+307	// `BackForwardCacheSubframeNavigationThrottle::WillProcessResponse()` if the
+311	TEST_F(BackForwardCacheSubframeNavigationThrottleTest,
+313	  // Create NavigationThrottle for subframe navigation with URL loader.
+314	  std::unique_ptr<NavigationThrottle> throttle =
+315	      GetNavigationThrottleFromPausedSubframeNavigation(
+319	  EXPECT_EQ(NavigationThrottle::PROCEED,
+[323-338] TEST_F(BackForwardCacheSubframeNavigationThrottleTest, DoesNotDeferInWillRedirectRequestIfNotInBFCache) (in content)
+324	// `BackForwardCacheSubframeNavigationThrottle::WillRedirectRequest()` if the
+328	TEST_F(BackForwardCacheSubframeNavigationThrottleTest,
+330	  // Create a NavigationThrottle for subframe navigation with URL loader.
+331	  std::unique_ptr<NavigationThrottle> throttle =
+332	      GetNavigationThrottleFromPausedSubframeNavigation(
+336	  EXPECT_EQ(NavigationThrottle::PROCEED,
+[340-354] TEST_F(BackForwardCacheSubframeNavigationThrottleTest, DoesNotDeferInWillFailRequestIfNotInBFCache) (in content)
+341	// `BackForwardCacheSubframeNavigationThrottle::WillFailRequest()` if the
+345	TEST_F(BackForwardCacheSubframeNavigationThrottleTest,
+347	  // Create NavigationThrottle for subframe navigation with URL loader.
+348	  std::unique_ptr<NavigationThrottle> throttle =
+349	      GetNavigationThrottleFromPausedSubframeNavigation(
+353	  EXPECT_EQ(NavigationThrottle::PROCEED, throttle->WillFailRequest().action());
+[356-363] class BackForwardCacheSubframeNavigationThrottleAndNavigateBackTest : public BackForwardCacheSubframeNavigationThrottleTest, public testing::WithParamInterface<bool> (in content)
+358	class BackForwardCacheSubframeNavigationThrottleAndNavigateBackTest
+359	    : public BackForwardCacheSubframeNavigationThrottleTest,
+[19-397] namespace content
+367	    BackForwardCacheSubframeNavigationThrottleAndNavigateBackTest,
+370	        BackForwardCacheSubframeNavigationThrottleAndNavigateBackTest::
+[375-395] TEST_P(BackForwardCacheSubframeNavigationThrottleAndNavigateBackTest, NavigateBackToBFCachedPage) (in content)
+375	TEST_P(BackForwardCacheSubframeNavigationThrottleAndNavigateBackTest,
+377	  // Create NavigationThrottle for subframe navigation with URL loader and set
+379	  std::unique_ptr<NavigationThrottle> throttle =
+380	      GetNavigationThrottleFromPausedSubframeNavigation(
+386	    EXPECT_EQ(NavigationThrottle::DEFER, throttle->WillStartRequest().action());
+==> content/browser/back_forward_cache_browsertest.cc @4a089b9c7a27028a (1 match)
+[2933-2983] IN_PROC_BROWSER_TEST_P(BackForwardCacheEvictionDueToSubframeNavigationBrowserTest, MainFrameCommitFirstAndSubframePendingCommitShouldBeEvicted) (in content)
+2934	// deferring NavigationThrottles has already ran, the issue that the subframe
+==> content/browser/back_forward_cache_internal_browsertest.cc @c17d4cbebfb7d63d (3 matches)
+[3823-3861] IN_PROC_BROWSER_TEST_F(BackForwardCacheBrowserTest, NoThrottlesOnCacheRestore) (in content)
+3836	  // NavigationThrottles.
+3840	              content::NavigationThrottleRegistry& registry) -> void {
+3855	  // NavigationThrottles for this navigation since we already ran their checks
+==> content/browser/browsing_data/clear_site_data_handler_browsertest.cc @b58a71f8eef0ca83 (12 matches)
+[101-111] void AddWillProcessResponseThrottle(NavigationThrottle::ThrottleCheckResult result, NavigationThrottleRegistry& registry) (in content.(anonymous))
+105	    NavigationThrottle::ThrottleCheckResult result,
+106	    NavigationThrottleRegistry& registry) {
+107	  auto throttle = std::make_unique<TestNavigationThrottle>(registry);
+108	  throttle->SetResponse(TestNavigationThrottle::WILL_PROCESS_RESPONSE,
+109	                        TestNavigationThrottle::SYNCHRONOUS, result);
+[763-816] IN_PROC_BROWSER_TEST_F(ClearSiteDataHandlerBrowserTest, ConsoleMessagesOnlyDeliveredToIsolatedErrorPage) (in content)
+785	  TestNavigationThrottleInserter throttle_inserter(
+788	                          NavigationThrottle::ThrottleCheckResult(
+789	                              NavigationThrottle::BLOCK_RESPONSE)));
+[818-848] IN_PROC_BROWSER_TEST_F(ClearSiteDataHandlerBrowserTest, ConsoleMessagesDroppedOnCancelledNavigation) (in content)
+832	  TestNavigationThrottleInserter throttle_inserter(
+836	          NavigationThrottle::ThrottleCheckResult(NavigationThrottle::CANCEL)));
+[945-968] IN_PROC_BROWSER_TEST_F(ClearSiteDataHandlerUseCounterBrowserTest, NotAttributedOnCancelledNavigation) (in content)
+958	  TestNavigationThrottleInserter throttle_inserter(
+962	          NavigationThrottle::ThrottleCheckResult(NavigationThrottle::CANCEL)));
+==> content/browser/devtools/devtools_instrumentation.cc @7613a5053f763c85 (5 matches)
+[1516-1567] void CreateAndAddNavigationThrottles(NavigationThrottleRegistry& registry) (in content.devtools_instrumentation)
+1516	void CreateAndAddNavigationThrottles(NavigationThrottleRegistry& registry) {
+1535	        agent_host->auto_attacher()->CreateAndAddNavigationThrottles(registry);
+1550	                ->CreateAndAddNavigationThrottles(registry);
+1560	      agent_host->auto_attacher()->CreateAndAddNavigationThrottles(registry);
+1564	      host->auto_attacher()->CreateAndAddNavigationThrottles(registry);
+==> content/browser/devtools/devtools_instrumentation.h @8bfd76a80324e442 (2 matches)
+[76-631] namespace content
+85	class NavigationThrottleRegistry;
+[446-446] void CreateAndAddNavigationThrottles(NavigationThrottleRegistry& registry); (in content.devtools_instrumentation)
+446	void CreateAndAddNavigationThrottles(NavigationThrottleRegistry& registry);
+==> content/browser/devtools/protocol/target_auto_attacher.cc @ebb06b26ed959813 (3 matches)
+[113-118] void TargetAutoAttacher::CreateAndAddNavigationThrottles(NavigationThrottleRegistry& registry) (in content.protocol)
+113	void TargetAutoAttacher::CreateAndAddNavigationThrottles(
+114	    NavigationThrottleRegistry& registry) {
+116	        client.MaybeCreateAndAddNavigationThrottle(this, registry);
+==> content/browser/devtools/protocol/target_auto_attacher.h @b3a011f303d5d109 (5 matches)
+[14-108] namespace content
+20	class NavigationThrottleRegistry;
+[39-41] virtual void MaybeCreateAndAddNavigationThrottle(TargetAutoAttacher* auto_attacher, NavigationThrottleRegistry& registry) = 0; (in content.protocol.TargetAutoAttacher.Client)
+39	    virtual void MaybeCreateAndAddNavigationThrottle(
+41	        NavigationThrottleRegistry& registry) = 0;
+[62-62] void CreateAndAddNavigationThrottles(NavigationThrottleRegistry& registry); (in content.protocol.TargetAutoAttacher)
+62	  void CreateAndAddNavigationThrottles(NavigationThrottleRegistry& registry);
+[25-91] class TargetAutoAttacher (in content.protocol)
+86	  // This needs to be reentrant as `Client::MaybeCreateAndAddNavigationThrottle`
+==> content/browser/devtools/protocol/target_handler.cc @b07496c5c71af29e (12 matches)
+[381-411] class TargetHandler::Throttle : public NavigationThrottle (in content.protocol)
+382	class TargetHandler::Throttle : public NavigationThrottle {
+[390-391] const char* GetNameForLogging() override; (in content.protocol.TargetHandler.Throttle)
+390	  // NavigationThrottle implementation:
+[394-401] Throttle(base::WeakPtr<protocol::TargetHandler> target_handler, TargetAutoAttacher* auto_attacher, NavigationThrottleRegistry& registry) : NavigationThrottle(registry), target_hand… (in content.protocol.TargetHandler.Throttle)
+396	           NavigationThrottleRegistry& registry)
+397	      : NavigationThrottle(registry),
+[415-418] ResponseThrottle(base::WeakPtr<protocol::TargetHandler> target_handler, TargetAutoAttacher* auto_attacher, NavigationThrottleRegistry& registry) : Throttle(target_handler, auto_att… (in content.protocol.TargetHandler.ResponseThrottle)
+417	                   NavigationThrottleRegistry& registry)
+[422-423] ThrottleCheckResult WillProcessResponse() override (in content.protocol.TargetHandler.ResponseThrottle)
+422	  // NavigationThrottle implementation:
+[451-456] RequestThrottle(base::WeakPtr<protocol::TargetHandler> target_handler, NavigationThrottleRegistry& registry, DevToolsAgentHost* throttled_agent_host) : Throttle(target_handler, tar… (in content.protocol.TargetHandler.RequestThrottle)
+452	                  NavigationThrottleRegistry& registry,
+[460-464] ThrottleCheckResult WillStartRequest() override (in content.protocol.TargetHandler.RequestThrottle)
+460	  // NavigationThrottle implementation:
+[712-714] const char* TargetHandler::Throttle::GetNameForLogging() (in content.protocol)
+713	  return "DevToolsTargetNavigationThrottle";
+[716-726] void TargetHandler::Throttle::Clear() (in content.protocol)
+724	    // NavigationHandle that owns this NavigationThrottle.
+[826-886] void TargetHandler::MaybeCreateAndAddNavigationThrottle(TargetAutoAttacher* auto_attacher, NavigationThrottleRegistry& registry) (in content.protocol)
+826	void TargetHandler::MaybeCreateAndAddNavigationThrottle(
+828	    NavigationThrottleRegistry& registry) {
+… 86 more files: content/browser/devtools/protocol/target_handler.h (2), content/browser/loader/navigation_url_loader_impl_unittest.cc (1), content/browser/navigation_browsertest.cc (35), content/browser/picture_in_picture/document_picture_in_picture_navigation_throttle.cc (19), content/browser/picture_in_picture/document_picture_in_picture_navigation_throttle.h (12), content/browser/picture_in_picture/document_picture_in_picture_navigation_throttle_unittest.cc (9), content/browser/preloading/prefetch/cancel_unrelated_prefetch_url_loader_throttle.h (1), content/browser/preloading/prefetch/contamination_delay_navigation_throttle.cc (9), …. Narrow with path/glob or raise budget.

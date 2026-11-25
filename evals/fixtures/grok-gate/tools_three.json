@@ -1,0 +1,11 @@
+{
+  "label": "3-tool surface the harness filter must produce: speedread__map, speedread__read, speedread__search, and no trace. Built from the grok 1.0.92 tool-name shape, not a second live capture.",
+  "type": "available_commands",
+  "tools": [
+    "search_tool",
+    "use_tool",
+    "speedread__map",
+    "speedread__read",
+    "speedread__search"
+  ]
+}

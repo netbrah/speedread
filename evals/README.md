@@ -180,3 +180,27 @@ python3 evals/stats.py evals/results/<run>      # bootstrap intervals, per-task 
 Agent suites need [GitHub Copilot CLI](https://github.com/github/copilot-cli)
 (`copilot -p … --output-format json`); token usage is read from its local session
 store. `evals/speedread-mcp.json` is the MCP config passed to it.
+
+## Definition-token cost
+
+[`definition_cost.py`](definition_cost.py) measures the live `tools/list` payload,
+canonical argument validity, and the Chromium query list (wall, peak RSS, answer
+tokens). The agent half (tool selection, argument validity, task success, first-call
+input) is sized in [`definition_plan.py`](definition_plan.py) and runs on a machine
+with Grok CLI or Copilot CLI. It is not an unprompted-adoption experiment.
+Method and the Phase 1 baseline: [docs/specs/definition-tokens.md](../docs/specs/definition-tokens.md).
+
+```bash
+python3 evals/definition_cost.py tokens --binary target/fast/speedread
+python3 evals/definition_cost.py arguments --binary target/fast/speedread
+python3 scripts/fetch-chromium-corpus.py
+python3 evals/definition_cost.py chromium --binary target/fast/speedread
+python3 evals/definition_cost.py agent --harness grok \
+    --binary "$PWD/target/fast/speedread" --model <id from grok models> \
+    --only-tools map,search,read --yes
+python3 evals/test_grok_gate.py
+```
+
+The agent command passes `--trust` and runs one preflight session per condition
+before the counted trials. `test_grok_gate.py` checks the grok 1.0.92 transcript
+shapes (sanitized) without starting Grok.

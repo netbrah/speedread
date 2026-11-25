@@ -1,0 +1,115 @@
+{
+  "suite": "definition-cost-gate",
+  "description": "Fixed tasks for the definition-token correctness gate. The product tools are map, search, and read (evals/definition_plan.py). trace tasks are not in this set. Canonical calls are replayed against the live server. The same tasks are what the Grok/Copilot runner asks an agent, without naming a tool except where the ast task states the syntactic pattern. Not an unprompted-adoption experiment.",
+  "fixture": "evals/fixtures/definition-gate",
+  "tasks": [
+    {
+      "id": "read-add",
+      "tool": "read",
+      "prompt": "In src/lib.rs, quote the full source of the function add, including its signature and the expression it returns.",
+      "canonical_arguments": {"targets": ["src/lib.rs#add"]},
+      "contract": {"target_regex": ["src/lib\\.rs(#add)?$"]},
+      "response_graders": ["pub fn add\\(a: i32, b: i32\\) -> i32", "a \\+ b"],
+      "answer_graders": ["fn add", "a \\+ b"]
+    },
+    {
+      "id": "read-range",
+      "tool": "read",
+      "prompt": "Show lines 1 through 8 of src/lib.rs, with the line text.",
+      "canonical_arguments": {"targets": ["src/lib.rs:1-8"]},
+      "contract": {"target_regex": ["src/lib\\.rs:1-8"]},
+      "response_graders": ["pub fn add", "pub fn twice"],
+      "answer_graders": ["fn add", "fn twice"]
+    },
+    {
+      "id": "read-install",
+      "tool": "read",
+      "prompt": "Quote the Install section of README.md.",
+      "canonical_arguments": {"targets": ["README.md#Install"]},
+      "contract": {"target_regex": ["README\\.md#Install"]},
+      "response_graders": ["Install nothing"],
+      "answer_graders": ["Install nothing"]
+    },
+    {
+      "id": "read-version",
+      "tool": "read",
+      "prompt": "What is the version value in data/notes.json? Reply with the value.",
+      "canonical_arguments": {"targets": ["data/notes.json#version"]},
+      "contract": {"target_regex": ["notes\\.json(#version)?$"]},
+      "response_graders": ["1\\.2\\.3"],
+      "answer_graders": ["1\\.2\\.3"]
+    },
+    {
+      "id": "search-twice",
+      "tool": "search",
+      "prompt": "Which file defines the function twice? Answer with the path.",
+      "canonical_arguments": {"pattern": "fn twice", "literal": true},
+      "contract": {"pattern_regex": ["twice"]},
+      "response_graders": ["src/lib\\.rs", "fn twice"],
+      "answer_graders": ["src/lib\\.rs"]
+    },
+    {
+      "id": "search-greeting",
+      "tool": "search",
+      "prompt": "List every file path that contains the whole word Greeting.",
+      "canonical_arguments": {"pattern": "Greeting", "word": true},
+      "contract": {"pattern_regex": ["Greeting"]},
+      "response_graders": ["src/lib\\.rs", "Greeting"],
+      "answer_graders": ["src/lib\\.rs"]
+    },
+    {
+      "id": "search-files",
+      "tool": "search",
+      "prompt": "How many files mention parse_header? Answer with the number and the paths.",
+      "canonical_arguments": {"pattern": "parse_header", "output": "files"},
+      "contract": {"pattern_regex": ["parse_header"]},
+      "response_graders": ["parse_header", "src/lib\\.rs"],
+      "answer_graders": ["src/lib\\.rs"]
+    },
+    {
+      "id": "search-ast",
+      "tool": "search",
+      "prompt": "Find Rust calls whose callee is add, as syntax rather than text, with the pattern add($$$A) so a comment or a string does not count. List each real call as file:line.",
+      "canonical_arguments": {"pattern": "add($$$A)", "ast": true, "lang": "rust"},
+      "contract": {"pattern_regex": ["add\\(\\$\\$\\$A\\)"], "ast": true},
+      "response_graders": ["add\\(", "src/"],
+      "answer_graders": ["src/"]
+    },
+    {
+      "id": "map-root",
+      "tool": "map",
+      "prompt": "What files and directories are at the top of this repository? Name each one.",
+      "canonical_arguments": {},
+      "contract": {},
+      "response_graders": ["README\\.md", "src"],
+      "answer_graders": ["README\\.md", "src"]
+    },
+    {
+      "id": "map-src",
+      "tool": "map",
+      "prompt": "What is inside the src directory? Name each file.",
+      "canonical_arguments": {"path": "src"},
+      "contract": {"path_regex": ["^src/?$"]},
+      "response_graders": ["lib\\.rs", "use\\.rs", "app\\.py"],
+      "answer_graders": ["lib\\.rs", "use\\.rs", "app\\.py"]
+    },
+    {
+      "id": "map-py",
+      "tool": "map",
+      "prompt": "Which Python files are in this repository? Name the paths.",
+      "canonical_arguments": {"globs": ["*.py"]},
+      "contract": {"globs_regex": ["\\.py"]},
+      "response_graders": ["app\\.py"],
+      "answer_graders": ["app\\.py"]
+    },
+    {
+      "id": "map-symbols",
+      "tool": "map",
+      "prompt": "List the top-level definitions in the Rust files under src, without their function bodies.",
+      "canonical_arguments": {"path": "src", "symbols": true},
+      "contract": {"path_regex": ["^src/?$"], "symbols": true},
+      "response_graders": ["add", "twice", "Greeting"],
+      "answer_graders": ["add", "twice", "Greeting"]
+    }
+  ]
+}

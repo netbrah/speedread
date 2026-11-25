@@ -50,6 +50,7 @@ A feature merges into the fork's default behavior only when, against the previou
 | 08 | [The MCP server is not fenced](08-unfenced-server.md) | shipped | — |
 | — | [Implementation plan](plan.md) | living | — |
 | — | [Evaluation log](eval.md) | living | — |
+| — | [Definition-token cost](definition-tokens.md) | measured, not slimmed | — |
 
 ## Upstream strategy
 

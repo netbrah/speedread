@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":12,"result":{"content":[{"type":"text","text":"==> ./ (1 file, 32 B; .gitignore respected)\nsrc/\n  app.py 2L\n"}],"isError":false}}

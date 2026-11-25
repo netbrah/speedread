@@ -1,0 +1,26 @@
+==> callers of content.RenderFrameImpl.DidCommitNavigation (content/renderer/render_frame_impl.cc:4029-4197)
+void RenderFrameImpl::DidCommitNavigation(blink::WebHistoryCommitType commit_type, bool should_reset_browser_interface_broker, const network::ParsedPermissionsPolicy& permissions_p…
+7 call sites in 7 functions · syntactic: comments, strings and the definition excluded; 17 other definitions named `DidCommitNavigation` (5 sites attributed to them left out); ? = receiver unknown
+(also matched: content/browser/back_forward_cache/back_forward_cache_metrics.cc:160 content.BackForwardCacheMetrics.DidCommitNavigation, content/browser/renderer_host/navigation_request.cc:9736 content.NavigationRequest.DidCommitNavigation, content/browser/renderer_host/render_frame_host_impl.cc:18234 content.RenderFrameHostImpl.DidCommitNavigation, content/web_test/renderer/web_frame_test_proxy.cc:787 content.WebFrameTestProxy.DidCommitNavigation, …; pass path#Name or Type.name to pick one)
+content/browser/back_forward_cache/back_forward_cache_metrics.h
+  ? [47-298] class CONTENT_EXPORT BackForwardCacheMetrics : public base::RefCounted<BackForwardCacheMetrics> (in content)
+    149	void DidCommitNavigation(NavigationRequest* navigation_request,
+content/browser/renderer_host/navigation_controller_impl.cc
+  ? [1843-2231] NavigationControllerImpl::CommitResult NavigationControllerImpl::RendererDidNavigate(RenderFrameHostImpl* rfh, const mojom::DidCommitProvisionalLoadParams& params, LoadCommittedDet… (in content)
+    2136	active_entry->back_forward_cache_metrics()->DidCommitNavigation(
+content/browser/renderer_host/navigator.cc
+  ? [482-836] void Navigator::DidNavigate(RenderFrameHostImpl* render_frame_host, const mojom::DidCommitProvisionalLoadParams& params, std::unique_ptr<NavigationRequest> navigation_request, bool… (in content)
+    789	navigation_request->DidCommitNavigation(params, did_navigate,
+content/web_test/renderer/web_frame_test_proxy.cc
+  [787-802] void WebFrameTestProxy::DidCommitNavigation(blink::WebHistoryCommitType commit_type, bool should_reset_browser_interface_broker, const network::ParsedPermissionsPolicy& permissions… (in content)
+    799	RenderFrameImpl::DidCommitNavigation(
+third_party/blink/renderer/core/frame/local_frame_client_impl.cc
+  ? [542-595] void LocalFrameClientImpl::DispatchDidCommitLoad(HistoryItem* item, WebHistoryCommitType commit_type, bool should_reset_browser_interface_broker, const network::ParsedPermissionsPo… (in blink)
+    554	web_frame_->Client()->DidCommitNavigation(
+content/test/content_browser_test_utils_internal.cc
+  ? [978-985] void CommitNavigationPauser::ResumePausedCommit() (in content)
+    982	paused_request_->GetRenderFrameHost()->DidCommitNavigation(
+third_party/blink/renderer/core/frame/web_local_frame_client_test.cc
+  ? [36-45] void DidCommitNavigation(WebHistoryCommitType commit_type, bool should_reset_browser_interface_broker, const network::ParsedPermissionsPolicy& permissions_policy_header, const Docu… (in blink.(anonymous).CallTrackingTestWebLocalFrameClient)
+    42	TestWebFrameClient::DidCommitNavigation(
+not fully searched: 1 file has a line longer than 4 MiB and was read only up to it: third_party/webxr_test_pages/webxr-samples/proposals/opencv/opencv.js
