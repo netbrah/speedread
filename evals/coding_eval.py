@@ -45,15 +45,12 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from agent_eval import COMMON, session_usage, tok  # noqa: E402
+from adoption import classify_call, effective_name, is_speedread_name, is_trace_tool, prompt_violations  # noqa: E402
 
 CONDITIONS = ("baseline", "available", "preferred", "exclusive")
 PREFER = ("\n\nUse the speedread MCP tools (read, search, trace, map) to read, search and navigate code; "
           "use the built-in tools only to edit files and run commands.")
-SR_TOOLS = {"speedread-read", "speedread-search", "speedread-map", "speedread-trace"}
-NATIVE_READ = {"view", "grep", "glob", "rg"}
-EDIT_TOOLS = {"edit", "create", "str_replace_editor", "write", "apply_patch", "str_replace"}
-BASH_READ = re.compile(r"(^|[;&|(]\s*|\s)(cat|head|tail|sed\s+-n|less|more|grep|rg|ag|find|ls|tree|nl|awk|wc)\b")
-BASH_RUN = re.compile(r"\bgo\s+(test|build|vet|run)\b|pytest|\bpython3?\s+-c\b|\.venv/bin/python\s+-c\b")
+EDIT_TOOLS = {"edit", "create", "str_replace_editor", "write", "apply_patch", "str_replace", "search_replace"}
 NO_SUBAGENTS = ["task", "web_fetch", "web_search"]
 LINE_PREFIX = re.compile(r"^\s*\d+[\t.:|→]\s?")
 LIVE_ONLY = {"edited_files", "tool_result_tokens", "read_result_tokens", "shown_source_bytes", "repeated_source_bytes"}
@@ -188,13 +185,10 @@ def numbered_read_tokens(path, max_lines=2000):
 
 def analyze(task, events, ws):
     tools = [e for e in events if e["kind"] == "tool"]
-    def is_read(t):
-        if t["tool"] in SR_TOOLS or t["tool"] in NATIVE_READ:
-            return True
-        cmd = bash_cmd(t) or ""
-        return t["tool"] == "bash" and bool(BASH_READ.search(cmd)) and not BASH_RUN.search(cmd)
-    reads = [t for t in tools if is_read(t)]
-    sr = [t for t in tools if t["tool"] in SR_TOOLS]
+    def kind(t):
+        return classify_call(t["tool"], t.get("args") or {})
+    reads = [t for t in tools if kind(t) in {"speedread", "native", "shell"}]
+    sr = [t for t in tools if kind(t) == "speedread"]
     edits = [t for t in tools if t["tool"] in EDIT_TOOLS]
     # Repeated source bytes: normalised result lines already shown earlier.
     seen, shown, repeated = set(), 0, 0
@@ -218,7 +212,7 @@ def analyze(task, events, ws):
             first_seen = i
         # The decisive file was shown collapsed (skeleton/outline header) before
         # the decisive line itself was ever shown.
-        if first_seen is None and t["tool"] in SR_TOOLS and any(
+        if first_seen is None and is_speedread_name(effective_name(t["tool"], t.get("args"))) and any(
                 m.group(1).rstrip(":") in (dec["file"], "./" + dec["file"]) or m.group(1).endswith("/" + dec["file"])
                 for m in COLLAPSED_HEADER.finditer(r)):
             collapsed_first = True
@@ -237,10 +231,10 @@ def analyze(task, events, ws):
     return {
         "tool_calls": len(tools), "tools": [t["tool"] for t in tools],
         "read_calls": len(reads), "speedread_calls": len(sr), "edit_calls": len(edits),
-        "native_read_calls": sum(1 for t in reads if t["tool"] in NATIVE_READ),
-        "bash_read_calls": sum(1 for t in reads if t["tool"] == "bash"),
+        "native_read_calls": sum(1 for t in reads if kind(t) == "native"),
+        "bash_read_calls": sum(1 for t in reads if kind(t) == "shell"),
         "used_speedread": bool(sr), "speedread_share": (len(sr) / len(reads)) if reads else None,
-        "trace_calls": sum(1 for t in sr if t["tool"] == "speedread-trace"),
+        "trace_calls": sum(1 for t in sr if is_trace_tool(effective_name(t["tool"], t.get("args")))),
         "read_result_tokens": sum(tok(t.get("result") or "") for t in reads),
         "tool_result_tokens": sum(tok(t.get("result") or "") for t in tools),
         "shown_source_bytes": shown, "repeated_source_bytes": repeated,
@@ -420,6 +414,8 @@ def main():
     ap.add_argument("--max-credits", type=int, default=90)
     ap.add_argument("--timeout", type=int, default=1200)
     ap.add_argument("--mcp-config", default=str(HERE / "speedread-mcp.json"))
+    ap.add_argument("--description", default="current")
+    ap.add_argument("--speedread", default="")
     ap.add_argument("--out", default=None)
     ap.add_argument("--only", default=None)
     ap.add_argument("--seed", type=int, default=13)
@@ -465,6 +461,17 @@ def main():
     conds = args.conditions.split(",")
     out_dir = Path(args.out) if args.out else HERE / "results" / f"coding-{time.strftime('%Y%m%d-%H%M%S')}"
     (out_dir / "transcripts").mkdir(parents=True, exist_ok=True)
+    if args.description != "current":
+        import desc_variant
+        desc_variant.load_variant(args.description)
+        cfg = out_dir / "speedread-mcp.json"
+        cfg.write_text(json.dumps(desc_variant.copilot_mcp_config(args.speedread, args.description)))
+        args.mcp_config = str(cfg)
+    if any(c in ("available", "dropin") for c in conds):
+        for t in tasks:
+            bad = prompt_violations(t["prompt"])
+            if bad:
+                raise SystemExit(f"{t['id']} is an unprompted task but its prompt mentions {bad}")
     root = Path(tempfile.mkdtemp(prefix="speedread-coding-"))
     jobs = [(t, c, i) for t in tasks for c in conds for i in range(args.trials)]
     random.Random(args.seed).shuffle(jobs)
@@ -472,13 +479,19 @@ def main():
     recs, lock = [], threading.Lock()
     mode = "a" if (out_dir / "trials.jsonl").exists() else "w"
     with open(out_dir / "trials.jsonl", mode) as fh, cf.ThreadPoolExecutor(args.workers) as pool:
-        futs = [pool.submit(run_trial, j, args, root, out_dir) for j in jobs]
+        futs = {pool.submit(run_trial, j, args, root, out_dir): j for j in jobs}
         for n, fut in enumerate(cf.as_completed(futs), 1):
             try:
                 r = fut.result()
-            except Exception as ex:  # keep the run going; record nothing for this trial
-                print(f"[{n:>3}/{len(jobs)}] trial error: {ex!r}", flush=True)
-                continue
+            except Exception as ex:  # keep the run going, and keep the failed trial in the log
+                task, cond, trial = futs[fut]
+                r = {
+                    "task": task["id"], "condition": cond, "trial": trial, "model": args.model,
+                    "status": "error", "pass": False, "used_speedread": False, "speedread_share": None,
+                    "decisive_collapsed_first": False, "decisive_seen": False, "touched_tests": [],
+                    "error": repr(ex),
+                }
+                print(f"[{n:>3}/{len(jobs)}] {task['id']} {cond} error: {ex!r}", flush=True)
             with lock:
                 recs.append(r)
                 fh.write(json.dumps(r) + "\n")
@@ -489,7 +502,8 @@ def main():
     all_recs = [json.loads(l) for l in (out_dir / "trials.jsonl").read_text().splitlines() if l.strip()]
     s = summarize(all_recs, tasks)
     version = subprocess.run(["copilot", "--version"], capture_output=True, text=True).stdout.strip().splitlines()[0]
-    meta = {"model": args.model, "harness": "GitHub Copilot CLI " + version.split("CLI ")[-1].rstrip("."),
+    meta = {"model": args.model, "description": args.description, "runner": "copilot",
+            "harness": "GitHub Copilot CLI " + version.split("CLI ")[-1].rstrip("."),
             "tasks": len(tasks), "trials": args.trials, "date": time.strftime("%Y-%m-%d")}
     (out_dir / "summary.json").write_text(json.dumps({"meta": meta, **s}, indent=1))
     (out_dir / "summary.md").write_text(markdown(s, meta))

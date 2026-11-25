@@ -322,8 +322,10 @@ struct RootsState {
 pub struct Server {
     engine: Arc<Engine>,
     roots: Arc<RootsState>,
-    #[allow(dead_code)]
     tool_router: ToolRouter<Server>,
+    /// Set only when `SPEEDREAD_DESCRIPTION_FILE` is loaded. `None` means the
+    /// shipped `INSTRUCTIONS` constant, unchanged.
+    instructions_override: Option<String>,
 }
 
 fn text_result(text: String) -> CallToolResult {
@@ -383,7 +385,40 @@ impl Server {
             engine,
             roots: Arc::new(RootsState::default()),
             tool_router: Self::tool_router(),
+            instructions_override: None,
         }
+    }
+
+    /// Apply `SPEEDREAD_DESCRIPTION_FILE` to tool descriptions and instructions.
+    /// Unset leaves every shipped string untouched. A set file that names a tool
+    /// this server does not have is a startup error (no partial apply).
+    pub fn apply_description_override(&mut self) -> Result<(), String> {
+        let Some(over) = crate::descriptions::load_from_env()? else {
+            return Ok(());
+        };
+        for name in over.tools.keys() {
+            if !self.tool_router.map.contains_key(name.as_str()) {
+                let mut known: Vec<&str> =
+                    self.tool_router.map.keys().map(|k| k.as_ref()).collect();
+                known.sort_unstable();
+                return Err(format!(
+                    "description file names unknown tool {name:?}; this server has {}",
+                    known.join(", ")
+                ));
+            }
+        }
+        if let Some(text) = over.instructions {
+            self.instructions_override = Some(text);
+        }
+        for (name, desc) in over.tools {
+            let route = self
+                .tool_router
+                .map
+                .get_mut(name.as_str())
+                .expect("checked above");
+            route.attr.description = Some(std::borrow::Cow::Owned(desc));
+        }
+        Ok(())
     }
 
     // Roots are deprecated by the 2026-07-28 spec (SEP-2577) but still what
@@ -539,16 +574,23 @@ pub const ROOTLESS_NOTE: &str = " No project folder is configured here: give abs
 
 impl Server {
     fn instructions(&self) -> String {
+        let base = self
+            .instructions_override
+            .clone()
+            .unwrap_or_else(|| INSTRUCTIONS.to_string());
         let ws = &self.engine.ws;
         if ws.unrestricted() && ws.rootless() && ws.base().is_none() {
-            format!("{INSTRUCTIONS}{ROOTLESS_NOTE}")
+            format!("{base}{ROOTLESS_NOTE}")
         } else {
-            INSTRUCTIONS.to_string()
+            base
         }
     }
 }
 
-#[tool_handler]
+// `self.tool_router`, not `Self::tool_router()`: the instance copy is where
+// `SPEEDREAD_DESCRIPTION_FILE` replaces descriptions. With the variable unset
+// the copy is exactly what the macro built.
+#[tool_handler(router = self.tool_router)]
 impl ServerHandler for Server {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
@@ -581,7 +623,17 @@ impl ServerHandler for Server {
 }
 
 pub async fn serve(engine: Arc<Engine>) -> anyhow::Result<()> {
-    let service = Server::new(engine).serve(rmcp::transport::stdio()).await?;
+    let mut server = Server::new(engine);
+    server
+        .apply_description_override()
+        .map_err(anyhow::Error::msg)?;
+    let rss_log = std::env::var(crate::descriptions::RSS_LOG_ENV)
+        .ok()
+        .filter(|p| !p.is_empty());
+    let service = server.serve(rmcp::transport::stdio()).await?;
     service.waiting().await?;
+    if let Some(path) = rss_log {
+        crate::descriptions::write_rss_log(&path);
+    }
     Ok(())
 }

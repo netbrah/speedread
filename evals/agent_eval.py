@@ -35,6 +35,9 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import adoption  # noqa: E402
+import desc_variant  # noqa: E402
 DB = Path.home() / ".copilot" / "session-store.db"
 
 COMMON = [
@@ -46,8 +49,6 @@ COMMON = [
     "--output-format",
     "json",
 ]
-SPEEDREAD_TOOLS = ("speedread-read", "speedread-search", "speedread-map", "speedread-trace")
-
 try:  # optional: tokens of tool results entering the context
     import tiktoken
 
@@ -152,7 +153,7 @@ def run_trial(job, args, out_dir, bench):
         "session_ms": usage.get("sessionDurationMs"), "api_ms": usage.get("totalApiDurationMs"),
         "session_id": sid, "answer": answer.strip(), "score": score, "pass": passed, "grader_hits": hits,
         "tool_calls": len(calls), "tools": [c["tool"] for c in calls],
-        "used_speedread": any(c["tool"] in SPEEDREAD_TOOLS for c in calls),
+        **adoption.summarize_calls(calls),
         "tool_result_tokens": sum(c.get("result_tokens", 0) for c in calls),
         "model_calls": u.get("model_calls") or model_calls,
         "input_tokens": u.get("input_tokens"), "output_tokens": u.get("output_tokens"),
@@ -289,6 +290,9 @@ def main():
     ap.add_argument("--max-credits", type=int, default=60, help="AI-credit cap per trial")
     ap.add_argument("--timeout", type=int, default=600)
     ap.add_argument("--mcp-config", default=str(HERE / "speedread-mcp.json"))
+    ap.add_argument("--description", default="current",
+                    help="description variant id; 'current' leaves the shipped server text unchanged")
+    ap.add_argument("--speedread", default="", help="speedread binary for a generated MCP config")
     ap.add_argument("--out", default=None)
     ap.add_argument("--only", default=None, help="comma-separated task ids")
     ap.add_argument("--seed", type=int, default=7)
@@ -305,6 +309,16 @@ def main():
     run_id = time.strftime("%Y%m%d-%H%M%S")
     out_dir = Path(args.out) if args.out else HERE / "results" / f"agent-{run_id}"
     (out_dir / "transcripts").mkdir(parents=True, exist_ok=True)
+    if args.description != "current":
+        desc_variant.load_variant(args.description)
+        cfg = out_dir / "speedread-mcp.json"
+        cfg.write_text(json.dumps(desc_variant.copilot_mcp_config(args.speedread, args.description)))
+        args.mcp_config = str(cfg)
+    if "dropin" in conds or args.dropin_trials:
+        for t in tasks:
+            bad = adoption.prompt_violations(t["prompt"])
+            if bad:
+                raise SystemExit(f"{t['id']} is an unprompted task but its prompt mentions {bad}")
 
     jobs = [(t, c, i) for t in tasks for c in conds for i in range(args.trials)]
     jobs += [(t, "dropin", i) for t in tasks for i in range(args.dropin_trials)]
@@ -326,7 +340,8 @@ def main():
                   f"t={r['wall_s']:5.1f}s {'SR' if r['used_speedread'] else ''}", flush=True)
 
     summary = summarize(recs, tasks)
-    meta = {"model": args.model, "harness": "GitHub Copilot CLI " + subprocess.run(
+    meta = {"model": args.model, "description": args.description, "runner": "copilot",
+            "harness": "GitHub Copilot CLI " + subprocess.run(
         ["copilot", "--version"], capture_output=True, text=True).stdout.strip().splitlines()[0].split("CLI ")[-1].rstrip("."),
             "tasks": len(tasks), "trials": args.trials, "date": time.strftime("%Y-%m-%d")}
     (out_dir / "summary.json").write_text(json.dumps({"meta": meta, **summary}, indent=1))

@@ -163,7 +163,7 @@ Reading transcripts, not just scores, found three problems that scores alone hid
 
 Before you start:
 
-- **Benchmark repositories.** The suites expect flask, gin, ripgrep, zod, vscode, Alamofire and swift-argument-parser cloned side by side in one directory (`<bench>`). The commits the tasks were written against are not yet recorded in this repository. Graders check version-specific facts such as line numbers, so on other checkouts some tasks can fail in every condition. For the bug-fix suite, `coding_eval.py --verify` checks each task against your checkouts.
+- **Benchmark repositories.** The suites expect flask, gin, ripgrep, zod, vscode, Alamofire and swift-argument-parser cloned side by side in one directory (`<bench>`). The commits that satisfy the graders are pinned in [`corpora.json`](corpora.json) and fetched by [`fetch_corpora.py`](fetch_corpora.py). Graders check version-specific facts such as line numbers, so on other checkouts some tasks can fail in every condition. For the bug-fix suite, `coding_eval.py --verify` checks each task against your checkouts.
 - **Agent suites** need [GitHub Copilot CLI](https://github.com/github/copilot-cli) and `speedread` on your `PATH` (`evals/speedread-mcp.json` runs `speedread mcp`). The bug-fix suite also needs Go for gin's tests, and for flask a virtual environment with its test dependencies at `<venvs>/flask` (each task's `venv` field names the directory).
 - **Suite 2** needs a Python environment with `tiktoken`, plus, for the legacy Claude tokenizer, a Node script that counts tokens with `@anthropic-ai/tokenizer` (`--claude-counter`).
 
@@ -180,3 +180,27 @@ python3 evals/stats.py evals/results/<run>      # bootstrap intervals, per-task 
 Agent suites need [GitHub Copilot CLI](https://github.com/github/copilot-cli)
 (`copilot -p … --output-format json`); token usage is read from its local session
 store. `evals/speedread-mcp.json` is the MCP config passed to it.
+
+## Description variants (Phase 1 baseline)
+
+Does the wording of the tool descriptions change unprompted adoption and task
+success, and at what token cost, latency, and server RSS, including on a
+Chromium-scale tree? The design, the decision rule, and the sample-size
+arithmetic are in [`docs/specs/description-ab.md`](../docs/specs/description-ab.md).
+Shipped description text is not edited here. A variant is a JSON file in
+[`descriptions/`](descriptions/); `current` means the shipped text.
+
+The primary runner is Grok CLI (`grok -p … --output-format streaming-json`).
+Copilot (`agent_eval.py`, `coding_eval.py`) still runs, and both honor
+`--description`. One command builds, fetches the pinned corpora (including
+Chromium at `3a7520d2d79d`), and runs the baseline:
+
+```bash
+python3 evals/run_baseline.py --bench /path/to/bench
+```
+
+The live baseline has not been run in this change. Where `grok` is absent the
+same command runs the fixture self-check and prints that command. The pending
+note is [`results/description-baseline/PENDING.md`](results/description-baseline/PENDING.md).
+Adoption is recomputed from transcripts with `python3 evals/adoption.py check <run>`.
+Task-clustered intervals are `python3 evals/stats.py <run> --adoption`.

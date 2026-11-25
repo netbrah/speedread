@@ -19,9 +19,20 @@ impl Client {
     }
 
     fn spawn(args: &[&str], cwd: Option<&std::path::Path>) -> Client {
+        Self::spawn_env(args, cwd, &[])
+    }
+
+    fn spawn_env(args: &[&str], cwd: Option<&std::path::Path>, env: &[(&str, &str)]) -> Client {
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_speedread"));
         if let Some(d) = cwd {
             cmd.current_dir(d);
+        }
+        // Description and RSS hooks are opt-in. Tests that don't pass them
+        // must see the shipped server, even if the parent environment set them.
+        cmd.env_remove("SPEEDREAD_DESCRIPTION_FILE");
+        cmd.env_remove("SPEEDREAD_RSS_LOG");
+        for (k, v) in env {
+            cmd.env(k, v);
         }
         let mut child = cmd
             .args(args)
@@ -769,4 +780,163 @@ fn memory_a_request_freed_is_returned_to_the_system() {
         now + 24 <= peak,
         "resident {now} MiB after a request that peaked at {peak} MiB"
     );
+}
+
+fn tool_descriptions(listed: &Value) -> std::collections::BTreeMap<String, String> {
+    listed["result"]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| {
+            (
+                t["name"].as_str().unwrap().to_string(),
+                t["description"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+fn schemas(listed: &Value) -> std::collections::BTreeMap<String, String> {
+    listed["result"]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| {
+            (
+                t["name"].as_str().unwrap().to_string(),
+                t["inputSchema"].to_string(),
+            )
+        })
+        .collect()
+}
+
+/// Shipped `tools/list` descriptions and initialize instructions, byte for byte.
+/// Regenerating this file is a product change to the model-facing text, which
+/// does not belong in a description-variant PR.
+#[test]
+fn default_tool_text_is_byte_identical() {
+    let dir = std::env::temp_dir().join(format!("speedread-text-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut c = Client::spawn(&["--root", dir.to_str().unwrap(), "mcp"], None);
+    let init = c.rpc(
+        "initialize",
+        json!({"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+    c.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+    let listed = c.rpc("tools/list", json!({}));
+    let mut body = serde_json::Map::new();
+    body.insert(
+        "instructions".into(),
+        init["result"]["instructions"].clone(),
+    );
+    body.insert(
+        "tools".into(),
+        serde_json::to_value(tool_descriptions(&listed)).unwrap(),
+    );
+    let got = serde_json::to_string_pretty(&Value::Object(body)).unwrap() + "\n";
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/default_tool_text.json"
+    );
+    let expected = std::fs::read_to_string(path).unwrap_or_default();
+    assert_eq!(
+        got, expected,
+        "shipped tool text changed; the fixture is the byte-identical contract"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn description_file_replaces_text_and_not_schemas_or_answers() {
+    let dir = std::env::temp_dir().join(format!("speedread-over-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/lib.rs"), "pub fn add(a: i32) -> i32 { a }\n").unwrap();
+    let variant = dir.join("variant.json");
+    std::fs::write(
+        &variant,
+        r#"{"instructions":"VARIANT INSTRUCTIONS","tools":{"read":"VARIANT READ"}}"#,
+    )
+    .unwrap();
+
+    let mut plain = Client::spawn(&["--root", dir.to_str().unwrap(), "mcp"], None);
+    let plain_init = plain.rpc(
+        "initialize",
+        json!({"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+    plain.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+    let plain_list = plain.rpc("tools/list", json!({}));
+    let plain_answer = plain.call("read", json!({"targets": ["src/lib.rs#add"]}));
+
+    let mut over = Client::spawn_env(
+        &["--root", dir.to_str().unwrap(), "mcp"],
+        None,
+        &[("SPEEDREAD_DESCRIPTION_FILE", variant.to_str().unwrap())],
+    );
+    let over_init = over.rpc(
+        "initialize",
+        json!({"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+    over.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+    let over_list = over.rpc("tools/list", json!({}));
+    let over_answer = over.call("read", json!({"targets": ["src/lib.rs#add"]}));
+
+    let plain_desc = tool_descriptions(&plain_list);
+    let over_desc = tool_descriptions(&over_list);
+    assert_eq!(over_desc["read"], "VARIANT READ");
+    assert_eq!(over_desc["search"], plain_desc["search"]);
+    assert_eq!(over_desc["map"], plain_desc["map"]);
+    assert_eq!(over_desc["trace"], plain_desc["trace"]);
+    assert_eq!(schemas(&plain_list), schemas(&over_list));
+    assert_eq!(
+        over_init["result"]["instructions"].as_str().unwrap(),
+        "VARIANT INSTRUCTIONS"
+    );
+    assert_ne!(
+        plain_init["result"]["instructions"].as_str().unwrap(),
+        "VARIANT INSTRUCTIONS"
+    );
+    assert_eq!(
+        plain_answer, over_answer,
+        "override must not change tool answers"
+    );
+
+    // The CLI path does not consult the description file.
+    let read = |env: bool| {
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_speedread"));
+        cmd.args(["--root", dir.to_str().unwrap(), "read", "src/lib.rs#add"]);
+        cmd.env_remove("SPEEDREAD_DESCRIPTION_FILE");
+        if env {
+            cmd.env("SPEEDREAD_DESCRIPTION_FILE", &variant);
+        }
+        let out = cmd.output().unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        out.stdout
+    };
+    assert_eq!(read(false), read(true));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn description_file_unknown_tool_refuses_to_start() {
+    let dir = std::env::temp_dir().join(format!("speedread-bad-desc-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let variant = dir.join("variant.json");
+    std::fs::write(&variant, r#"{"tools":{"not_a_tool":"nope"}}"#).unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_speedread"))
+        .args(["--root", dir.to_str().unwrap(), "mcp"])
+        .env("SPEEDREAD_DESCRIPTION_FILE", &variant)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("unknown tool"), "{err}");
+    let _ = std::fs::remove_dir_all(&dir);
 }
