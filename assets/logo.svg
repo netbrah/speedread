@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <title>speedread</title>
+  <defs>
+    <linearGradient id="gTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8A8F98"/><stop offset="1" stop-color="#5E636B"/></linearGradient>
+    <linearGradient id="gLeft" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5A5F67"/><stop offset="1" stop-color="#3A3E45"/></linearGradient>
+    <linearGradient id="gDark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34383E"/><stop offset="1" stop-color="#202328"/></linearGradient>
+    <linearGradient id="gRight" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6E737B"/><stop offset="1" stop-color="#474B52"/></linearGradient>
+    <linearGradient id="gBlue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4FC3FF"/><stop offset="0.55" stop-color="#1E7BFF"/><stop offset="1" stop-color="#1747E6"/></linearGradient>
+  </defs>
+  <g stroke-linejoin="round" stroke-width="10">
+    <polygon points="128,24 218,76 160,110 96,110 38,76" fill="url(#gTop)" stroke="url(#gTop)"/>
+    <polygon points="38,76 96,110 84,170 38,180" fill="url(#gLeft)" stroke="url(#gLeft)"/>
+    <polygon points="38,180 84,170 128,232" fill="url(#gDark)" stroke="url(#gDark)"/>
+    <polygon points="84,170 150,150 128,232" fill="url(#gDark)" stroke="url(#gDark)"/>
+    <polygon points="160,110 218,76 218,180 172,160" fill="url(#gRight)" stroke="url(#gRight)"/>
+    <polygon points="172,160 218,180 128,232 150,150" fill="url(#gLeft)" stroke="url(#gLeft)"/>
+    <polygon points="96,110 160,110 84,170" fill="url(#gLeft)" stroke="url(#gLeft)"/>
+    <polygon points="160,110 172,160 150,150 84,170" fill="url(#gBlue)" stroke="url(#gBlue)"/>
+  </g>
+</svg>
