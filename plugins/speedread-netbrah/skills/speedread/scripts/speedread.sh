@@ -20,11 +20,11 @@
 set -eu
 
 # Pinned by scripts/fork-release.sh; do not edit by hand.
-VERSION="0.2.0-netbrah.3"
-SHA_aarch64_apple_darwin="7d534cbdd613b5ccafdadd9dcfa94e85717212e22abecac5199e835ee1a14c07"
-SHA_x86_64_apple_darwin="8a7f07410fbdc384b92d2a017a49cb90e70e9d6c4c0e9ec84b3b5aa20288a0c3"
-SHA_x86_64_unknown_linux_musl="3f6b6538c95e3f2567169fc0a0dd7c5ebfea4b5f13b36a42911a69e66e3072d8"
-SHA_aarch64_unknown_linux_musl="c3ebe5114cce7c3ea7ff1dd8a3bf495f79e07a336238c49f047b2aeff0b6a1ac"
+VERSION="0.2.1-netbrah.1"
+SHA_aarch64_apple_darwin="4efee773a8dd85ca166c40ed9250912433103cb929260a3a5980c9773f02f390"
+SHA_x86_64_apple_darwin="38365d36dd88b091d461a0a3391db1519f4939a7a53f6bc231e69e1692bccd66"
+SHA_x86_64_unknown_linux_musl="27fec191f278dcf6f92917e192ff2ae99ff2fcedd745cac7a96b52cde23063b7"
+SHA_aarch64_unknown_linux_musl="2dff2169058f1932194860d6659e3c4723752a6e77a96b4d7b93255d6a52cff7"
 # End of pin.
 
 say() { printf 'speedread launcher: %s\n' "$*" >&2; }
