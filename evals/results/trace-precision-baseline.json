@@ -1,0 +1,1760 @@
+{
+  "decision_rule": "A precise layer is worth building if micro precision of reference lines or of\ncall-site lines on the repo oracle is below 0.90, or if site recall of call\nedges on queries with no display cap and no search truncation is below 0.80.\nDo not change the default path unless a later precise run is within 2\u00d7 the\nwarm syntactic p50 and falls back when no index exists. A latency gap smaller\nthan the run-to-run range is not a difference.",
+  "machine": {
+    "nproc": 4,
+    "loadavg": "0.15 0.10 0.10 1/302 15077",
+    "mem": {
+      "MemTotal": "16387328 kB",
+      "MemAvailable": "4702284 kB"
+    },
+    "uname": "x86_64 6.12.113+"
+  },
+  "binary": {
+    "path": "/agent/repos/speedread/target/release/speedread",
+    "bytes": 42575152,
+    "version": "speedread 0.2.0-netbrah.3",
+    "profile": "release"
+  },
+  "estimator_check": "python estimate() matched rustc of the tokens.rs formula on 3 samples",
+  "parser_check": "parser matched the fork_trace only_called shape and a callee arrow",
+  "command": "evals/trace_precision.py --speedread /agent/repos/speedread/target/release/speedread --rust-analyzer /usr/local/rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rust-analyzer --repo /tmp/eval-repos/ripgrep --repo-name ripgrep --scale-repo /tmp/eval-repos/chromium --scale-name chromium base+net+content --runs 15 --scale-runs 7 --symbols 12 --seed 1 --out evals/results/trace-precision-baseline.json",
+  "fixture": {
+    "ra": {
+      "quiescent": true,
+      "seconds": 0.4432041669999762,
+      "via": "cachePriming",
+      "initialize_s": 0.006072012000004179,
+      "positionEncoding": "utf-16",
+      "caps_keys": [
+        "callHierarchyProvider",
+        "codeActionProvider",
+        "codeLensProvider",
+        "completionProvider",
+        "declarationProvider",
+        "definitionProvider",
+        "diagnosticProvider",
+        "documentFormattingProvider",
+        "documentHighlightProvider",
+        "documentOnTypeFormattingProvider",
+        "documentRangeFormattingProvider",
+        "documentSymbolProvider"
+      ]
+    },
+    "scores": {
+      "speedread_vs_hand": {
+        "refs": {
+          "tp": 7,
+          "fp": 1,
+          "fn": 0,
+          "queries": 4,
+          "both_empty": 0,
+          "near_miss_lines": 0,
+          "precision": 0.875,
+          "recall": 1.0,
+          "hidden_sites": 0,
+          "truncated_queries": 0,
+          "examples": [
+            {
+              "id": "buf-push-refs",
+              "fp": [
+                [
+                  "src/lib.rs",
+                  75
+                ]
+              ],
+              "fn": [],
+              "near": 0
+            }
+          ]
+        },
+        "callers": {
+          "tp": 4,
+          "fp": 1,
+          "fn": 0,
+          "queries": 2,
+          "both_empty": 0,
+          "near_miss_lines": 0,
+          "precision": 0.8,
+          "recall": 1.0,
+          "hidden_sites": 0,
+          "truncated_queries": 0,
+          "examples": [
+            {
+              "id": "buf-push-callers",
+              "fp": [
+                [
+                  "src/lib.rs",
+                  75
+                ]
+              ],
+              "fn": [],
+              "near": 0
+            }
+          ]
+        },
+        "value": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "queries": 1,
+          "both_empty": 0,
+          "near_miss_lines": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "hidden_sites": 0,
+          "truncated_queries": 0,
+          "examples": []
+        },
+        "callees": {
+          "tp": 2,
+          "fp": 1,
+          "fn": 1,
+          "queries": 2,
+          "both_empty": 0,
+          "near_miss_lines": 0,
+          "precision": 0.6666666666666666,
+          "recall": 0.6666666666666666,
+          "hidden_sites": 0,
+          "truncated_queries": 0,
+          "examples": [
+            {
+              "id": "uses-helper-callees",
+              "fp": [
+                "src/lib.rs:27\u2192src/lib.rs:22",
+                "src/lib.rs:27\u2192src/lib.rs:22"
+              ],
+              "fn": [
+                "src/lib.rs:27",
+                "src/lib.rs:27"
+              ]
+            }
+          ]
+        },
+        "impls": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "queries": 1,
+          "both_empty": 0,
+          "near_miss_lines": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "hidden_sites": 0,
+          "truncated_queries": 0,
+          "examples": []
+        }
+      },
+      "ra_vs_hand": {
+        "refs": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "queries": 3,
+          "both_empty": 0,
+          "near_miss_lines": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "hidden_sites": 0,
+          "truncated_queries": 0,
+          "examples": []
+        },
+        "callers": {
+          "tp": 4,
+          "fp": 1,
+          "fn": 0,
+          "queries": 2,
+          "both_empty": 0,
+          "near_miss_lines": 0,
+          "precision": 0.8,
+          "recall": 1.0,
+          "hidden_sites": 0,
+          "truncated_queries": 0,
+          "examples": [
+            {
+              "id": "alpha-callers",
+              "fp": [
+                [
+                  "src/lib.rs",
+                  17
+                ]
+              ],
+              "fn": [],
+              "near": 0
+            }
+          ]
+        },
+        "callees": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "queries": 2,
+          "both_empty": 0,
+          "near_miss_lines": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "hidden_sites": 0,
+          "truncated_queries": 0,
+          "examples": []
+        },
+        "impls": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "queries": 1,
+          "both_empty": 0,
+          "near_miss_lines": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "hidden_sites": 0,
+          "truncated_queries": 0,
+          "examples": []
+        }
+      }
+    }
+  },
+  "repos": [
+    {
+      "name": "ripgrep",
+      "path": "/tmp/eval-repos/ripgrep",
+      "sha": "3e85c6c148fdce38a99ceeb9d2780dc7b03b4a4f",
+      "seed": 1,
+      "symbol_pool": 1817,
+      "files": 60,
+      "ra": {
+        "quiescent": true,
+        "seconds": 6.385892568000145,
+        "via": "cachePriming",
+        "initialize_s": 0.006450728000118033,
+        "positionEncoding": "utf-16",
+        "caps_keys": [
+          "callHierarchyProvider",
+          "codeActionProvider",
+          "codeLensProvider",
+          "completionProvider",
+          "declarationProvider",
+          "definitionProvider",
+          "diagnosticProvider",
+          "documentFormattingProvider",
+          "documentHighlightProvider",
+          "documentOnTypeFormattingProvider",
+          "documentRangeFormattingProvider",
+          "documentSymbolProvider"
+        ]
+      },
+      "symbols": [
+        {
+          "path": "crates/globset/src/lib.rs",
+          "line": 1333,
+          "name": "basename_regex_parent_component",
+          "freq": 1,
+          "kind": 12
+        },
+        {
+          "path": "crates/printer/src/summary.rs",
+          "line": 128,
+          "name": "quit_early",
+          "freq": 1,
+          "kind": 6
+        },
+        {
+          "path": "crates/searcher/src/searcher/glue.rs",
+          "line": 1534,
+          "name": "regression_3593_invert_max_count_after_context",
+          "freq": 1,
+          "kind": 12
+        },
+        {
+          "path": "crates/searcher/src/searcher/core.rs",
+          "line": 633,
+          "name": "sink_break_context",
+          "freq": 1,
+          "kind": 6
+        },
+        {
+          "path": "crates/globset/src/glob.rs",
+          "line": 1340,
+          "name": "class",
+          "freq": 2,
+          "kind": 12
+        },
+        {
+          "path": "crates/ignore/src/types.rs",
+          "line": 411,
+          "name": "clear",
+          "freq": 3,
+          "kind": 6
+        },
+        {
+          "path": "crates/ignore/src/dir.rs",
+          "line": 52,
+          "name": "overrides",
+          "freq": 3,
+          "kind": 12
+        },
+        {
+          "path": "crates/matcher/src/lib.rs",
+          "line": 1373,
+          "name": "find_candidate_line",
+          "freq": 4,
+          "kind": 6
+        },
+        {
+          "path": "crates/searcher/src/searcher/glue.rs",
+          "line": 327,
+          "name": "find",
+          "freq": 6,
+          "kind": 6
+        },
+        {
+          "path": "crates/printer/src/hyperlink/mod.rs",
+          "line": 314,
+          "name": "fmt",
+          "freq": 23,
+          "kind": 6
+        },
+        {
+          "path": "crates/printer/src/json.rs",
+          "line": 32,
+          "name": "default",
+          "freq": 18,
+          "kind": 12
+        },
+        {
+          "path": "crates/regex/src/error.rs",
+          "line": 34,
+          "name": "kind",
+          "freq": 5,
+          "kind": 6
+        }
+      ],
+      "traits": [
+        {
+          "name": "Matcher",
+          "path": "crates/matcher/src/lib.rs",
+          "sel": 546,
+          "col": 10,
+          "kind": "trait"
+        },
+        {
+          "name": "ParallelVisitor",
+          "path": "crates/ignore/src/walk.rs",
+          "sel": 1415,
+          "col": 10,
+          "kind": "trait"
+        },
+        {
+          "name": "ParallelVisitorBuilder",
+          "path": "crates/ignore/src/walk.rs",
+          "sel": 1397,
+          "col": 10,
+          "kind": "trait"
+        },
+        {
+          "name": "SinkError",
+          "path": "crates/searcher/src/sink.rs",
+          "sel": 18,
+          "col": 10,
+          "kind": "trait"
+        }
+      ],
+      "quality": {
+        "refs": {
+          "sites": {
+            "tp": 8,
+            "fp": 218,
+            "fn": 8,
+            "queries": 12,
+            "both_empty": 2,
+            "near_miss_lines": 0,
+            "precision": 0.035398230088495575,
+            "recall": 0.5,
+            "hidden_sites": 0,
+            "truncated_queries": 0,
+            "examples": [
+              {
+                "id": "crates/globset/src/glob.rs:1340:class:refs",
+                "fp": [
+                  [
+                    "crates/regex/src/strip.rs",
+                    71
+                  ],
+                  [
+                    "crates/regex/src/strip.rs",
+                    80
+                  ],
+                  [
+                    "crates/regex/src/strip.rs",
+                    84
+                  ],
+                  [
+                    "crates/regex/src/strip.rs",
+                    93
+                  ]
+                ],
+                "fn": [
+                  [
+                    "crates/globset/src/glob.rs",
+                    1376
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1378
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1380
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1381
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1382
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1392
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1393
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1394
+                  ]
+                ],
+                "near": 0
+              },
+              {
+                "id": "crates/ignore/src/types.rs:411:clear:refs",
+                "fp": [
+                  [
+                    "crates/core/main.rs",
+                    193
+                  ],
+                  [
+                    "crates/globset/src/lib.rs",
+                    465
+                  ],
+                  [
+                    "crates/globset/src/lib.rs",
+                    1029
+                  ],
+                  [
+                    "crates/matcher/tests/test_matcher.rs",
+                    39
+                  ],
+                  [
+                    "crates/matcher/tests/test_matcher.rs",
+                    115
+                  ],
+                  [
+                    "crates/matcher/tests/test_matcher.rs",
+                    189
+                  ],
+                  [
+                    "crates/matcher/tests/test_matcher.rs",
+                    219
+                  ],
+                  [
+                    "crates/printer/src/color.rs",
+                    274
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              },
+              {
+                "id": "crates/ignore/src/dir.rs:52:overrides:refs",
+                "fp": [
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    60
+                  ],
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    96
+                  ],
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    915
+                  ],
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    1391
+                  ],
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    1393
+                  ],
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    1395
+                  ],
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    1415
+                  ],
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    1417
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              },
+              {
+                "id": "crates/matcher/src/lib.rs:1373:find_candidate_line:refs",
+                "fp": [
+                  [
+                    "crates/matcher/src/lib.rs",
+                    1377
+                  ],
+                  [
+                    "crates/pcre2/src/matcher.rs",
+                    502
+                  ],
+                  [
+                    "crates/regex/src/matcher.rs",
+                    679
+                  ],
+                  [
+                    "crates/regex/src/matcher.rs",
+                    689
+                  ],
+                  [
+                    "crates/searcher/src/searcher/core.rs",
+                    475
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              },
+              {
+                "id": "crates/searcher/src/searcher/glue.rs:327:find:refs",
+                "fp": [
+                  [
+                    "crates/cli/src/pattern.rs",
+                    55
+                  ],
+                  [
+                    "crates/core/flags/doc/mod.rs",
+                    25
+                  ],
+                  [
+                    "crates/core/flags/doc/mod.rs",
+                    29
+                  ],
+                  [
+                    "crates/core/flags/parse.rs",
+                    301
+                  ],
+                  [
+                    "crates/core/flags/parse.rs",
+                    311
+                  ],
+                  [
+                    "crates/matcher/src/lib.rs",
+                    1173
+                  ],
+                  [
+                    "crates/matcher/tests/test_matcher.rs",
+                    23
+                  ],
+                  [
+                    "crates/regex/src/matcher.rs",
+                    420
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              },
+              {
+                "id": "crates/printer/src/hyperlink/mod.rs:314:fmt:refs",
+                "fp": [
+                  [
+                    "crates/cli/src/human.rs",
+                    43
+                  ],
+                  [
+                    "crates/cli/src/pattern.rs",
+                    27
+                  ],
+                  [
+                    "crates/cli/src/process.rs",
+                    43
+                  ],
+                  [
+                    "crates/cli/src/process.rs",
+                    46
+                  ],
+                  [
+                    "crates/core/flags/doc/version.rs",
+                    8
+                  ],
+                  [
+                    "crates/core/flags/lowargs.rs",
+                    683
+                  ],
+                  [
+                    "crates/core/flags/parse.rs",
+                    355
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              },
+              {
+                "id": "crates/printer/src/json.rs:32:default:refs",
+                "fp": [
+                  [
+                    "crates/cli/src/decompress.rs",
+                    231
+                  ],
+                  [
+                    "crates/cli/src/process.rs",
+                    91
+                  ],
+                  [
+                    "crates/core/flags/lowargs.rs",
+                    352
+                  ],
+                  [
+                    "crates/core/flags/parse.rs",
+                    71
+                  ],
+                  [
+                    "crates/core/flags/parse.rs",
+                    106
+                  ],
+                  [
+                    "crates/core/flags/parse.rs",
+                    142
+                  ],
+                  [
+                    "crates/core/search.rs",
+                    58
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    604
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              },
+              {
+                "id": "crates/regex/src/error.rs:34:kind:refs",
+                "fp": [
+                  [
+                    "crates/cli/src/human.rs",
+                    47
+                  ],
+                  [
+                    "crates/cli/src/process.rs",
+                    34
+                  ],
+                  [
+                    "crates/cli/src/process.rs",
+                    45
+                  ],
+                  [
+                    "crates/cli/src/process.rs",
+                    73
+                  ],
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    680
+                  ],
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    804
+                  ],
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    935
+                  ],
+                  [
+                    "crates/core/flags/lowargs.rs",
+                    741
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              }
+            ]
+          },
+          "functions": {
+            "tp": 8,
+            "fp": 189,
+            "fn": 8,
+            "queries": 12,
+            "both_empty": 2,
+            "near_miss_lines": 0,
+            "precision": 0.04060913705583756,
+            "recall": 0.5,
+            "hidden_sites": 0,
+            "truncated_queries": 0,
+            "examples": [
+              {
+                "id": "crates/globset/src/glob.rs:1340:class:refs",
+                "fp": [
+                  "crates/regex/src/strip.rs:51-119"
+                ],
+                "fn": [
+                  "crates/globset/src/glob.rs:1376",
+                  "crates/globset/src/glob.rs:1378",
+                  "crates/globset/src/glob.rs:1380",
+                  "crates/globset/src/glob.rs:1381",
+                  "crates/globset/src/glob.rs:1382",
+                  "crates/globset/src/glob.rs:1392",
+                  "crates/globset/src/glob.rs:1393",
+                  "crates/globset/src/glob.rs:1394"
+                ]
+              },
+              {
+                "id": "crates/ignore/src/types.rs:411:clear:refs",
+                "fp": [
+                  "crates/core/flags/hiargs.rs:1343-1364",
+                  "crates/core/main.rs:157-241",
+                  "crates/globset/src/lib.rs:451-474",
+                  "crates/globset/src/lib.rs:1023-1032",
+                  "crates/printer/src/color.rs:271-308",
+                  "crates/printer/src/hyperlink/mod.rs:102-174",
+                  "crates/printer/src/hyperlink/mod.rs:637-665",
+                  "crates/printer/src/json.rs:645-680"
+                ],
+                "fn": [
+                  "crates/core/flags/hiargs.rs:1350"
+                ]
+              },
+              {
+                "id": "crates/ignore/src/dir.rs:52:overrides:refs",
+                "fp": [
+                  "crates/ignore/src/dir.rs:538-586",
+                  "crates/ignore/src/dir.rs:381-509",
+                  "crates/ignore/src/incremental.rs:742-757",
+                  "crates/ignore/src/incremental.rs:759-774",
+                  "crates/ignore/src/walk.rs:854-862",
+                  "crates/ignore/benches/workloads.rs:470-484",
+                  "crates/ignore/benches/workloads.rs:578-587",
+                  "crates/core/flags/hiargs.rs:29-110"
+                ],
+                "fn": [
+                  "crates/ignore/src/dir.rs:562"
+                ]
+              },
+              {
+                "id": "crates/matcher/src/lib.rs:1373:find_candidate_line:refs",
+                "fp": [
+                  "crates/matcher/src/lib.rs:1372-1378",
+                  "crates/pcre2/src/matcher.rs:491-504",
+                  "crates/regex/src/matcher.rs:658-691",
+                  "crates/searcher/src/searcher/core.rs:462-506"
+                ],
+                "fn": []
+              },
+              {
+                "id": "crates/searcher/src/searcher/glue.rs:327:find:refs",
+                "fp": [
+                  "crates/searcher/src/searcher/glue.rs:208-258",
+                  "crates/searcher/src/searcher/glue.rs:260-297",
+                  "crates/searcher/src/searcher/glue.rs:327-331",
+                  "crates/searcher/src/searcher/core.rs:124-139",
+                  "crates/cli/src/pattern.rs:45-59",
+                  "crates/core/flags/doc/mod.rs:9-38",
+                  "crates/core/flags/parse.rs:295-305",
+                  "crates/core/flags/parse.rs:307-315"
+                ],
+                "fn": [
+                  "crates/searcher/src/searcher/glue.rs:212",
+                  "crates/searcher/src/searcher/glue.rs:263"
+                ]
+              },
+              {
+                "id": "crates/printer/src/hyperlink/mod.rs:314:fmt:refs",
+                "fp": [
+                  "crates/printer/src/hyperlink/mod.rs:177-184",
+                  "crates/printer/src/hyperlink/mod.rs:178-183",
+                  "crates/printer/src/hyperlink/mod.rs:313-376",
+                  "crates/printer/src/hyperlink/mod.rs:562-573",
+                  "crates/printer/src/color.rs:48-79",
+                  "crates/cli/src/human.rs:43-63",
+                  "crates/cli/src/pattern.rs:27-37",
+                  "crates/cli/src/process.rs:43-63"
+                ],
+                "fn": []
+              },
+              {
+                "id": "crates/printer/src/json.rs:32:default:refs",
+                "fp": [
+                  "crates/printer/src/json.rs:59-62",
+                  "crates/printer/src/color.rs:158-166",
+                  "crates/printer/src/color.rs:211-225",
+                  "crates/printer/src/hyperlink/mod.rs:77-80",
+                  "crates/printer/src/hyperlink/mod.rs:257-260",
+                  "crates/printer/src/hyperlink/mod.rs:990-997",
+                  "crates/printer/src/path.rs:40-43",
+                  "crates/printer/src/path.rs:22-30"
+                ],
+                "fn": [
+                  "crates/printer/src/json.rs:61"
+                ]
+              },
+              {
+                "id": "crates/regex/src/error.rs:34:kind:refs",
+                "fp": [
+                  "crates/regex/src/error.rs:33-36",
+                  "crates/regex/src/error.rs:70-93",
+                  "crates/regex/src/ast.rs:56-90",
+                  "crates/regex/src/ast.rs:107-132",
+                  "crates/regex/src/ban.rs:7-53",
+                  "crates/regex/src/literal.rs:168-189",
+                  "crates/regex/src/non_matching.rs:16-81",
+                  "crates/cli/src/human.rs:44-62"
+                ],
+                "fn": []
+              }
+            ]
+          },
+          "tokens_p50": 404.7717,
+          "tokens_p95": 3485.6740999999997,
+          "bytes_p50": 1123,
+          "ambiguous_edges": 0,
+          "answers": 12
+        },
+        "callers": {
+          "sites": {
+            "tp": 7,
+            "fp": 142,
+            "fn": 9,
+            "queries": 12,
+            "both_empty": 2,
+            "near_miss_lines": 0,
+            "precision": 0.04697986577181208,
+            "recall": 0.4375,
+            "hidden_sites": 0,
+            "truncated_queries": 0,
+            "examples": [
+              {
+                "id": "crates/globset/src/glob.rs:1340:class:callers",
+                "fp": [
+                  [
+                    "crates/regex/src/strip.rs",
+                    71
+                  ],
+                  [
+                    "crates/regex/src/strip.rs",
+                    80
+                  ],
+                  [
+                    "crates/regex/src/strip.rs",
+                    84
+                  ],
+                  [
+                    "crates/regex/src/strip.rs",
+                    93
+                  ]
+                ],
+                "fn": [
+                  [
+                    "crates/globset/src/glob.rs",
+                    1376
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1378
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1380
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1381
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1382
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1392
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1393
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    1394
+                  ]
+                ],
+                "near": 0
+              },
+              {
+                "id": "crates/ignore/src/types.rs:411:clear:callers",
+                "fp": [
+                  [
+                    "crates/core/main.rs",
+                    193
+                  ],
+                  [
+                    "crates/globset/src/lib.rs",
+                    465
+                  ],
+                  [
+                    "crates/globset/src/lib.rs",
+                    1029
+                  ],
+                  [
+                    "crates/matcher/tests/test_matcher.rs",
+                    39
+                  ],
+                  [
+                    "crates/matcher/tests/test_matcher.rs",
+                    115
+                  ],
+                  [
+                    "crates/matcher/tests/test_matcher.rs",
+                    189
+                  ],
+                  [
+                    "crates/matcher/tests/test_matcher.rs",
+                    219
+                  ],
+                  [
+                    "crates/printer/src/color.rs",
+                    274
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              },
+              {
+                "id": "crates/ignore/src/dir.rs:52:overrides:callers",
+                "fp": [
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    915
+                  ],
+                  [
+                    "crates/ignore/benches/workloads.rs",
+                    480
+                  ],
+                  [
+                    "crates/ignore/benches/workloads.rs",
+                    584
+                  ],
+                  [
+                    "crates/ignore/src/incremental.rs",
+                    752
+                  ],
+                  [
+                    "crates/ignore/src/incremental.rs",
+                    770
+                  ],
+                  [
+                    "crates/ignore/src/walk.rs",
+                    860
+                  ]
+                ],
+                "fn": [
+                  [
+                    "crates/ignore/src/dir.rs",
+                    562
+                  ]
+                ],
+                "near": 0
+              },
+              {
+                "id": "crates/matcher/src/lib.rs:1373:find_candidate_line:callers",
+                "fp": [
+                  [
+                    "crates/matcher/src/lib.rs",
+                    1377
+                  ],
+                  [
+                    "crates/pcre2/src/matcher.rs",
+                    502
+                  ],
+                  [
+                    "crates/regex/src/matcher.rs",
+                    679
+                  ],
+                  [
+                    "crates/regex/src/matcher.rs",
+                    689
+                  ],
+                  [
+                    "crates/searcher/src/searcher/core.rs",
+                    475
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              },
+              {
+                "id": "crates/searcher/src/searcher/glue.rs:327:find:callers",
+                "fp": [
+                  [
+                    "crates/cli/src/pattern.rs",
+                    55
+                  ],
+                  [
+                    "crates/core/flags/doc/mod.rs",
+                    25
+                  ],
+                  [
+                    "crates/core/flags/doc/mod.rs",
+                    29
+                  ],
+                  [
+                    "crates/core/flags/parse.rs",
+                    301
+                  ],
+                  [
+                    "crates/core/flags/parse.rs",
+                    311
+                  ],
+                  [
+                    "crates/matcher/src/lib.rs",
+                    1173
+                  ],
+                  [
+                    "crates/matcher/tests/test_matcher.rs",
+                    23
+                  ],
+                  [
+                    "crates/regex/src/matcher.rs",
+                    420
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              },
+              {
+                "id": "crates/printer/src/hyperlink/mod.rs:314:fmt:callers",
+                "fp": [
+                  [
+                    "crates/cli/src/process.rs",
+                    46
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    123
+                  ],
+                  [
+                    "crates/globset/src/lib.rs",
+                    256
+                  ],
+                  [
+                    "crates/ignore/src/lib.rs",
+                    333
+                  ],
+                  [
+                    "crates/ignore/src/lib.rs",
+                    341
+                  ],
+                  [
+                    "crates/printer/src/hyperlink/mod.rs",
+                    180
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              },
+              {
+                "id": "crates/printer/src/json.rs:32:default:callers",
+                "fp": [
+                  [
+                    "crates/cli/src/decompress.rs",
+                    231
+                  ],
+                  [
+                    "crates/cli/src/process.rs",
+                    91
+                  ],
+                  [
+                    "crates/core/flags/lowargs.rs",
+                    352
+                  ],
+                  [
+                    "crates/core/flags/parse.rs",
+                    71
+                  ],
+                  [
+                    "crates/core/flags/parse.rs",
+                    106
+                  ],
+                  [
+                    "crates/core/flags/parse.rs",
+                    142
+                  ],
+                  [
+                    "crates/core/search.rs",
+                    58
+                  ],
+                  [
+                    "crates/globset/src/glob.rs",
+                    604
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              },
+              {
+                "id": "crates/regex/src/error.rs:34:kind:callers",
+                "fp": [
+                  [
+                    "crates/core/flags/hiargs.rs",
+                    680
+                  ],
+                  [
+                    "crates/core/main.rs",
+                    57
+                  ],
+                  [
+                    "crates/core/main.rs",
+                    129
+                  ],
+                  [
+                    "crates/core/main.rs",
+                    214
+                  ],
+                  [
+                    "crates/core/main.rs",
+                    264
+                  ],
+                  [
+                    "crates/core/main.rs",
+                    333
+                  ],
+                  [
+                    "crates/core/messages.rs",
+                    58
+                  ],
+                  [
+                    "crates/core/messages.rs",
+                    65
+                  ]
+                ],
+                "fn": [],
+                "near": 0
+              }
+            ]
+          },
+          "functions": {
+            "tp": 8,
+            "fp": 127,
+            "fn": 8,
+            "queries": 12,
+            "both_empty": 2,
+            "near_miss_lines": 0,
+            "precision": 0.05925925925925926,
+            "recall": 0.5,
+            "hidden_sites": 0,
+            "truncated_queries": 0,
+            "examples": [
+              {
+                "id": "crates/globset/src/glob.rs:1340:class:callers",
+                "fp": [
+                  "crates/regex/src/strip.rs:51-119"
+                ],
+                "fn": [
+                  "crates/globset/src/glob.rs:1376",
+                  "crates/globset/src/glob.rs:1378",
+                  "crates/globset/src/glob.rs:1380",
+                  "crates/globset/src/glob.rs:1381",
+                  "crates/globset/src/glob.rs:1382",
+                  "crates/globset/src/glob.rs:1392",
+                  "crates/globset/src/glob.rs:1393",
+                  "crates/globset/src/glob.rs:1394"
+                ]
+              },
+              {
+                "id": "crates/ignore/src/types.rs:411:clear:callers",
+                "fp": [
+                  "crates/core/flags/hiargs.rs:1343-1364",
+                  "crates/core/main.rs:157-241",
+                  "crates/globset/src/lib.rs:451-474",
+                  "crates/globset/src/lib.rs:1023-1032",
+                  "crates/printer/src/color.rs:271-308",
+                  "crates/printer/src/hyperlink/mod.rs:102-174",
+                  "crates/printer/src/hyperlink/mod.rs:637-665",
+                  "crates/printer/src/json.rs:645-680"
+                ],
+                "fn": [
+                  "crates/core/flags/hiargs.rs:1350"
+                ]
+              },
+              {
+                "id": "crates/ignore/src/dir.rs:52:overrides:callers",
+                "fp": [
+                  "crates/ignore/src/dir.rs:538-586",
+                  "crates/ignore/src/incremental.rs:742-757",
+                  "crates/ignore/src/incremental.rs:759-774",
+                  "crates/ignore/src/walk.rs:854-862",
+                  "crates/ignore/benches/workloads.rs:470-484",
+                  "crates/ignore/benches/workloads.rs:578-587",
+                  "crates/core/flags/hiargs.rs:887-940"
+                ],
+                "fn": [
+                  "crates/ignore/src/dir.rs:562"
+                ]
+              },
+              {
+                "id": "crates/matcher/src/lib.rs:1373:find_candidate_line:callers",
+                "fp": [
+                  "crates/matcher/src/lib.rs:1372-1378",
+                  "crates/pcre2/src/matcher.rs:491-504",
+                  "crates/regex/src/matcher.rs:658-691",
+                  "crates/searcher/src/searcher/core.rs:462-506"
+                ],
+                "fn": []
+              },
+              {
+                "id": "crates/searcher/src/searcher/glue.rs:327:find:callers",
+                "fp": [
+                  "crates/searcher/src/searcher/glue.rs:208-258",
+                  "crates/searcher/src/searcher/glue.rs:260-297",
+                  "crates/searcher/src/searcher/glue.rs:327-331",
+                  "crates/searcher/src/searcher/core.rs:124-139",
+                  "crates/cli/src/pattern.rs:45-59",
+                  "crates/core/flags/doc/mod.rs:9-38",
+                  "crates/core/flags/parse.rs:295-305",
+                  "crates/core/flags/parse.rs:307-315"
+                ],
+                "fn": [
+                  "crates/searcher/src/searcher/glue.rs:212",
+                  "crates/searcher/src/searcher/glue.rs:263"
+                ]
+              },
+              {
+                "id": "crates/printer/src/hyperlink/mod.rs:314:fmt:callers",
+                "fp": [
+                  "crates/printer/src/hyperlink/mod.rs:178-183",
+                  "crates/cli/src/process.rs:44-62",
+                  "crates/globset/src/glob.rs:122-124",
+                  "crates/globset/src/lib.rs:254-261",
+                  "crates/ignore/src/lib.rs:320-355"
+                ],
+                "fn": []
+              },
+              {
+                "id": "crates/printer/src/json.rs:32:default:callers",
+                "fp": [
+                  "crates/printer/src/json.rs:59-62",
+                  "crates/printer/src/color.rs:158-166",
+                  "crates/printer/src/color.rs:211-225",
+                  "crates/printer/src/hyperlink/mod.rs:77-80",
+                  "crates/printer/src/hyperlink/mod.rs:257-260",
+                  "crates/printer/src/hyperlink/mod.rs:990-997",
+                  "crates/printer/src/path.rs:40-43",
+                  "crates/printer/src/path.rs:22-30"
+                ],
+                "fn": [
+                  "crates/printer/src/json.rs:61"
+                ]
+              },
+              {
+                "id": "crates/regex/src/error.rs:34:kind:callers",
+                "fp": [
+                  "crates/regex/src/ban.rs:7-53",
+                  "crates/regex/src/literal.rs:168-189",
+                  "crates/regex/src/non_matching.rs:16-81",
+                  "crates/core/flags/hiargs.rs:668-687",
+                  "crates/core/main.rs:42-66",
+                  "crates/core/main.rs:103-155",
+                  "crates/core/main.rs:157-241",
+                  "crates/core/main.rs:243-273"
+                ],
+                "fn": []
+              }
+            ]
+          },
+          "tokens_p50": 394.8576,
+          "tokens_p95": 2597.6057,
+          "bytes_p50": 1093,
+          "ambiguous_edges": 0,
+          "answers": 12
+        },
+        "callees": {
+          "sites": {
+            "tp": 4,
+            "fp": 7,
+            "fn": 28,
+            "queries": 12,
+            "both_empty": 3,
+            "near_miss_lines": 0,
+            "precision": 0.36363636363636365,
+            "recall": 0.125,
+            "hidden_sites": 0,
+            "truncated_queries": 3,
+            "examples": [
+              {
+                "id": "crates/globset/src/lib.rs:1333:basename_regex_parent_component:callees",
+                "fp": [],
+                "fn": [
+                  "crates/globset/src/lib.rs:1334\u2192crates/globset/src/lib.rs:476",
+                  "crates/globset/src/lib.rs:1335\u2192crates/globset/src/glob.rs:599",
+                  "crates/globset/src/lib.rs:1335\u2192crates/globset/src/glob.rs:641",
+                  "crates/globset/src/lib.rs:1335\u2192crates/globset/src/glob.rs:592",
+                  "crates/globset/src/lib.rs:1336\u2192crates/globset/src/glob.rs:289"
+                ]
+              },
+              {
+                "id": "crates/searcher/src/searcher/glue.rs:1534:regression_3593_invert_max_count_after_context:callees",
+                "fp": [],
+                "fn": [
+                  "crates/searcher/src/searcher/glue.rs:1541\u2192crates/searcher/src/searcher/mod.rs:317",
+                  "crates/searcher/src/searcher/glue.rs:1540\u2192crates/searcher/src/searcher/mod.rs:396",
+                  "crates/searcher/src/searcher/glue.rs:1539\u2192crates/searcher/src/searcher/mod.rs:574",
+                  "crates/searcher/src/searcher/glue.rs:1538\u2192crates/searcher/src/searcher/mod.rs:357",
+                  "crates/searcher/src/searcher/glue.rs:1537\u2192crates/searcher/src/searcher/mod.rs:366",
+                  "crates/searcher/src/searcher/glue.rs:1536\u2192crates/searcher/src/searcher/mod.rs:312",
+                  "crates/searcher/src/searcher/glue.rs:1544\u2192crates/searcher/src/testutil.rs:31",
+                  "crates/searcher/src/searcher/glue.rs:1551\u2192crates/searcher/src/testutil.rs:31"
+                ]
+              },
+              {
+                "id": "crates/searcher/src/searcher/core.rs:633:sink_break_context:callees",
+                "fp": [
+                  "crates/searcher/src/searcher/core.rs:644\u2192crates/printer/src/standard.rs:824"
+                ],
+                "fn": [
+                  "crates/searcher/src/searcher/core.rs:644\u2192crates/searcher/src/sink.rs:151"
+                ]
+              },
+              {
+                "id": "crates/ignore/src/types.rs:411:clear:callees",
+                "fp": [
+                  "crates/ignore/src/types.rs:412\u2192crates/matcher/src/lib.rs:337"
+                ],
+                "fn": []
+              },
+              {
+                "id": "crates/ignore/src/dir.rs:52:overrides:callees",
+                "fp": [
+                  "crates/ignore/src/dir.rs:53\u2192crates/ignore/src/dir.rs:51",
+                  "crates/ignore/src/dir.rs:53\u2192crates/ignore/src/overrides.rs:49"
+                ],
+                "fn": [
+                  "crates/ignore/src/dir.rs:53\u2192crates/ignore/src/dir.rs:34",
+                  "crates/ignore/src/dir.rs:53\u2192crates/ignore/src/dir.rs:45"
+                ]
+              },
+              {
+                "id": "crates/searcher/src/searcher/glue.rs:327:find:callees",
+                "fp": [],
+                "fn": [
+                  "crates/searcher/src/searcher/glue.rs:329\u2192crates/searcher/src/searcher/core.rs:124",
+                  "crates/searcher/src/searcher/glue.rs:329\u2192crates/searcher/src/searcher/core.rs:75",
+                  "crates/searcher/src/searcher/glue.rs:330\u2192crates/searcher/src/searcher/core.rs:75",
+                  "crates/searcher/src/searcher/glue.rs:330\u2192crates/matcher/src/lib.rs:128"
+                ]
+              },
+              {
+                "id": "crates/printer/src/hyperlink/mod.rs:314:fmt:callees",
+                "fp": [
+                  "crates/printer/src/hyperlink/mod.rs:319\u2192crates/printer/src/hyperlink/mod.rs:948",
+                  "crates/printer/src/hyperlink/mod.rs:321\u2192crates/printer/src/hyperlink/mod.rs:209",
+                  "crates/printer/src/hyperlink/mod.rs:324\u2192crates/ignore/src/lib.rs:464",
+                  "crates/printer/src/hyperlink/mod.rs:324\u2192crates/printer/src/hyperlink/mod.rs:199",
+                  "crates/printer/src/hyperlink/mod.rs:325\u2192crates/core/flags/doc/help.rs:16"
+                ],
+                "fn": [
+                  "crates/printer/src/hyperlink/mod.rs:319\u2192crates/printer/src/hyperlink/mod.rs:948",
+                  "crates/printer/src/hyperlink/mod.rs:321\u2192crates/printer/src/hyperlink/mod.rs:209",
+                  "crates/printer/src/hyperlink/mod.rs:324\u2192crates/printer/src/hyperlink/mod.rs:199"
+                ]
+              },
+              {
+                "id": "crates/printer/src/json.rs:32:default:callees",
+                "fp": [
+                  "crates/printer/src/json.rs:36\u2192crates/printer/src/json.rs:59"
+                ],
+                "fn": []
+              }
+            ]
+          },
+          "functions": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 0,
+            "queries": 0,
+            "both_empty": 0,
+            "near_miss_lines": 0,
+            "precision": null,
+            "recall": null,
+            "hidden_sites": 0,
+            "truncated_queries": 0,
+            "examples": []
+          },
+          "tokens_p50": 82.40460000000002,
+          "tokens_p95": 430.9124,
+          "bytes_p50": 242,
+          "ambiguous_edges": 5,
+          "answers": 12
+        },
+        "impls": {
+          "sites": {
+            "tp": 13,
+            "fp": 0,
+            "fn": 0,
+            "queries": 4,
+            "both_empty": 0,
+            "near_miss_lines": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "hidden_sites": 0,
+            "truncated_queries": 0,
+            "examples": []
+          },
+          "functions": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 0,
+            "queries": 0,
+            "both_empty": 0,
+            "near_miss_lines": 0,
+            "precision": null,
+            "recall": null,
+            "hidden_sites": 0,
+            "truncated_queries": 0,
+            "examples": []
+          },
+          "tokens_p50": null,
+          "tokens_p95": null,
+          "bytes_p50": null,
+          "ambiguous_edges": 0,
+          "answers": 0
+        }
+      },
+      "perf": {
+        "load_start": "1.40 0.39 0.19 3/315 16558",
+        "load_end": "1.37 0.40 0.20 1/303 18237",
+        "startup_p50_ms": 1.6051800000695948,
+        "startup_p95_ms": 2.5394080000751273,
+        "queries": [
+          {
+            "label": "callers d1 basename_regex_parent_component (1 defs)",
+            "runs": 15,
+            "cli_p50_ms": 14.159382000116238,
+            "cli_p95_ms": 15.782835999971212,
+            "cli_min_ms": 13.546658999985084,
+            "cli_max_ms": 15.782835999971212,
+            "rss_p50_mib": 23.79296875,
+            "rss_max_mib": 23.79296875,
+            "tokens_p50": 99.3649,
+            "tokens_max": 99.3649,
+            "errors": 0,
+            "incomplete": 0,
+            "mcp_p50_ms": 7.528353999987303,
+            "mcp_p95_ms": 7.818092000206889,
+            "mcp_min_ms": 7.337479999932839,
+            "mcp_max_ms": 7.818092000206889,
+            "samples_ms": [
+              14.58,
+              14.3,
+              14.5,
+              14.42,
+              13.96,
+              13.83,
+              14.16,
+              13.55,
+              14.39,
+              14.15,
+              13.78,
+              15.54,
+              14.01,
+              15.78,
+              14.15
+            ]
+          },
+          {
+            "label": "refs d1 basename_regex_parent_component (1 defs)",
+            "runs": 15,
+            "cli_p50_ms": 14.19504299997243,
+            "cli_p95_ms": 14.972306999879947,
+            "cli_min_ms": 13.550971999848116,
+            "cli_max_ms": 14.972306999879947,
+            "rss_p50_mib": 23.79296875,
+            "rss_max_mib": 24.2734375,
+            "tokens_p50": 87.41960000000002,
+            "tokens_max": 87.41960000000002,
+            "errors": 0,
+            "incomplete": 0,
+            "mcp_p50_ms": 7.747104999907606,
+            "mcp_p95_ms": 8.849397999938446,
+            "mcp_min_ms": 7.205420999980561,
+            "mcp_max_ms": 8.849397999938446,
+            "samples_ms": [
+              13.73,
+              14.43,
+              14.61,
+              14.04,
+              13.55,
+              14.09,
+              13.67,
+              14.15,
+              14.54,
+              14.19,
+              14.37,
+              14.34,
+              14.97,
+              14.2,
+              14.43
+            ]
+          },
+          {
+            "label": "callers d1 fmt (23 defs)",
+            "runs": 15,
+            "cli_p50_ms": 43.2891230000223,
+            "cli_p95_ms": 45.203949000097055,
+            "cli_min_ms": 40.94083400013915,
+            "cli_max_ms": 45.203949000097055,
+            "rss_p50_mib": 46.9375,
+            "rss_max_mib": 49.01953125,
+            "tokens_p50": 452.6912,
+            "tokens_max": 452.6912,
+            "errors": 0,
+            "incomplete": 0,
+            "mcp_p50_ms": 19.967534999977943,
+            "mcp_p95_ms": 22.066495999979452,
+            "mcp_min_ms": 16.09031199996025,
+            "mcp_max_ms": 22.066495999979452,
+            "samples_ms": [
+              43.29,
+              43.09,
+              44.13,
+              42.63,
+              44.6,
+              40.94,
+              43.47,
+              41.17,
+              41.22,
+              43.83,
+              45.2,
+              44.76,
+              42.93,
+              43.19,
+              44.02
+            ]
+          },
+          {
+            "label": "refs d1 fmt (23 defs)",
+            "runs": 15,
+            "cli_p50_ms": 43.64833499994347,
+            "cli_p95_ms": 49.03516300009869,
+            "cli_min_ms": 40.94204099988019,
+            "cli_max_ms": 49.03516300009869,
+            "rss_p50_mib": 46.875,
+            "rss_max_mib": 48.90625,
+            "tokens_p50": 1859.8941,
+            "tokens_max": 1859.8941,
+            "errors": 0,
+            "incomplete": 0,
+            "mcp_p50_ms": 20.157424999979412,
+            "mcp_p95_ms": 21.1658940002053,
+            "mcp_min_ms": 16.07361200012747,
+            "mcp_max_ms": 21.1658940002053,
+            "samples_ms": [
+              44.06,
+              45.51,
+              41.93,
+              42.85,
+              41.73,
+              44.33,
+              43.65,
+              42.66,
+              49.04,
+              41.98,
+              43.68,
+              43.74,
+              46.78,
+              40.94,
+              41.77
+            ]
+          },
+          {
+            "label": "callees d1 overrides (3 defs)",
+            "runs": 15,
+            "cli_p50_ms": 27.357905000144456,
+            "cli_p95_ms": 29.445227999985946,
+            "cli_min_ms": 25.648159999946074,
+            "cli_max_ms": 29.445227999985946,
+            "rss_p50_mib": 34.359375,
+            "rss_max_mib": 34.515625,
+            "tokens_p50": 154.2392,
+            "tokens_max": 154.2392,
+            "errors": 0,
+            "incomplete": 0,
+            "mcp_p50_ms": 8.738835000031031,
+            "mcp_p95_ms": 10.21665099983693,
+            "mcp_min_ms": 8.396768000011434,
+            "mcp_max_ms": 10.21665099983693,
+            "samples_ms": [
+              29.45,
+              26.85,
+              27.42,
+              25.65,
+              26.69,
+              26.54,
+              26.51,
+              27.27,
+              27.86,
+              26.46,
+              27.36,
+              27.46,
+              28.57,
+              27.84,
+              28.59
+            ]
+          },
+          {
+            "label": "callers d2 fmt (23 defs)",
+            "runs": 15,
+            "cli_p50_ms": 59.52333699997325,
+            "cli_p95_ms": 61.21056799997859,
+            "cli_min_ms": 55.93693700006952,
+            "cli_max_ms": 61.21056799997859,
+            "rss_p50_mib": 46.734375,
+            "rss_max_mib": 49.01953125,
+            "tokens_p50": 1826.3544,
+            "tokens_max": 1826.3544,
+            "errors": 0,
+            "incomplete": 0,
+            "mcp_p50_ms": 33.98696999988715,
+            "mcp_p95_ms": 38.26015599997845,
+            "mcp_min_ms": 30.03954500013606,
+            "mcp_max_ms": 38.26015599997845,
+            "samples_ms": [
+              59.25,
+              55.94,
+              56.27,
+              58.9,
+              59.23,
+              57.29,
+              60.24,
+              59.52,
+              59.63,
+              60.26,
+              59.83,
+              60.02,
+              61.21,
+              59.4,
+              60.1
+            ]
+          }
+        ],
+        "mcp_rss_hwm_mib": 49.53515625,
+        "limiter": "perf not available. one run wall 14.8 ms, rss 23.8 MiB, status 0. Limiter not identified from a profile."
+      }
+    }
+  ],
+  "scale": {
+    "name": "chromium base+net+content",
+    "why": "Full Chromium needs depot_tools/gclient and a multi-gigabyte checkout. This is a sparse checkout of the github.com/chromium/chromium commit's base, net and content trees: the directories the repo's own large-tree eval already uses for trace. Not the whole browser.",
+    "path": "/tmp/eval-repos/chromium",
+    "sha": "8c02738014f004d4917273d70a6596094938f870",
+    "files": 27028,
+    "cpp": 11593,
+    "bytes": 245439430,
+    "runs": 7,
+    "load_start": "1.37 0.40 0.20 1/303 18238",
+    "load_end": "2.84 0.86 0.36 1/303 19016",
+    "queries": [
+      {
+        "label": "trace PostTask",
+        "runs": 7,
+        "cli_p50_ms": 387.7046140000857,
+        "cli_p95_ms": 406.6811739999139,
+        "cli_min_ms": 377.1906689999014,
+        "cli_max_ms": 406.6811739999139,
+        "rss_p50_mib": 126.28125,
+        "rss_max_mib": 134.35546875,
+        "tokens_p50": 3647.3621000000003,
+        "tokens_max": 3647.3621000000003,
+        "errors": 0,
+        "incomplete": 7,
+        "mcp_p50_ms": 278.70908999989297,
+        "mcp_p95_ms": 289.08400000000256,
+        "mcp_min_ms": 261.91899700006616,
+        "mcp_max_ms": 289.08400000000256,
+        "samples_ms": [
+          395.14,
+          387.7,
+          406.68,
+          377.19,
+          397.1,
+          386.01,
+          380.76
+        ]
+      },
+      {
+        "label": "trace DidCommitNavigation",
+        "runs": 7,
+        "cli_p50_ms": 471.53646800006754,
+        "cli_p95_ms": 498.1275380000625,
+        "cli_min_ms": 437.027783999838,
+        "cli_max_ms": 498.1275380000625,
+        "rss_p50_mib": 116.83203125,
+        "rss_max_mib": 120.9375,
+        "tokens_p50": 680.6469,
+        "tokens_max": 680.6469,
+        "errors": 0,
+        "incomplete": 0,
+        "mcp_p50_ms": 265.69328100003986,
+        "mcp_p95_ms": 287.835288999986,
+        "mcp_min_ms": 253.01588299998912,
+        "mcp_max_ms": 287.835288999986,
+        "samples_ms": [
+          437.03,
+          471.54,
+          452.86,
+          497.77,
+          498.13,
+          470.39,
+          472.67
+        ]
+      },
+      {
+        "label": "trace PostTask --depth 2",
+        "runs": 7,
+        "cli_p50_ms": 2216.853737999827,
+        "cli_p95_ms": 2371.16000900005,
+        "cli_min_ms": 2201.554824000141,
+        "cli_max_ms": 2371.16000900005,
+        "rss_p50_mib": 249.078125,
+        "rss_max_mib": 259.1953125,
+        "tokens_p50": 3406.7701,
+        "tokens_max": 3406.7701,
+        "errors": 0,
+        "incomplete": 7,
+        "mcp_p50_ms": 543.0851300000086,
+        "mcp_p95_ms": 556.8898199999239,
+        "mcp_min_ms": 535.9203650000381,
+        "mcp_max_ms": 556.8898199999239,
+        "samples_ms": [
+          2216.85,
+          2209.81,
+          2371.16,
+          2204.88,
+          2201.55,
+          2271.25,
+          2249.43
+        ]
+      }
+    ],
+    "startup_p50_ms": 2.3602999999638996,
+    "mcp_rss_hwm_mib": 308.04296875,
+    "limiter": "perf not available. one run wall 381.0 ms, rss 124.0 MiB, status 0. Limiter not identified from a profile."
+  }
+}

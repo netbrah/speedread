@@ -1,0 +1,9 @@
+[package]
+name = "trace_oracle"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# A tiny crate with a known reference, call, and impl graph.
+# evals/trace_precision.py scores `trace` against this graph and checks that
+# rust-analyzer agrees with it before any larger repo is trusted.

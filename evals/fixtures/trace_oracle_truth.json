@@ -1,0 +1,121 @@
+{
+  "note": "Closed gold for syntactic facts a reader can check by eye. Comments and strings are not references. Value uses are references but not call edges. Indirect calls (f(2) where f holds alpha) are not direct call edges. Same-named symbols in another module or type are different symbols.",
+  "cases": [
+    {
+      "id": "alpha-refs",
+      "target_file": "src/lib.rs",
+      "target_line_contains": "pub fn alpha(",
+      "direction": "refs",
+      "expect": [
+        {"file": "src/lib.rs", "contains": "alpha(1)"},
+        {"file": "src/lib.rs", "contains": "n += alpha(*i)"},
+        {"file": "src/lib.rs", "contains": "let f = alpha;"},
+        {"file": "src/other.rs", "contains": "crate::alpha(3)"}
+      ]
+    },
+    {
+      "id": "alpha-callers",
+      "target_file": "src/lib.rs",
+      "target_line_contains": "pub fn alpha(",
+      "direction": "callers",
+      "expect": [
+        {"file": "src/lib.rs", "contains": "alpha(1)"},
+        {"file": "src/lib.rs", "contains": "n += alpha(*i)"},
+        {"file": "src/other.rs", "contains": "crate::alpha(3)"}
+      ]
+    },
+    {
+      "id": "alpha-value",
+      "target_file": "src/lib.rs",
+      "target_line_contains": "pub fn alpha(",
+      "direction": "value",
+      "expect": [
+        {"file": "src/lib.rs", "contains": "let f = alpha;"}
+      ]
+    },
+    {
+      "id": "lib-helper-refs",
+      "target_file": "src/lib.rs",
+      "target_line_contains": "pub fn helper(",
+      "direction": "refs",
+      "expect": [
+        {"file": "src/lib.rs", "contains": "helper(1)"}
+      ]
+    },
+    {
+      "id": "other-helper-refs",
+      "target_file": "src/other.rs",
+      "target_line_contains": "pub fn helper(",
+      "direction": "refs",
+      "expect": [
+        {"file": "src/lib.rs", "contains": "other::helper(2)"}
+      ]
+    },
+    {
+      "id": "buf-push-refs",
+      "target_file": "src/lib.rs",
+      "target_line_contains": "impl Buf {",
+      "target_line_contains_next": "pub fn push(",
+      "direction": "refs",
+      "expect": [
+        {"file": "src/lib.rs", "contains": "b.push(1)"}
+      ]
+    },
+    {
+      "id": "buf-push-callers",
+      "target_file": "src/lib.rs",
+      "target_line_contains": "impl Buf {",
+      "target_line_contains_next": "pub fn push(",
+      "direction": "callers",
+      "expect": [
+        {"file": "src/lib.rs", "contains": "b.push(1)"}
+      ]
+    },
+    {
+      "id": "speak-impls",
+      "target": "src/lib.rs#Speak",
+      "ra_file": "src/lib.rs",
+      "ra_line_contains": "pub trait Speak",
+      "ra_name": "Speak",
+      "direction": "impls",
+      "expect_ranges": [
+        {"file": "src/lib.rs", "start_contains": "impl Speak for Dog", "end_contains": "\"woof\""},
+        {"file": "src/lib.rs", "start_contains": "impl Speak for Cat", "end_contains": "\"meow\""}
+      ]
+    },
+    {
+      "id": "beta-callees",
+      "target_file": "src/lib.rs",
+      "target_line_contains": "pub fn beta(",
+      "direction": "callees",
+      "expect_edges": [
+        {
+          "call_file": "src/lib.rs",
+          "call_contains": "alpha(1)",
+          "def_file": "src/lib.rs",
+          "def_contains": "pub fn alpha("
+        }
+      ]
+    },
+    {
+      "id": "uses-helper-callees",
+      "target_file": "src/lib.rs",
+      "target_line_contains": "pub fn uses_helper(",
+      "direction": "callees",
+      "expect_edges": [
+        {
+          "call_file": "src/lib.rs",
+          "call_contains": "helper(1)",
+          "def_file": "src/lib.rs",
+          "def_contains": "pub fn helper("
+        },
+        {
+          "call_file": "src/lib.rs",
+          "call_contains": "other::helper(2)",
+          "def_file": "src/other.rs",
+          "def_contains": "pub fn helper("
+        }
+      ]
+    }
+  ]
+}

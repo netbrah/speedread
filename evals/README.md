@@ -26,6 +26,7 @@ graders fixed when transcript review showed them wrong. Results are in
 | 3. Agent Q&A | Same model + harness answering code questions: accuracy, tokens, cost, time | real agent, capability | [`agent_eval.py`](agent_eval.py), [`agent_tasks.json`](agent_tasks.json) |
 | 3b. Agent relationships | Same, for callers, callees and implementations: does `trace` get used, and does it pay? | real agent, capability | [`agent_eval.py`](agent_eval.py), [`relationship_tasks.json`](relationship_tasks.json) |
 | 4. Agent coding | Same model + harness fixing real bugs: tests pass? at what cost? is the compression ever unsafe? does the agent even use the tool? | real agent, capability | [`coding_eval.py`](coding_eval.py), [`coding_tasks.json`](coding_tasks.json) |
+| 5. Trace precision | Do `trace` reference and call edges match a rust-analyzer oracle, and what do they cost (latency, RSS, tokens)? | deterministic | [`trace_precision.py`](trace_precision.py) |
 
 ## Suite 1 — tool scenarios (regression)
 
@@ -113,6 +114,23 @@ report — no file names — plus the command that runs the tests.
   edited file not already viewed natively, up to 2,000 lines), once and as re-sent
   on every later turn.
 
+## Suite 5 — trace precision (deterministic)
+
+Reference lines and call edges from `trace`, scored against a closed hand-labeled
+crate ([`fixtures/trace_oracle`](fixtures/trace_oracle)) and, once that oracle
+agrees with rust-analyzer, against rust-analyzer on a real Rust repo. The same
+script times the CLI and a warm MCP session (p50/p95, peak RSS) and counts
+tokens with the estimator in `src/tokens.rs`. A large non-Rust tree can be
+passed for latency only. Results land in [`results/`](results/).
+
+```bash
+python3 evals/trace_precision.py \
+  --speedread target/release/speedread \
+  --repo /path/to/ripgrep --repo-name ripgrep \
+  --scale-repo /path/to/chromium-subset --scale-name chromium-base-net-content \
+  --runs 15 --out evals/results/trace-precision-baseline.json
+```
+
 ## What transcript review changed
 
 Reading transcripts, not just scores, found three problems that scores alone hid:
@@ -175,6 +193,9 @@ python3 evals/agent_eval.py  --bench <bench> --tasks evals/relationship_tasks.js
 python3 evals/coding_eval.py --bench <bench> --venvs <venvs> --verify
 python3 evals/coding_eval.py --bench <bench> --venvs <venvs> --trials 2
 python3 evals/stats.py evals/results/<run>      # bootstrap intervals, per-task wins
+python3 evals/trace_precision.py --speedread target/release/speedread \
+  --repo <bench>/ripgrep --repo-name ripgrep --runs 15 \
+  --out evals/results/trace-precision-baseline.json
 ```
 
 Agent suites need [GitHub Copilot CLI](https://github.com/github/copilot-cli)
