@@ -1,0 +1,882 @@
+{
+  "suite": "context-tool",
+  "arm": "quad",
+  "decision": "Adopt context if its strict pass rate on this set is not below quad, its median result tokens are not higher than quad by more than quad's run-to-run range, and its external call count is less than or equal to quad. A median latency increase above 50% or a peak RSS above 2x on the chromium questions is a negative perf result, not a win. A gap smaller than the 5-run range is no measurable difference.",
+  "budget": 8000,
+  "runs": 5,
+  "encoder": "o200k_base",
+  "binary": "/agent/repos/speedread/target/fast/speedread",
+  "repos": {
+    "flask": {
+      "root": "/tmp/bench/flask",
+      "head": "49943b5a94413a530761350f04e896f76e8d620e",
+      "commit": "49943b5a94413a530761350f04e896f76e8d620e",
+      "dir": "flask"
+    },
+    "gin": {
+      "root": "/tmp/bench/gin",
+      "head": "0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646",
+      "commit": "0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646",
+      "dir": "gin"
+    },
+    "speedread": {
+      "root": "/agent/repos/speedread",
+      "head": "b32e1dc3e2df1a3b78f8db0eec04d8356e98a2c7",
+      "commit": "b32e1dc3e2df1a3b78f8db0eec04d8356e98a2c7",
+      "dir": "."
+    },
+    "chromium": {
+      "root": "/tmp/bench/chromium-subset",
+      "head": "8c02738014f004d4917273d70a6596094938f870",
+      "commit": "8c02738014f004d4917273d70a6596094938f870",
+      "dir": "chromium-subset",
+      "note": "Stable snapshot of a sparse checkout of github.com/chromium/chromium at this commit: cones base, net/base, and content/browser/renderer_host (5712 files, about 72 MiB). Not a depot_tools Chromium tree and not third_party. A full working-tree checkout of the same commit was still downloading blobs when this set was frozen; the snapshot was copied so runs would not race that checkout."
+    }
+  },
+  "policy": "quad: orient\u2192map, relate\u2192trace, path+symbol or bare path\u2192read, else one search (symbols if the question asks what/how, matches if it asks where). context: one context call. No live model.",
+  "machine_before": {
+    "nproc": 4,
+    "loadavg": "0.05 0.47 0.36 1/307 7576"
+  },
+  "machine_after": {
+    "nproc": 4,
+    "loadavg": "0.05 0.47 0.36 1/307 8090"
+  },
+  "tasks": [
+    {
+      "id": "flask-shell-keys",
+      "repo": "flask",
+      "kind": "named file and symbol; body fact",
+      "intent": "read",
+      "calls": 1,
+      "commands": [
+        [
+          "/agent/repos/speedread/target/fast/speedread",
+          "--root",
+          "/tmp/bench/flask",
+          "--budget",
+          "8000",
+          "read",
+          "src/flask/app.py#make_shell_context"
+        ]
+      ],
+      "strict_passes": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "strict_pass": true,
+      "grader_fraction": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tokens": [
+        129,
+        129,
+        129,
+        129,
+        129
+      ],
+      "tokens_median": 129.0,
+      "tokens_min": 129,
+      "tokens_max": 129,
+      "latency_s": [
+        0.009307229000000916,
+        0.006327255000087462,
+        0.006960316000004241,
+        0.008942622000063238,
+        0.006660562000092796
+      ],
+      "latency_median_s": 0.006960316000004241,
+      "latency_min_s": 0.006327255000087462,
+      "latency_max_s": 0.009307229000000916,
+      "latency_cold_s": 0.009307229000000916,
+      "rss_kb": [
+        99652,
+        99780,
+        99780,
+        99780,
+        99780
+      ],
+      "rss_median_kb": 99780.0,
+      "rss_min_kb": 99652,
+      "rss_max_kb": 99780,
+      "rss_cold_kb": 99652,
+      "errors": 0,
+      "deterministic": true,
+      "stdout_sha256": "ed8700578fed5b5f031c2b056ff62a9687eaa09e7dbac4834b8fc120d0312ea5",
+      "stdout": "==> src/flask/app.py:629-639 @445b7776bc3346fe (1,686 lines) Flask.make_shell_context\n629\t    def make_shell_context(self) -> dict[str, t.Any]:\n630\t        \"\"\"Returns the shell context for an interactive shell for this\n631\t        application.  This runs all the registered shell context\n632\t        processors.\n633\t\n634\t        .. versionadded:: 0.11\n635\t        \"\"\"\n636\t        rv = {\"app\": self, \"g\": g}\n637\t        for processor in self.shell_context_processors:\n638\t            rv.update(processor())\n639\t        return rv\n",
+      "stderr": ""
+    },
+    {
+      "id": "flask-dispatch-lines",
+      "repo": "flask",
+      "kind": "named file, several symbols, line numbers",
+      "intent": "search",
+      "calls": 1,
+      "commands": [
+        [
+          "/agent/repos/speedread/target/fast/speedread",
+          "--root",
+          "/tmp/bench/flask",
+          "--budget",
+          "8000",
+          "search",
+          "\\bdispatch_request\\b|\\bfull_dispatch_request\\b|\\bfinalize_request\\b",
+          "--output",
+          "symbols",
+          "src/flask/app.py"
+        ]
+      ],
+      "strict_passes": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "strict_pass": true,
+      "grader_fraction": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tokens": [
+        2799,
+        2799,
+        2799,
+        2799,
+        2799
+      ],
+      "tokens_median": 2799.0,
+      "tokens_min": 2799,
+      "tokens_max": 2799,
+      "latency_s": [
+        0.00788774900001954,
+        0.007663658999945255,
+        0.008151669999961086,
+        0.010428056000023389,
+        0.0074579659999471914
+      ],
+      "latency_median_s": 0.00788774900001954,
+      "latency_min_s": 0.0074579659999471914,
+      "latency_max_s": 0.010428056000023389,
+      "latency_cold_s": 0.00788774900001954,
+      "rss_kb": [
+        99780,
+        99780,
+        99780,
+        99780,
+        99780
+      ],
+      "rss_median_kb": 99780.0,
+      "rss_min_kb": 99780,
+      "rss_max_kb": 99780,
+      "rss_cold_kb": 99780,
+      "errors": 0,
+      "deterministic": true,
+      "stdout_sha256": "441ce3d937b22227e6996a7b3da7fbde06d897b7c905c525f6a722601bcaa542",
+      "stdout": "11 matches in 1 file for /\\bdispatch_request\\b|\\bfull_dispatch_request\\b|\\bfinalize_request\\b/\n==> src/flask/app.py @445b7776bc3346fe (11 matches)\n[251-306] def __init_subclass__(cls, **kwargs: t.Any) -> None (in Flask)\n251\t    def __init_subclass__(cls, **kwargs: t.Any) -> None:\n252\t        import warnings\n253\t\n254\t        # These method signatures were updated to take a ctx param. Detect\n255\t        # overridden methods in subclasses that still have the old signature.\n256\t        # Show a deprecation warning and wrap to call with correct args.\n257\t        for method in (\n258\t            cls.handle_http_exception,\n259\t            cls.handle_user_exception,\n260\t            cls.handle_exception,\n261\t            cls.log_exception,\n262\t            cls.dispatch_request,\n263\t            cls.full_dispatch_request,\n264\t            cls.finalize_request,\n265\t            cls.make_default_options_response,\n266\t            cls.preprocess_request,\n267\t            cls.process_response,\n268\t            cls.do_teardown_request,\n269\t            cls.do_teardown_appcontext,\n270\t            cls.update_template_context,\n271\t        ):\n272\t            base_method = getattr(Flask, method.__name__)\n273\t\n274\t            if method is base_method:\n275\t                # not overridden\n276\t                continue\n277\t\n278\t            # get the second parameter (first is self)\n279\t            iter_params = iter(inspect.signature(method).parameters.values())\n280\t            next(iter_params)\n281\t            param = next(iter_params, None)\n282\t\n283\t            # must have second parameter named ctx or annotated AppContext\n284\t            if param is None or not (\n285\t                # no annotation, match name\n286\t                (param.annotation is inspect.Parameter.empty and param.name == \"ctx\")\n287\t                or (\n288\t                    # string annotation, access path ends with AppContext\n289\t                    isinstance(param.annotation, str)\n290\t                    and param.annotation.rpartition(\".\")[2] == \"AppContext\"\n291\t                )\n292\t                or (\n293\t                    # class annotation\n294\t                    inspect.isclass(param.annotation)\n295\t                    and issubclass(param.annotation, AppContext)\n296\t                )\n297\t            ):\n298\t                warnings.warn(\n299\t                    f\"The '{method.__name__}' method now takes 'ctx: AppContext'\"\n300\t                    \" as the first parameter. The old signature is deprecated\"\n301\t                    \" and will not be supported in Flask 4.0.\",\n302\t                    DeprecationWarning,\n303\t                    stacklevel=2,\n304\t                )\n305\t                setattr(cls, method.__name__, remove_ctx(method))\n306\t                setattr(Flask, method.__name__, add_ctx(base_method))\n[916-971] def handle_exception(self, ctx: AppContext, e: Exception) -> Response (in Flask)\n916\t    def handle_exception(self, ctx: AppContext, e: Exception) -> Response:\n917\t        \"\"\"Handle an exception that did not have an error handler\n918\t        associated with it, or that was raised from an error handler.\n919\t        This always causes a 500 ``InternalServerError``.\n920\t\n921\t        Always sends the :data:`got_request_exception` signal.\n922\t\n923\t        If :data:`PROPAGATE_EXCEPTIONS` is ``True``, such as in debug\n924\t        mode, the error will be re-raised so that the debugger can\n925\t        display it. Otherwise, the original exception is logged, and\n926\t        an :exc:`~werkzeug.exceptions.InternalServerError` is returned.\n927\t\n928\t        If an error handler is registered for ``InternalServerError`` or\n929\t        ``500``, it will be used. For consistency, the handler will\n930\t        always receive the ``InternalServerError``. The original\n931\t        unhandled exception is available as ``e.original_exception``.\n932\t\n933\t        .. versionchanged:: 3.2\n934\t            Takes ``ctx: AppContext`` as the first parameter. The old signature\n935\t            is deprecated and will not be supported in Flask 4.0.\n936\t\n937\t        .. versionchanged:: 1.1.0\n938\t            Always passes the ``InternalServerError`` instance to the\n939\t            handler, setting ``original_exception`` to the unhandled\n940\t            error.\n941\t\n942\t        .. versionchanged:: 1.1.0\n943\t            ``after_request`` functions and other finalization is done\n944\t            even for the default 500 response when there is no handler.\n945\t\n946\t        .. versionadded:: 0.3\n947\t        \"\"\"\n948\t        exc_info = sys.exc_info()\n949\t        got_request_exception.send(self, _async_wrapper=self.ensure_sync, exception=e)\n950\t        propagate = self.config[\"PROPAGATE_EXCEPTIONS\"]\n951\t\n952\t        if propagate is None:\n953\t            propagate = self.testing or self.debug\n954\t\n955\t        if propagate:\n956\t            # Re-raise if called with an active exception, otherwise\n957\t            # raise the passed in exception.\n958\t            if exc_info[1] is e:\n959\t                raise\n960\t\n961\t            raise e\n962\t\n963\t        self.log_exception(ctx, exc_info)\n964\t        server_error: InternalServerError | ft.ResponseReturnValue\n965\t        server_error = InternalServerError(original_exception=e)\n966\t        handler = self._find_error_handler(server_error, ctx.request.blueprints)\n967\t\n968\t        if handler is not None:\n969\t            server_error = self.ensure_sync(handler)(server_error)\n970\t\n971\t        return self.finalize_request(ctx, server_error, from_error_handler=True)\n[993-1021] def dispatch_request(self, ctx: AppContext) -> ft.ResponseReturnValue (in Flask)\n993\t    def dispatch_request(self, ctx: AppContext) -> ft.ResponseReturnValue:\n994\t        \"\"\"Does the request dispatching.  Matches the URL and returns the\n995\t        return value of the view or error handler.  This does not have to\n996\t        be a response object.  In order to convert the return value to a\n997\t        proper response object, call :func:`make_response`.\n998\t\n999\t        .. versionchanged:: 3.2\n1000\t            Takes ``ctx: AppContext`` as the first parameter. The old signature\n1001\t            is deprecated and will not be supported in Flask 4.0.\n1002\t\n1003\t        .. versionchanged:: 0.7\n1004\t           This no longer does the exception handling, this code was\n1005\t           moved to the new :meth:`full_dispatch_request`.\n1006\t        \"\"\"\n1007\t        req = ctx.request\n1008\t\n1009\t        if req.routing_exception is not None:\n1010\t            self.raise_routing_exception(req)\n1011\t        rule: Rule = req.url_rule  # type: ignore[assignment]\n1012\t        # if we provide automatic options for this URL and the\n1013\t        # request came with the OPTIONS method, reply automatically\n1014\t        if (\n1015\t            getattr(rule, \"provide_automatic_options\", False)\n1016\t            and req.method == \"OPTIONS\"\n1017\t        ):\n1018\t            return self.make_default_options_response(ctx)\n1019\t        # otherwise dispatch to the handler for that endpoint\n1020\t        view_args: dict[str, t.Any] = req.view_args  # type: ignore[assignment]\n1021\t        return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]\n[1023-1054] def full_dispatch_request(self, ctx: AppContext) -> Response (in Flask)\n1023\t    def full_dispatch_request(self, ctx: AppContext) -> Response:\n1024\t        \"\"\"Dispatches the request and on top of that performs request\n1025\t        pre and postprocessing as well as HTTP exception catching and\n1026\t        error handling.\n1027\t\n1028\t        .. versionchanged:: 3.2\n1029\t            Takes ``ctx: AppContext`` as the first parameter. The old signature\n1030\t            is deprecated and will not be supported in Flask 4.0.\n1031\t\n1032\t        .. versionadded:: 0.7\n1033\t        \"\"\"\n1034\t        if not self._got_first_request and self.should_ignore_error is not None:\n1035\t            import warnings\n1036\t\n1037\t            warnings.warn(\n1038\t                \"The 'should_ignore_error' method is deprecated and will\"\n1039\t                \" be removed in Flask 3.3. Handle errors as needed in\"\n1040\t                \" teardown handlers instead.\",\n1041\t                DeprecationWarning,\n1042\t                stacklevel=1,\n1043\t            )\n1044\t\n1045\t        self._got_first_request = True\n1046\t\n1047\t        try:\n1048\t            request_started.send(self, _async_wrapper=self.ensure_sync)\n1049\t            rv = self.preprocess_request(ctx)\n1050\t            if rv is None:\n1051\t                rv = self.dispatch_request(ctx)\n1052\t        except Exception as e:\n1053\t            rv = self.handle_user_exception(ctx, e)\n1054\t        return self.finalize_request(ctx, rv)\n[1056-1090] def finalize_request(self, ctx: AppContext, rv: ft.ResponseReturnValue | HTTPException, from_error_handler: bool = False) -> Response (in Flask)\n1056\t    def finalize_request(\n1057\t        self,\n1058\t        ctx: AppContext,\n1059\t        rv: ft.ResponseReturnValue | HTTPException,\n1060\t        from_error_handler: bool = False,\n1061\t    ) -> Response:\n1062\t        \"\"\"Given the return value from a view function this finalizes\n1063\t        the request by converting it into a response and invoking the\n1064\t        postprocessing functions.  This is invoked for both normal\n1065\t        request dispatching as well as error handlers.\n1066\t\n1067\t        Because this means that it might be called as a result of a\n1068\t        failure a special safe mode is available which can be enabled\n1069\t        with the `from_error_handler` flag.  If enabled, failures in\n1070\t        response processing will be logged and otherwise ignored.\n1071\t\n1072\t        .. versionchanged:: 3.2\n1073\t            Takes ``ctx: AppContext`` as the first parameter. The old signature\n1074\t            is deprecated and will not be supported in Flask 4.0.\n1075\t\n1076\t        :meta private:\n1077\t        \"\"\"\n1078\t        response = self.make_response(rv)\n1079\t        try:\n1080\t            response = self.process_response(ctx, response)\n1081\t            request_finished.send(\n1082\t                self, _async_wrapper=self.ensure_sync, response=response\n1083\t            )\n1084\t        except Exception:\n1085\t            if not from_error_handler:\n1086\t                raise\n1087\t            self.logger.exception(\n1088\t                \"Request finalizing failed with an error while handling an error\"\n1089\t            )\n1090\t        return response\n[1627-1677] def wsgi_app(self, environ: WSGIEnvironment, start_response: StartResponse) -> cabc.Iterable[bytes] (in Flask)\n1627\t    def wsgi_app(\n1628\t        self, environ: WSGIEnvironment, start_response: StartResponse\n1629\t    ) -> cabc.Iterable[bytes]:\n1630\t        \"\"\"The actual WSGI application. This is not implemented in\n1631\t        :meth:`__call__` so that middlewares can be applied without\n1632\t        losing a reference to the app object. Instead of doing this::\n1633\t\n1634\t            app = MyMiddleware(app)\n1635\t\n1636\t        It's a better idea to do this instead::\n1637\t\n1638\t            app.wsgi_app = MyMiddleware(app.wsgi_app)\n1639\t\n1640\t        Then you still have the original application object around and\n1641\t        can continue to call methods on it.\n1642\t\n1643\t        .. versionchanged:: 0.7\n1644\t            Teardown events for the request and app contexts are called\n1645\t            even if an unhandled error occurs. Other events may not be\n1646\t            called depending on when an error occurs during dispatch.\n1647\t\n1648\t        :param environ: A WSGI environment.\n1649\t        :param start_response: A callable accepting a status code,\n1650\t            a list of headers, and an optional exception context to\n1651\t            start the response.\n1652\t        \"\"\"\n1653\t        ctx = self.request_context(environ)\n1654\t        error: BaseException | None = None\n1655\t        try:\n1656\t            try:\n1657\t                ctx.push()\n1658\t                response = self.full_dispatch_request(ctx)\n1659\t            except Exception as e:\n1660\t                error = e\n1661\t                response = self.handle_exception(ctx, e)\n1662\t            except:\n1663\t                error = sys.exc_info()[1]\n1664\t                raise\n1665\t            return response(environ, start_response)\n1666\t        finally:\n1667\t            if \"werkzeug.debug.preserve_context\" in environ:\n1668\t                environ[\"werkzeug.debug.preserve_context\"](ctx)\n1669\t\n1670\t            if (\n1671\t                error is not None\n1672\t                and self.should_ignore_error is not None\n1673\t                and self.should_ignore_error(error)\n1674\t            ):\n1675\t                error = None\n1676\t\n1677\t            ctx.pop(error)\n",
+      "stderr": ""
+    },
+    {
+      "id": "flask-overview",
+      "repo": "flask",
+      "kind": "orientation",
+      "intent": "orient",
+      "calls": 1,
+      "commands": [
+        [
+          "/agent/repos/speedread/target/fast/speedread",
+          "--root",
+          "/tmp/bench/flask",
+          "--budget",
+          "8000",
+          "map",
+          "--symbols"
+        ]
+      ],
+      "strict_passes": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "strict_pass": true,
+      "grader_fraction": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tokens": [
+        3027,
+        3027,
+        3027,
+        3027,
+        3027
+      ],
+      "tokens_median": 3027.0,
+      "tokens_min": 3027,
+      "tokens_max": 3027,
+      "latency_s": [
+        0.030648226999915096,
+        0.02404629600005137,
+        0.02315159499994479,
+        0.023125034999907257,
+        0.028298838999944564
+      ],
+      "latency_median_s": 0.02404629600005137,
+      "latency_min_s": 0.023125034999907257,
+      "latency_max_s": 0.030648226999915096,
+      "latency_cold_s": 0.030648226999915096,
+      "rss_kb": [
+        99780,
+        99780,
+        99780,
+        99780,
+        99780
+      ],
+      "rss_median_kb": 99780.0,
+      "rss_min_kb": 99780,
+      "rss_max_kb": 99780,
+      "rss_cold_kb": 99780,
+      "errors": 0,
+      "deterministic": true,
+      "stdout_sha256": "2f210b53fbf8f5216b69431dcb67834912e548dfb79171f67f89cb547c046aa7",
+      "stdout": "==> ./ (236 files, 1.7 MB; .gitignore respected)\n.devcontainer/\n  devcontainer.json 17L: name, image, customizations, onCreateCommand\n  on-create-command.sh 7L\n.github/\n  ISSUE_TEMPLATE/\n    bug-report.md 27L\n    config.yml 11L: blank_issues_enabled, contact_links\n    feature-request.md 15L\n  workflows/\n    lock.yaml 26L: name, on, permissions, concurrency, jobs\n    pre-commit.yaml 29L: name, on, permissions, concurrency, jobs\n    publish.yaml 62L: name, on, permissions, concurrency, jobs\n    tests.yaml 64L: name, on, permissions, concurrency, jobs\n    zizmor.yaml 22L: name, on, permissions, concurrency, jobs\n  pull_request_template.md 25L\ndocs/\n  _static/\n    debugger.png 203.0 KB\n    flask-icon.svg 15L\n    flask-logo.svg 17L\n    flask-name.svg 23L\n    pycharm-run-config.png 97.3 KB\n  deploying/\n    apache-httpd.rst 66L\n    asgi.rst 27L\n    eventlet.rst 8L\n    gevent.rst 76L\n    gunicorn.rst 116L\n    index.rst 78L\n    mod_wsgi.rst 94L\n    nginx.rst 69L\n    proxy_fix.rst 33L\n    uwsgi.rst 143L\n    waitress.rst 75L\n  patterns/\n    appdispatch.rst 189L\n    appfactories.rst 118L\n    caching.rst 16L\n    celery.rst 242L\n    deferredcallbacks.rst 44L\n    favicon.rst 56L\n    fileuploads.rst 182L\n    flashing.rst 148L\n    index.rst 40L\n    javascript.rst 261L\n    jquery.rst 6L\n    lazyloading.rst 109L\n    methodoverrides.rst 42L\n    mongoengine.rst 102L\n    \u22ef 11 files more (.rst 11)\n  tutorial/\n    blog.rst 336L\n    database.rst 219L\n    deploy.rst 111L\n    factory.rst 159L\n    flaskr_edit.png 12.9 KB\n    flaskr_index.png 11.4 KB\n    flaskr_login.png 7.3 KB\n    index.rst 64L\n    install.rst 89L\n    layout.rst 105L\n    next.rst 38L\n    static.rst 72L\n    templates.rst 187L\n    tests.rst 559L\n    views.rst 10.7 KB\n  Makefile 20L\n  api.rst 708L\n  appcontext.rst 187L\n  async-await.rst 119L\n  blueprints.rst 315L\n  changes.rst 4L\n  cli.rst 556L\n  conf.py 101L: github_link, setup\n  config.rst 839L\n  contributing.rst 8L\n  debugging.rst 99L\n  design.rst 229L\n  errorhandling.rst 523L\n  extensiondev.rst 305L\n  \u22ef 17 files more (.rst 16, .bat 1)\nexamples/\n  celery/\n    src/task_app/\n      templates/\n        index.html 108L\n      __init__.py 39L: create_app, celery_init_app\n      tasks.py 23L: add, block, process\n      views.py 38L: result, add, block, process\n    README.md 27L: Background Tasks with Celery\n    make_celery.py 4L\n    pyproject.toml 22L: project, build-system, module, ruff, isort\n    requirements.txt 58L\n  javascript/\n    js_example/\n      templates/\n        base.html 33L\n        fetch.html 33L\n        jquery.html 27L\n        xhr.html 29L\n      __init__.py 5L\n      views.py 18L: index, add\n    tests/\n      conftest.py 15L: fixture_app, client\n      test_js_example.py 27L: test_index, test_add\n    .gitignore 14L\n    LICENSE.txt 28L\n    README.rst 48L\n    pyproject.toml 38L: project, urls, optional-dependencies, build-system, module, ini_options, run, ruff, isort\n  tutorial/\n    flaskr/\n      static/\n        style.css 134L\n      templates/\n        auth/\n          login.html 15L\n          register.html 15L\n        blog/\n          create.html 15L\n          index.html 28L\n          update.html 19L\n        base.html 24L\n      __init__.py 48L: create_app\n      auth.py 116L: login_required, load_logged_in_user, register, login, logout\n      blog.py 125L: index, get_post, create, update, delete\n      db.py 56L: get_db, close_db, init_db, init_db_command, init_app\n      schema.sql 20L\n    tests/\n      conftest.py 62L: app, client, runner, AuthActions, auth\n      data.sql 8L\n      test_auth.py 69L: test_register, test_register_validate_input, test_login, test_login_validate_input, test_logout\n      test_blog.py 83L: test_index, test_login_required, test_author_required, test_exists_required, test_create, test_update, test_create_update_validate, test_delete\n      test_db.py 29L: test_get_close_db, test_init_db_command\n      test_factory.py 12L: test_config, test_hello\n    .gitignore 14L\n    LICENSE.txt 28L\n    README.rst 68L\n    pyproject.toml 45L: project, urls, optional-dependencies, build-system, module, sdist, ini_options, run, ruff, isort\nsrc/flask/\n  json/\n    __init__.py 170L: dumps, dump, loads, load, jsonify\n    provider.py 215L: JSONProvider, _default, DefaultJSONProvider\n    tag.py 327L: JSONTag, TagDict, PassDict, TagTuple, PassList, TagBytes, TagMarkup, TagUUID, TagDateTime, TaggedJSONSerializer\n  sansio/\n    README.md 6L: Sans-IO\n    app.py 1014L: _make_timedelta, App\n    blueprints.py 692L: BlueprintSetupState, Blueprint\n    scaffold.py 800L: setupmethod, Scaffold, _endpoint_from_view_func, _find_package_path, find_package\n  __init__.py 39L\n  __main__.py 3L\n  app.py 1686L: _make_timedelta, remove_ctx, add_ctx, Flask\n  blueprints.py 128L: Blueprint\n  cli.py 1126L: NoAppException, find_best_app, _called_with_wrong_args, find_app_by_string, prepare_import, locate_app, locate_app, locate_app, get_version, ScriptInfo, +16\n  config.py 367L: ConfigAttribute, Config\n  ctx.py 540L: _AppCtxGlobals, after_this_request, copy_current_request_context, has_request_context, has_app_context, AppContext, __getattr__\n  debughelpers.py 179L: UnexpectedUnicodeError, DebugFilesKeyError, FormDataRoutingRedirect, attach_enctype_error_multidict, _dump_loader_info, explain_template_loading_attempts\n  globals.py 77L: ProxyMixin, FlaskProxy, AppContextProxy, _AppCtxGlobalsProxy, RequestProxy, SessionMixinProxy, __getattr__\n  helpers.py 679L: get_debug_flag, get_load_dotenv, stream_with_context, stream_with_context, stream_with_context, make_response, url_for, redirect, abort, get_template_attribute, +8\n  logging.py 79L: wsgi_errors_stream, has_level_handler, create_logger\n  py.typed 0L\n  sessions.py 385L: SessionMixin, SecureCookieSession, NullSession, SessionInterface, _lazy_sha1, SecureCookieSessionInterface\n  signals.py 17L\n  \u22ef 5 files more (.py 5)\ntests/\n  static/\n    config.json 4L: TEST_KEY, SECRET_KEY\n    config.toml 2L\n    index.html 1L\n  templates/\n    nested/\n      nested.txt 1L\n    _macro.html 1L\n    context_template.html 1L\n    escaping_template.html 6L\n    mail.txt 1L\n    non_escaping_template.txt 8L\n    simple_template.html 1L\n    template_filter.html 1L\n    template_test.html 3L\n  test_apps/\n    blueprintapp/\n      apps/\n        admin/\n          static/\n            css/\n              test.css 1L\n            test.txt 1L\n          templates/admin/\n            index.html 1L\n          __init__.py 20L: index, index2\n        frontend/\n          templates/frontend/\n            index.html 1L\n          __init__.py 14L: index, missing_template\n        __init__.py 0L\n      __init__.py 9L\n    cliapp/\n      inner1/\n        inner2/\n          __init__.py 0L\n          flask.py 3L\n        __init__.py 3L\n      __init__.py 0L\n      app.py 3L\n      factory.py 13L: create_app, create_app2, no_app\n      importerrorapp.py 5L\n      message.txt 1L\n      multiapp.py 4L\n    helloworld/\n      hello.py 8L: hello\n      wsgi.py 1L\n    subdomaintestmodule/\n      static/\n        hello.txt 1L\n      __init__.py 3L\n    .env 4L\n    .flaskenv 3L\n  type_check/\n    typing_app_decorators.py 32L: after_sync, after_async, before_sync, before_async, teardown_sync, teardown_async\n    typing_error_handler.py 33L: handle_400, handle_custom, handle_accept_base, handle_multiple\n    typing_route.py 112L: hello_str, hello_bytes, hello_json, hello_json_dict, hello_json_list, StatusJSON, typed_dict, hello_generator, hello_generator_expression, hello_iterator, +7\n  conftest.py 112L: _standard_os_environ, app, app_ctx, req_ctx, client, test_apps, leak_detector, modules_tmp_path, modules_tmp_path_prefix, site_packages, purge_module\n  test_appctx.py 259L: test_basic_url_generation, test_url_generation_requires_server_name, test_url_generation_without_context_fails, test_request_context_means_app_context, +11\n  test_async.py 145L: AppError, BlueprintError, AsyncView, AsyncMethodView, _async_app, test_async_route, test_async_error_handler, test_async_before_after_request\n  test_basic.py 1974L: test_options_work, test_options_on_multiple_rules, test_method_route, test_method_route_no_methods, test_provide_automatic_options_attr_disable, +85\n  test_blueprints.py 1115L: test_blueprint_specific_error_handling, test_blueprint_specific_user_error_handling, test_blueprint_app_error_handling, test_blueprint_prefix_slash, +43\n  test_cli.py 703L: runner, test_cli_name, test_find_best_app, test_prepare_import, test_locate_app, test_locate_app_raises, test_locate_app_suppress_raise, test_get_version, +23\n  test_config.py 250L: common_object_test, test_config_from_pyfile, test_config_from_object, test_config_from_file_json, test_config_from_file_toml, test_from_prefixed_env, +12\n  test_converters.py 42L: test_custom_converters, test_context_available\n  test_helpers.py 377L: FakePath, PyBytesIO, TestSendfile, TestUrlFor, test_redirect_no_app, test_redirect_with_app, test_abort_no_app, test_app_aborter_class, test_abort_with_app, +6\n  test_instance_config.py 111L: test_explicit_instance_paths, test_uninstalled_module_paths, test_uninstalled_package_paths, test_uninstalled_namespace_paths, test_installed_module_paths, +2\n  test_json.py 346L: test_bad_request_debug_message, test_json_bad_requests, test_json_custom_mimetypes, test_json_as_unicode, test_json_dump_to_file, test_jsonify_basic_types, +13\n  test_json_tag.py 86L: test_dump_load_unchanged, test_duplicate_tag, test_custom_tag, test_tag_interface, test_tag_order\n  test_logging.py 98L: reset_logging, test_logger, test_logger_debug, test_existing_handler, test_wsgi_errors_stream, test_has_level_handler, test_log_view_exception\n  test_regression.py 30L: test_aborting\n  \u22ef 9 files more (.py 9)\n.editorconfig 13L\n.gitignore 8L\n.pre-commit-config.yaml 24L: repos\n.readthedocs.yaml 10L: version, build\nCHANGES.rst 1667L\nLICENSE.txt 28L\nREADME.md 53L: Flask\npyproject.toml 272L: project, optional-dependencies, dependency-groups, urls, scripts, build-system, module, sdist, uv, ini_options, run, paths, report, mypy, overrides, ruff, lint, +14\nuv.lock 1644L: package, package, package, package, package, package, package, package, package, package, package, package, package, package, package, package, package, package, +65\n",
+      "stderr": ""
+    },
+    {
+      "id": "gin-go-version",
+      "repo": "gin",
+      "kind": "tiny file",
+      "intent": "read",
+      "calls": 1,
+      "commands": [
+        [
+          "/agent/repos/speedread/target/fast/speedread",
+          "--root",
+          "/tmp/bench/gin",
+          "--budget",
+          "8000",
+          "read",
+          "go.mod"
+        ]
+      ],
+      "strict_passes": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "strict_pass": true,
+      "grader_fraction": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tokens": [
+        657,
+        657,
+        657,
+        657,
+        657
+      ],
+      "tokens_median": 657.0,
+      "tokens_min": 657,
+      "tokens_max": 657,
+      "latency_s": [
+        0.002313087000061387,
+        0.0022067799999376803,
+        0.0026038270000299235,
+        0.0021326569999473577,
+        0.0019073949999892648
+      ],
+      "latency_median_s": 0.0022067799999376803,
+      "latency_min_s": 0.0019073949999892648,
+      "latency_max_s": 0.0026038270000299235,
+      "latency_cold_s": 0.002313087000061387,
+      "rss_kb": [
+        99780,
+        99780,
+        99780,
+        99780,
+        99780
+      ],
+      "rss_median_kb": 99780.0,
+      "rss_min_kb": 99780,
+      "rss_max_kb": 99780,
+      "rss_cold_kb": 99780,
+      "errors": 0,
+      "deterministic": true,
+      "stdout_sha256": "3761a40584e3cbc53e9e94d4582a79bfc4a2c4987d3416c95f75d469a94ad5dd",
+      "stdout": "==> go.mod @cc655f3b0451244e (41 lines)\n1\tmodule github.com/gin-gonic/gin\n2\t\n3\tgo 1.26.0\n4\t\n5\trequire (\n6\t\tgithub.com/bytedance/sonic v1.15.0\n7\t\tgithub.com/gin-contrib/sse v1.1.0\n8\t\tgithub.com/go-playground/validator/v10 v10.30.3\n9\t\tgithub.com/goccy/go-json v0.10.6\n10\t\tgithub.com/goccy/go-yaml v1.19.2\n11\t\tgithub.com/json-iterator/go v1.1.12\n12\t\tgithub.com/mattn/go-isatty v0.0.20\n13\t\tgithub.com/modern-go/reflect2 v1.0.2\n14\t\tgithub.com/pelletier/go-toml/v2 v2.2.4\n15\t\tgithub.com/quic-go/quic-go v0.60.0\n16\t\tgithub.com/stretchr/testify v1.12.1\n17\t\tgithub.com/ugorji/go/codec v1.3.1\n18\t\tgo.mongodb.org/mongo-driver/v2 v2.5.0\n19\t\tgolang.org/x/net v0.57.0\n20\t\tgoogle.golang.org/protobuf v1.36.11\n21\t)\n22\t\n23\trequire (\n24\t\tgithub.com/bytedance/gopkg v0.1.3 // indirect\n25\t\tgithub.com/bytedance/sonic/loader v0.5.0 // indirect\n26\t\tgithub.com/cloudwego/base64x v0.1.6 // indirect\n27\t\tgithub.com/gabriel-vasile/mimetype v1.4.13 // indirect\n28\t\tgithub.com/go-playground/locales v0.14.1 // indirect\n29\t\tgithub.com/go-playground/universal-translator v0.18.1 // indirect\n30\t\tgithub.com/klauspost/cpuid/v2 v2.3.0 // indirect\n31\t\tgithub.com/leodido/go-urn v1.4.0 // indirect\n32\t\tgithub.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect\n33\t\tgithub.com/quic-go/qpack v0.6.0 // indirect\n34\t\tgithub.com/twitchyliquid64/golang-asm v0.15.1 // indirect\n35\t\tgo.uber.org/mock v0.6.0 // indirect\n36\t\tgo.yaml.in/yaml/v3 v3.0.5 // indirect\n37\t\tgolang.org/x/arch v0.25.0 // indirect\n38\t\tgolang.org/x/crypto v0.56.0 // indirect\n39\t\tgolang.org/x/sys v0.47.0 // indirect\n40\t\tgolang.org/x/text v0.41.0 // indirect\n41\t)\n",
+      "stderr": ""
+    },
+    {
+      "id": "gin-abort-signature",
+      "repo": "gin",
+      "kind": "named file and symbol; signature",
+      "intent": "search",
+      "calls": 1,
+      "commands": [
+        [
+          "/agent/repos/speedread/target/fast/speedread",
+          "--root",
+          "/tmp/bench/gin",
+          "--budget",
+          "8000",
+          "search",
+          "AbortWithStatus",
+          "-F",
+          "-w",
+          "--output",
+          "symbols",
+          "context.go"
+        ]
+      ],
+      "strict_passes": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "strict_pass": true,
+      "grader_fraction": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tokens": [
+        240,
+        240,
+        240,
+        240,
+        240
+      ],
+      "tokens_median": 240.0,
+      "tokens_min": 240,
+      "tokens_max": 240,
+      "latency_s": [
+        0.007531037000035212,
+        0.0076965330000575705,
+        0.00810326000009809,
+        0.007989622999957646,
+        0.007722102000002451
+      ],
+      "latency_median_s": 0.007722102000002451,
+      "latency_min_s": 0.007531037000035212,
+      "latency_max_s": 0.00810326000009809,
+      "latency_cold_s": 0.007531037000035212,
+      "rss_kb": [
+        99780,
+        99780,
+        99780,
+        99780,
+        99780
+      ],
+      "rss_median_kb": 99780.0,
+      "rss_min_kb": 99780,
+      "rss_max_kb": 99780,
+      "rss_cold_kb": 99780,
+      "errors": 0,
+      "deterministic": true,
+      "stdout_sha256": "089eebefdb6adffdc145b57ffcc4228b0305983c5d026a4e44bdf16e248b1dbc",
+      "stdout": "5 matches in 1 file for /AbortWithStatus/\n==> context.go @f55710ccec704d85 (5 matches)\n[220-226] func (c *Context) AbortWithStatus(code int)\n220\t// AbortWithStatus calls `Abort()` and writes the headers with the specified status code.\n221\t// For example, a failed attempt to authenticate a request could use: context.AbortWithStatus(401).\n222\tfunc (c *Context) AbortWithStatus(code int) {\n223\t\tc.Status(code)\n224\t\tc.Writer.WriteHeaderNow()\n225\t\tc.Abort()\n226\t}\n[244-250] func (c *Context) AbortWithError(code int, err error) *Error\n244\t// AbortWithError calls `AbortWithStatus()` and `Error()` internally.\n245\t// This method stops the chain, writes the status code and pushes the specified error to `c.Errors`.\n246\t// See Context.Error() for more details.\n247\tfunc (c *Context) AbortWithError(code int, err error) *Error {\n248\t\tc.AbortWithStatus(code)\n249\t\treturn c.Error(err)\n250\t}\n",
+      "stderr": ""
+    },
+    {
+      "id": "gin-abort-callers",
+      "repo": "gin",
+      "kind": "call sites across files",
+      "intent": "relate",
+      "calls": 1,
+      "commands": [
+        [
+          "/agent/repos/speedread/target/fast/speedread",
+          "--root",
+          "/tmp/bench/gin",
+          "--budget",
+          "8000",
+          "trace",
+          "#AbortWithStatus",
+          "--direction",
+          "callers",
+          "--depth",
+          "1"
+        ]
+      ],
+      "strict_passes": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "strict_pass": true,
+      "grader_fraction": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tokens": [
+        555,
+        555,
+        555,
+        555,
+        555
+      ],
+      "tokens_median": 555.0,
+      "tokens_min": 555,
+      "tokens_max": 555,
+      "latency_s": [
+        0.040133874999924046,
+        0.0436758020000525,
+        0.03710076899994874,
+        0.0442220190000171,
+        0.0389367590000802
+      ],
+      "latency_median_s": 0.040133874999924046,
+      "latency_min_s": 0.03710076899994874,
+      "latency_max_s": 0.0442220190000171,
+      "latency_cold_s": 0.040133874999924046,
+      "rss_kb": [
+        99780,
+        99780,
+        99780,
+        99780,
+        99780
+      ],
+      "rss_median_kb": 99780.0,
+      "rss_min_kb": 99780,
+      "rss_max_kb": 99780,
+      "rss_cold_kb": 99780,
+      "errors": 0,
+      "deterministic": true,
+      "stdout_sha256": "7b29ec1c298ff034122f5686195a0ea911ad9c45a3407398806074ed9c69fc7f",
+      "stdout": "==> callers of Context.AbortWithStatus (context.go:220-226)\nfunc (c *Context) AbortWithStatus(code int)\n14 call sites in 14 functions, 11 inside closures \u00b7 syntactic: comments, strings and the definition excluded; \u03bb = inside a closure (may run later or never)\ncontext.go\n  [244-250] func (c *Context) AbortWithError(code int, err error) *Error\n    248\tc.AbortWithStatus(code)\nauth.go\n  [44-68] func BasicAuthForRealm(accounts Accounts, realm string) HandlerFunc\n    60\tc.AbortWithStatus(http.StatusUnauthorized)  \u03bb\n  [96-116] func BasicAuthForProxy(accounts Accounts, realm string) HandlerFunc\n    109\tc.AbortWithStatus(http.StatusProxyAuthRequired)  \u03bb\nrecovery.go\n  [109-116] func defaultHandleRecovery(c *Context, err any)\n    115\tc.AbortWithStatus(http.StatusInternalServerError)\ncontext_test.go\n  [2030-2043] func TestContextAbortWithStatus(t *testing.T)\n    2037\tc.AbortWithStatus(http.StatusUnauthorized)\nmiddleware_test.go\n  [159-183] func TestMiddlewareAbort(t *testing.T)\n    167\tc.AbortWithStatus(http.StatusUnauthorized)  \u03bb\n  [185-204] func TestMiddlewareAbortHandlersChainAndNext(t *testing.T)\n    191\tc.AbortWithStatus(http.StatusGone)  \u03bb\nrecovery_test.go\n  [19-48] func TestPanicClean(t *testing.T)\n    25\tc.AbortWithStatus(http.StatusBadRequest)  \u03bb\n  [78-90] func TestPanicWithAbort(t *testing.T)\n    83\tc.AbortWithStatus(http.StatusBadRequest)  \u03bb\n  [199-231] func TestCustomRecoveryWithWriter(t *testing.T)\n    205\tc.AbortWithStatus(http.StatusBadRequest)  \u03bb\n  [233-266] func TestCustomRecovery(t *testing.T)\n    240\tc.AbortWithStatus(http.StatusBadRequest)  \u03bb\n  [268-301] func TestRecoveryWithWriterWithCustomRecovery(t *testing.T)\n    275\tc.AbortWithStatus(http.StatusBadRequest)  \u03bb\nroutes_test.go\n  [625-690] func TestRouterNotFound(t *testing.T)\n    657\tc.AbortWithStatus(http.StatusNotFound)  \u03bb\n  [788-829] func TestRouteContextHoldsFullPath(t *testing.T)\n    812\tc.AbortWithStatus(http.StatusOK)  \u03bb\n",
+      "stderr": ""
+    },
+    {
+      "id": "gin-abort-who-calls",
+      "repo": "gin",
+      "kind": "direct callers",
+      "intent": "relate",
+      "calls": 1,
+      "commands": [
+        [
+          "/agent/repos/speedread/target/fast/speedread",
+          "--root",
+          "/tmp/bench/gin",
+          "--budget",
+          "8000",
+          "trace",
+          "Context.AbortWithStatus",
+          "--direction",
+          "callers",
+          "--depth",
+          "1"
+        ]
+      ],
+      "strict_passes": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "strict_pass": true,
+      "grader_fraction": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tokens": [
+        555,
+        555,
+        555,
+        555,
+        555
+      ],
+      "tokens_median": 555.0,
+      "tokens_min": 555,
+      "tokens_max": 555,
+      "latency_s": [
+        0.03867407899997488,
+        0.03821903400000792,
+        0.03947130799997467,
+        0.04076328899998316,
+        0.0395403359999591
+      ],
+      "latency_median_s": 0.03947130799997467,
+      "latency_min_s": 0.03821903400000792,
+      "latency_max_s": 0.04076328899998316,
+      "latency_cold_s": 0.03867407899997488,
+      "rss_kb": [
+        99780,
+        99780,
+        99780,
+        99780,
+        99780
+      ],
+      "rss_median_kb": 99780.0,
+      "rss_min_kb": 99780,
+      "rss_max_kb": 99780,
+      "rss_cold_kb": 99780,
+      "errors": 0,
+      "deterministic": true,
+      "stdout_sha256": "7b29ec1c298ff034122f5686195a0ea911ad9c45a3407398806074ed9c69fc7f",
+      "stdout": "==> callers of Context.AbortWithStatus (context.go:220-226)\nfunc (c *Context) AbortWithStatus(code int)\n14 call sites in 14 functions, 11 inside closures \u00b7 syntactic: comments, strings and the definition excluded; \u03bb = inside a closure (may run later or never)\ncontext.go\n  [244-250] func (c *Context) AbortWithError(code int, err error) *Error\n    248\tc.AbortWithStatus(code)\nauth.go\n  [44-68] func BasicAuthForRealm(accounts Accounts, realm string) HandlerFunc\n    60\tc.AbortWithStatus(http.StatusUnauthorized)  \u03bb\n  [96-116] func BasicAuthForProxy(accounts Accounts, realm string) HandlerFunc\n    109\tc.AbortWithStatus(http.StatusProxyAuthRequired)  \u03bb\nrecovery.go\n  [109-116] func defaultHandleRecovery(c *Context, err any)\n    115\tc.AbortWithStatus(http.StatusInternalServerError)\ncontext_test.go\n  [2030-2043] func TestContextAbortWithStatus(t *testing.T)\n    2037\tc.AbortWithStatus(http.StatusUnauthorized)\nmiddleware_test.go\n  [159-183] func TestMiddlewareAbort(t *testing.T)\n    167\tc.AbortWithStatus(http.StatusUnauthorized)  \u03bb\n  [185-204] func TestMiddlewareAbortHandlersChainAndNext(t *testing.T)\n    191\tc.AbortWithStatus(http.StatusGone)  \u03bb\nrecovery_test.go\n  [19-48] func TestPanicClean(t *testing.T)\n    25\tc.AbortWithStatus(http.StatusBadRequest)  \u03bb\n  [78-90] func TestPanicWithAbort(t *testing.T)\n    83\tc.AbortWithStatus(http.StatusBadRequest)  \u03bb\n  [199-231] func TestCustomRecoveryWithWriter(t *testing.T)\n    205\tc.AbortWithStatus(http.StatusBadRequest)  \u03bb\n  [233-266] func TestCustomRecovery(t *testing.T)\n    240\tc.AbortWithStatus(http.StatusBadRequest)  \u03bb\n  [268-301] func TestRecoveryWithWriterWithCustomRecovery(t *testing.T)\n    275\tc.AbortWithStatus(http.StatusBadRequest)  \u03bb\nroutes_test.go\n  [625-690] func TestRouterNotFound(t *testing.T)\n    657\tc.AbortWithStatus(http.StatusNotFound)  \u03bb\n  [788-829] func TestRouteContextHoldsFullPath(t *testing.T)\n    812\tc.AbortWithStatus(http.StatusOK)  \u03bb\n",
+      "stderr": ""
+    },
+    {
+      "id": "gin-render-methods",
+      "repo": "gin",
+      "kind": "find a definition and its body",
+      "intent": "search",
+      "calls": 1,
+      "commands": [
+        [
+          "/agent/repos/speedread/target/fast/speedread",
+          "--root",
+          "/tmp/bench/gin",
+          "--budget",
+          "8000",
+          "search",
+          "(?:interface|type)\\s+Render\\b",
+          "--output",
+          "symbols"
+        ]
+      ],
+      "strict_passes": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "strict_pass": true,
+      "grader_fraction": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tokens": [
+        116,
+        116,
+        116,
+        116,
+        116
+      ],
+      "tokens_median": 116.0,
+      "tokens_min": 116,
+      "tokens_max": 116,
+      "latency_s": [
+        0.00594112800001767,
+        0.006104039999968336,
+        0.005776104999995368,
+        0.006708129999992707,
+        0.004757052000059048
+      ],
+      "latency_median_s": 0.00594112800001767,
+      "latency_min_s": 0.004757052000059048,
+      "latency_max_s": 0.006708129999992707,
+      "latency_cold_s": 0.00594112800001767,
+      "rss_kb": [
+        99780,
+        99780,
+        99780,
+        99780,
+        99780
+      ],
+      "rss_median_kb": 99780.0,
+      "rss_min_kb": 99780,
+      "rss_max_kb": 99780,
+      "rss_cold_kb": 99780,
+      "errors": 0,
+      "deterministic": true,
+      "stdout_sha256": "dd613ed987a7b680b43ad893b9d2af219b98e13851d8c72f775e158104ecacf0",
+      "stdout": "1 match in 1 file for /(?:interface|type)\\s+Render\\b/\n==> render/render.go @8b202fea2becd715 (1 match)\n[9-15] type Render\n9\t// Render interface is to be implemented by JSON, XML, HTML, YAML and so on.\n10\ttype Render interface {\n11\t\t// Render writes data with custom ContentType.\n12\t\tRender(http.ResponseWriter) error\n13\t\t// WriteContentType writes custom ContentType.\n14\t\tWriteContentType(w http.ResponseWriter)\n15\t}\n",
+      "stderr": ""
+    },
+    {
+      "id": "speedread-map-budget",
+      "repo": "speedread",
+      "kind": "named constant",
+      "intent": "search",
+      "calls": 1,
+      "commands": [
+        [
+          "/agent/repos/speedread/target/fast/speedread",
+          "--root",
+          "/agent/repos/speedread",
+          "--budget",
+          "8000",
+          "search",
+          "DEFAULT_MAP_BUDGET",
+          "-F",
+          "-w",
+          "--output",
+          "symbols"
+        ]
+      ],
+      "strict_passes": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "strict_pass": true,
+      "grader_fraction": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tokens": [
+        689,
+        689,
+        689,
+        689,
+        689
+      ],
+      "tokens_median": 689.0,
+      "tokens_min": 689,
+      "tokens_max": 689,
+      "latency_s": [
+        0.010543011999970986,
+        0.009407616000089547,
+        0.009789792999981728,
+        0.008913560999985748,
+        0.009947408000016367
+      ],
+      "latency_median_s": 0.009789792999981728,
+      "latency_min_s": 0.008913560999985748,
+      "latency_max_s": 0.010543011999970986,
+      "latency_cold_s": 0.010543011999970986,
+      "rss_kb": [
+        99780,
+        99780,
+        99780,
+        99780,
+        99780
+      ],
+      "rss_median_kb": 99780.0,
+      "rss_min_kb": 99780,
+      "rss_max_kb": 99780,
+      "rss_cold_kb": 99780,
+      "errors": 0,
+      "deterministic": true,
+      "stdout_sha256": "a29fa9fea0061601bb31b2ac203202f4aed12e549e0b359f8e896754d95bb9a8",
+      "stdout": "6 matches in 3 files for /DEFAULT_MAP_BUDGET/\n==> evals/context_tasks.json @a18fb9bb2d2601e0 (3 matches)\n[112-112] \"prompt\"\n112\t      \"prompt\": \"What integer is the default token budget constant DEFAULT_MAP_BUDGET for the map tool?\",\n[113-113] \"graders\"\n113\t      \"graders\": [\"DEFAULT_MAP_BUDGET\", \"\\\\b3000\\\\b\"],\n[114-116] \"anchors\"\n114\t      \"anchors\": [\n115\t        {\"file\": \"src/map.rs\", \"line\": 51, \"pattern\": \"pub const DEFAULT_MAP_BUDGET: usize = 3000;\"}\n116\t      ]\n==> src/main.rs @7a8731128f77592c (1 match)\n[272-497] fn run() -> anyhow::Result<()>\n428\t            let budget = cli_budget.or(Some(speedread::map::DEFAULT_MAP_BUDGET));\n==> src/map.rs @ed8db11c6f7a30db (2 matches)\n[50-51] pub const DEFAULT_MAP_BUDGET: usize = 3000;\n50\t/// Orientation should be cheap: `map` defaults to a smaller budget.\n51\tpub const DEFAULT_MAP_BUDGET: usize = 3000;\n[59-99] fn map_request(e: &Engine, req: &MapRequest) -> String\n59\tfn map_request(e: &Engine, req: &MapRequest) -> String {\n60\t    let budget = e.budget(Some(\n61\t        req.budget\n62\t            .unwrap_or(DEFAULT_MAP_BUDGET.min(e.cfg.default_budget)),\n63\t    ));\n64\t    let path = match &req.path {\n65\t        None => match e.ws.require_base() {\n66\t            Ok(p) => p,\n67\t            Err(msg) => return format!(\"map: {msg}\\n\"),\n68\t        },\n69\t        Some(p) => match e.ws.resolve(p) {\n70\t            Ok(p) => p,\n71\t            Err(PathError::NoBase(msg)) => return format!(\"map {p}: {msg}\\n\"),\n72\t            Err(PathError::NotFound(_)) => {\n73\t                let sugg = crate::workspace::suggest(p, &e.file_list(), 3);\n74\t                return if sugg.is_empty() {\n75\t                    format!(\"Not found: {p}\\n\")\n76\t                } else {\n77\t                    format!(\"Not found: {p}. Did you mean: {}\\n\", sugg.join(\", \"))\n78\t                };\n79\t            }\n80\t            Err(PathError::Outside(p)) => {\n81\t                return format!(\n82\t                    \"Outside the workspace: {} ({})\\n\",\n83\t                    p.display(),\n84\t                    crate::workspace::FENCE_HINT\n85\t                );\n86\t            }\n87\t        },\n88\t    };\n89\t    if path.is_file() {\n90\t        let r = crate::read::ReadRequest {\n91\t            targets: vec![path.to_string_lossy().into_owned()],\n92\t            mode: crate::read::Mode::Outline,\n93\t            budget: Some(budget),\n94\t            numbers: true,\n95\t        };\n96\t        return crate::read::read(e, &r);\n97\t    }\n98\t    tree(e, &path, budget, req.symbols, &req.globs, req.depth)\n99\t}\n",
+      "stderr": ""
+    },
+    {
+      "id": "chromium-filepath",
+      "repo": "chromium",
+      "kind": "definition among many mentions, large tree",
+      "intent": "search",
+      "calls": 1,
+      "commands": [
+        [
+          "/agent/repos/speedread/target/fast/speedread",
+          "--root",
+          "/tmp/bench/chromium-subset",
+          "--budget",
+          "8000",
+          "search",
+          "class\\s+(?:\\w+\\s+)*FilePath\\b",
+          "--output",
+          "matches"
+        ]
+      ],
+      "strict_passes": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "strict_pass": true,
+      "grader_fraction": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tokens": [
+        1474,
+        1474,
+        1474,
+        1474,
+        1474
+      ],
+      "tokens_median": 1474.0,
+      "tokens_min": 1474,
+      "tokens_max": 1474,
+      "latency_s": [
+        0.03784388400003991,
+        0.038850933000048826,
+        0.03801537100002861,
+        0.039796147000060955,
+        0.037057817000004434
+      ],
+      "latency_median_s": 0.03801537100002861,
+      "latency_min_s": 0.037057817000004434,
+      "latency_max_s": 0.039796147000060955,
+      "latency_cold_s": 0.03784388400003991,
+      "rss_kb": [
+        99780,
+        99780,
+        99780,
+        99780,
+        99780
+      ],
+      "rss_median_kb": 99780.0,
+      "rss_min_kb": 99780,
+      "rss_max_kb": 99780,
+      "rss_cold_kb": 99780,
+      "errors": 0,
+      "deterministic": true,
+      "stdout_sha256": "02a53be9a01727d708ffaa7b2df7bb5759e2b34089e62042d61f54035e27bbbb",
+      "stdout": "40 matches in 39 files for /class\\s+(?:\\w+\\s+)*FilePath\\b/\n==> base/android/path_utils.h @49193d355d6af052 (1 match)\n[14-61] namespace base\n16\tclass FilePath;\n==> base/apple/backup_util.h @ec885ba40ef5f5e0 (1 match)\n[10-12] namespace base\n11\tclass FilePath;\n==> base/apple/bundle_locations.h @4dc2ffbdf5f3f185 (1 match)\n[15-17] namespace base\n16\tclass FilePath;\n==> base/apple/foundation_util.h @32f00dc069b8389d (1 match)\n[29-31] namespace base\n30\tclass FilePath;\n==> base/command_line.h @22fc6189a4bb5fe9 (1 match)\n[38-359] namespace base\n41\tclass FilePath;\n==> base/file_version_info.h @4b5665618a96aab2 (1 match)\n[18-20] namespace base\n19\tclass FilePath;\n==> base/files/block_tests_writing_to_special_dirs.h @eb5781f4bb4ee4e5 (1 match)\n[14-53] namespace base\n16\tclass FilePath;\n==> base/files/file_path.h @56de2c4fe295c196 (1 match)\n[160-553] class BASE_EXPORT FilePath (in base)\n162\tclass BASE_EXPORT FilePath {\n==> base/files/file_path_watcher.h @e1c65cc456dce6fc (1 match)\n[27-249] class BASE_EXPORT FilePathWatcher (in base)\n27\t// This class lets you register interest in changes on a FilePath.\n==> base/files/memory_mapped_file.h @a19395681b900953 (1 match)\n[23-163] namespace base\n25\tclass FilePath;\n==> base/i18n/rtl.h @a7f65b16ec18499f (1 match)\n[15-138] namespace base\n17\tclass FilePath;\n==> base/json/values_util.h @3f5f6c3566f6a18d (1 match)\n[13-59] namespace base\n14\tclass FilePath;\n==> base/mac/mac_util.h @0d20c499d68210a9 (1 match)\n[18-20] namespace base\n19\tclass FilePath;\n==> base/metrics/persistent_histogram_allocator.h @ea8970baa7f9cb2f (1 match)\n[27-379] namespace base\n30\tclass FilePath;\n==> base/nix/mime_util_xdg.h @c0aa7f9394b008af (1 match)\n[16-56] namespace base\n18\tclass FilePath;\n==> base/nix/xdg_util.h @08c6d1ba16455ef9 (1 match)\n[19-221] namespace base\n23\tclass FilePath;\n==> base/path_service.h @289efc216e190de7 (1 match)\n[13-95] namespace base\n15\tclass FilePath;\n==> base/process/process_handle.h @a949088ff9da11db (1 match)\n[25-130] namespace base\n27\tclass FilePath;\n==> base/scoped_native_library.h @ad8c59c2650e57ac (1 match)\n[12-62] namespace base\n14\tclass FilePath;\n==> base/system/sys_info.h @5f8e65c34994a719 (1 match)\n[31-437] namespace base\n54\tclass FilePath;\n==> base/test/android/content_uri_test_utils.h @aef7bc6f657ee4b9 (1 match)\n[10-44] namespace base\n11\tclass FilePath;\n==> base/test/gtest_util.h @297bdfbea77c5981 (1 match)\n[208-248] namespace base\n210\tclass FilePath;\n==> base/test/gtest_xml_unittest_result_printer.h @2a215cb19b9f86c9 (1 match)\n[17-82] namespace base\n19\tclass FilePath;\n==> base/test/gtest_xml_util.h @993b0548044284fd (1 match)\n[10-23] namespace base\n12\tclass FilePath;\n==> base/test/launcher/test_launcher_test_utils.h @8d9a2173f34afd83 (1 match)\n[16-56] namespace base\n18\tclass FilePath;\n==> base/test/launcher/test_launcher_tracer.h @424721e8e179ccfc (1 match)\n[15-57] namespace base\n17\tclass FilePath;\n==> base/test/launcher/test_results_tracker.h @ed0b97c8410fec67 (1 match)\n[20-195] namespace base\n23\tclass FilePath;\n==> base/test/perf_log.h @82ec8255fd972d7f (1 match)\n[8-22] namespace base\n10\tclass FilePath;\n==> base/test/scoped_path_override.h @cc2b3957d730bba9 (1 match)\n[12-53] namespace base\n14\tclass FilePath;\n==> base/test/test_support_android.h @111bc0506f9431f2 (1 match)\n[10-24] namespace base\n12\tclass FilePath;\n==> base/threading/thread_restrictions.h @9ecb33ef2711245a (2 matches)\n[147-155] namespace base\n150\tclass FilePath;\n[470-1049] namespace base\n514\tclass FilePath;\n==> base/win/security_util.h @6cb562ec2164f765 (1 match)\n[15-64] namespace base\n17\tclass FilePath;\n==> content/browser/child_process_launcher_helper_posix.h @403bcbcd359bf0a4 (1 match)\n[17-20] namespace base\n19\tclass FilePath;\n==> content/browser/renderer_host/media/aec_dump_manager_impl.h @63b293bcf9bc0fd0 (1 match)\n[16-19] namespace base\n18\tclass FilePath;\n==> content/browser/sandbox_parameters_mac.h @b10947c8d66d46bf (1 match)\n[11-14] namespace base\n13\tclass FilePath;\n==> content/browser/storage_partition_impl_map.h @222640af78f83146 (1 match)\n[22-25] namespace base\n23\tclass FilePath;\n==> net/base/file_stream.h @3ece27ca939164a4 (1 match)\n[26-29] namespace base\n27\tclass FilePath;\n==> net/base/file_stream_context.h @1596d7669147df2f (1 match)\n[47-49] namespace base\n48\tclass FilePath;\n==> net/base/filename_util.h @8e84aeddf1039945 (1 match)\n[15-17] namespace base\n16\tclass FilePath;\n",
+      "stderr": ""
+    },
+    {
+      "id": "chromium-basename",
+      "repo": "chromium",
+      "kind": "named header and method, large file",
+      "intent": "search",
+      "calls": 1,
+      "commands": [
+        [
+          "/agent/repos/speedread/target/fast/speedread",
+          "--root",
+          "/tmp/bench/chromium-subset",
+          "--budget",
+          "8000",
+          "search",
+          "BaseName",
+          "-F",
+          "-w",
+          "--output",
+          "symbols",
+          "base/files/file_path.h"
+        ]
+      ],
+      "strict_passes": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "strict_pass": true,
+      "grader_fraction": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tokens": [
+        159,
+        159,
+        159,
+        159,
+        159
+      ],
+      "tokens_median": 159.0,
+      "tokens_min": 159,
+      "tokens_max": 159,
+      "latency_s": [
+        0.004281237999975929,
+        0.005150337000031868,
+        0.0047604970000065805,
+        0.004653490000009697,
+        0.0046669070000007196
+      ],
+      "latency_median_s": 0.0046669070000007196,
+      "latency_min_s": 0.004281237999975929,
+      "latency_max_s": 0.005150337000031868,
+      "latency_cold_s": 0.004281237999975929,
+      "rss_kb": [
+        99780,
+        99780,
+        99780,
+        99780,
+        99780
+      ],
+      "rss_median_kb": 99780.0,
+      "rss_min_kb": 99780,
+      "rss_max_kb": 99780,
+      "rss_cold_kb": 99780,
+      "errors": 0,
+      "deterministic": true,
+      "stdout_sha256": "8370f12f1a56c068685d9385dcca1e0e56ecd8f2c928d22e9de0307a5f26d98c",
+      "stdout": "7 matches in 1 file for /BaseName/\n==> base/files/file_path.h @56de2c4fe295c196 (7 matches)\n41\t// final path component (BaseName), and appending a relative pathname string\n[160-553] class BASE_EXPORT FilePath (in base)\n236\t  // and BaseName().value() on each child component.\n275\t  // this is the only situation in which BaseName will return an absolute path.\n276\t  [[nodiscard]] FilePath BaseName() const;\n328\t  // extension.  Returns \"\" if BaseName() == \".\" or \"..\".\n346\t  // |extension| is empty. Returns \"\" if BaseName() == \".\" or \"..\".\n363\t  // Returns \"\" if BaseName() == \".\" or \"..\".\n",
+      "stderr": ""
+    }
+  ],
+  "profile": [
+    {
+      "id": "chromium-filepath",
+      "cmd": [
+        "/agent/repos/speedread/target/fast/speedread",
+        "--root",
+        "/tmp/bench/chromium-subset",
+        "--budget",
+        "8000",
+        "search",
+        "class\\s+(?:\\w+\\s+)*FilePath\\b",
+        "--output",
+        "matches"
+      ],
+      "seconds": 0.03914044099997227,
+      "exit": 0,
+      "stdout_tokens": 1474,
+      "stderr": "speedread-stats walks=1 entries=5712 stopped=0 cancelled=0\n",
+      "note": "not included in the N-run medians"
+    }
+  ],
+  "aggregate": {
+    "questions": 11,
+    "strict_pass": 11,
+    "strict_pass_rate": 1.0,
+    "calls_mean": 1.0,
+    "calls_per_answered": 1.0,
+    "tokens_median_of_question_medians": 555.0,
+    "tokens_mean_per_answered": 945.4545454545455,
+    "tokens_median_per_answered": 555.0,
+    "latency_median_of_question_medians_s": 0.00788774900001954,
+    "rss_median_of_question_medians_kb": 99780.0,
+    "rss_max_of_question_max_kb": 99780,
+    "errors": 0,
+    "nondeterministic": []
+  }
+}

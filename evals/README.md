@@ -26,6 +26,7 @@ graders fixed when transcript review showed them wrong. Results are in
 | 3. Agent Q&A | Same model + harness answering code questions: accuracy, tokens, cost, time | real agent, capability | [`agent_eval.py`](agent_eval.py), [`agent_tasks.json`](agent_tasks.json) |
 | 3b. Agent relationships | Same, for callers, callees and implementations: does `trace` get used, and does it pay? | real agent, capability | [`agent_eval.py`](agent_eval.py), [`relationship_tasks.json`](relationship_tasks.json) |
 | 4. Agent coding | Same model + harness fixing real bugs: tests pass? at what cost? is the compression ever unsafe? does the agent even use the tool? | real agent, capability | [`coding_eval.py`](coding_eval.py), [`coding_tasks.json`](coding_tasks.json) |
+| 5. Context tool | One natural-language question: does `context` match a fixed four-tool policy on sufficiency, calls, result tokens, latency, and peak RSS? | deterministic policy, not a live model | [`context_eval.py`](context_eval.py), [`context_tasks.json`](context_tasks.json) |
 
 ## Suite 1 — tool scenarios (regression)
 
@@ -159,6 +160,10 @@ Reading transcripts, not just scores, found three problems that scores alone hid
 - Suite 3 ran with speedread's first three tools, before `trace`, symbol diffs and
   the content-aware estimator existed. Suites 3b and 4 ran with the final server.
 
+## Suite 5 — context tool (deterministic policy)
+
+Eleven questions with regex graders and file anchors, pinned to flask `49943b5`, gin `0f09c3a`, this repo at `b32e1dc` for the constant anchor, and a 5,712-file sparse snapshot of Chromium `8c027380` (`base`, `net/base`, `content/browser/renderer_host`). The `quad` arm is a fixed policy over `map` / `search` / `trace` / `read`. The `context` arm is one `speedread context` call, scored with the same graders. There is no live model in this suite: success means the tool output contains the graded facts. Design, the decision rule, and the quad baseline: [`docs/design/context-tool.md`](../docs/design/context-tool.md). Raw quad run: [`results/context-baseline.json`](results/context-baseline.json).
+
 ## Reproduce
 
 Before you start:
@@ -175,6 +180,7 @@ python3 evals/agent_eval.py  --bench <bench> --tasks evals/relationship_tasks.js
 python3 evals/coding_eval.py --bench <bench> --venvs <venvs> --verify
 python3 evals/coding_eval.py --bench <bench> --venvs <venvs> --trials 2
 python3 evals/stats.py evals/results/<run>      # bootstrap intervals, per-task wins
+python3 evals/context_eval.py --bench <bench> --self . --speedread target/fast/speedread --arm quad --runs 5 --json evals/results/context-baseline.json
 ```
 
 Agent suites need [GitHub Copilot CLI](https://github.com/github/copilot-cli)

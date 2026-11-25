@@ -1,0 +1,140 @@
+{
+  "suite": "context-tool",
+  "description": "Fixed questions for the four-tool policy (quad) versus the context tool. Graders check that the tool output contains the facts (information sufficiency), the same kind of check as Suite 1. Anchors are checked against the files before any timed run so a wrong checkout cannot be scored.",
+  "budget": 8000,
+  "decision": "Adopt context if its strict pass rate on this set is not below quad, its median result tokens are not higher than quad by more than quad's run-to-run range, and its external call count is less than or equal to quad. A median latency increase above 50% or a peak RSS above 2x on the chromium questions is a negative perf result, not a win. A gap smaller than the 5-run range is no measurable difference.",
+  "repos": {
+    "flask": {
+      "commit": "49943b5a94413a530761350f04e896f76e8d620e",
+      "dir": "flask"
+    },
+    "gin": {
+      "commit": "0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646",
+      "dir": "gin"
+    },
+    "speedread": {
+      "commit": "b32e1dc3e2df1a3b78f8db0eec04d8356e98a2c7",
+      "dir": "."
+    },
+    "chromium": {
+      "commit": "8c02738014f004d4917273d70a6596094938f870",
+      "dir": "chromium-subset",
+      "note": "Stable snapshot of a sparse checkout of github.com/chromium/chromium at this commit: cones base, net/base, and content/browser/renderer_host (5712 files, about 72 MiB). Not a depot_tools Chromium tree and not third_party. A full working-tree checkout of the same commit was still downloading blobs when this set was frozen; the snapshot was copied so runs would not race that checkout."
+    }
+  },
+  "tasks": [
+    {
+      "id": "flask-shell-keys",
+      "repo": "flask",
+      "kind": "named file and symbol; body fact",
+      "prompt": "In src/flask/app.py, what keys does Flask.make_shell_context put in the dict it builds before running the shell context processors, and on which line of that file is that dict created?",
+      "graders": ["\\bapp\\b", "\\bg\\b", "\\b636\\b"],
+      "anchors": [
+        {"file": "src/flask/app.py", "line": 636, "pattern": "\"app\": self, \"g\": g"}
+      ]
+    },
+    {
+      "id": "flask-dispatch-lines",
+      "repo": "flask",
+      "kind": "named file, several symbols, line numbers",
+      "prompt": "In src/flask/app.py, give the starting line numbers of the Flask methods dispatch_request, full_dispatch_request and finalize_request.",
+      "graders": ["\\b993\\b", "\\b1023\\b", "\\b1056\\b"],
+      "anchors": [
+        {"file": "src/flask/app.py", "line": 993, "pattern": "def dispatch_request"},
+        {"file": "src/flask/app.py", "line": 1023, "pattern": "def full_dispatch_request"},
+        {"file": "src/flask/app.py", "line": 1056, "pattern": "def finalize_request"}
+      ]
+    },
+    {
+      "id": "flask-overview",
+      "repo": "flask",
+      "kind": "orientation",
+      "prompt": "Give a structural overview of this repository. Which directory under src holds the Python package?",
+      "graders": ["src/flask", "app\\.py"],
+      "anchors": [{"file": "src/flask/app.py", "pattern": "def"}]
+    },
+    {
+      "id": "gin-go-version",
+      "repo": "gin",
+      "kind": "tiny file",
+      "prompt": "Which Go version does go.mod declare?",
+      "graders": ["1\\.26\\.0"],
+      "anchors": [{"file": "go.mod", "line": 3, "pattern": "go 1.26.0"}]
+    },
+    {
+      "id": "gin-abort-signature",
+      "repo": "gin",
+      "kind": "named file and symbol; signature",
+      "prompt": "In context.go, what is the signature of Context.AbortWithStatus and on which line is it defined?",
+      "graders": ["\\b222\\b", "AbortWithStatus", "code int"],
+      "anchors": [
+        {"file": "context.go", "line": 222, "pattern": "func \\(c \\*Context\\) AbortWithStatus\\(code int\\)"}
+      ]
+    },
+    {
+      "id": "gin-abort-callers",
+      "repo": "gin",
+      "kind": "call sites across files",
+      "prompt": "In this repository, which non-test .go files other than context.go call AbortWithStatus? Include the file and line of each call.",
+      "graders": ["auth\\.go", "recovery\\.go", "\\b60\\b", "\\b109\\b", "\\b115\\b"],
+      "anchors": [
+        {"file": "auth.go", "line": 60, "pattern": "AbortWithStatus"},
+        {"file": "auth.go", "line": 109, "pattern": "AbortWithStatus"},
+        {"file": "recovery.go", "line": 115, "pattern": "AbortWithStatus"}
+      ]
+    },
+    {
+      "id": "gin-abort-who-calls",
+      "repo": "gin",
+      "kind": "direct callers",
+      "prompt": "Who calls Context.AbortWithStatus directly? Name the calling functions.",
+      "graders": ["AbortWithError", "auth\\.go", "recovery\\.go"],
+      "anchors": [
+        {"file": "context.go", "line": 248, "pattern": "AbortWithStatus"},
+        {"file": "auth.go", "line": 60, "pattern": "AbortWithStatus"}
+      ]
+    },
+    {
+      "id": "gin-render-methods",
+      "repo": "gin",
+      "kind": "find a definition and its body",
+      "prompt": "Where is the Render interface defined, and what methods does it require?",
+      "graders": ["render/render\\.go", "WriteContentType", "Render\\("],
+      "anchors": [
+        {"file": "render/render.go", "pattern": "type Render interface"},
+        {"file": "render/render.go", "pattern": "WriteContentType"}
+      ]
+    },
+    {
+      "id": "speedread-map-budget",
+      "repo": "speedread",
+      "kind": "named constant",
+      "prompt": "What integer is the default token budget constant DEFAULT_MAP_BUDGET for the map tool?",
+      "graders": ["DEFAULT_MAP_BUDGET", "\\b3000\\b"],
+      "anchors": [
+        {"file": "src/map.rs", "line": 51, "pattern": "pub const DEFAULT_MAP_BUDGET: usize = 3000;"}
+      ]
+    },
+    {
+      "id": "chromium-filepath",
+      "repo": "chromium",
+      "kind": "definition among many mentions, large tree",
+      "profile": true,
+      "prompt": "Which file defines the class FilePath (the class body, not a forward declaration), and on which line does that class definition start?",
+      "graders": ["base/files/file_path\\.h", "\\b162\\b"],
+      "anchors": [
+        {"file": "base/files/file_path.h", "line": 162, "pattern": "class BASE_EXPORT FilePath"}
+      ]
+    },
+    {
+      "id": "chromium-basename",
+      "repo": "chromium",
+      "kind": "named header and method, large file",
+      "prompt": "In base/files/file_path.h, on which line is FilePath::BaseName declared, and what type does that declaration return?",
+      "graders": ["\\b276\\b", "FilePath BaseName"],
+      "anchors": [
+        {"file": "base/files/file_path.h", "line": 276, "pattern": "FilePath BaseName\\(\\) const"}
+      ]
+    }
+  ]
+}
