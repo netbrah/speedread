@@ -147,7 +147,7 @@ $ speedread search 'def url_for|current_app.url_for\(' src/flask/helpers.py
 244	    return current_app.url_for(
 ```
 
-`output=symbols` returns the full source of every enclosing function in the same call. `output=files` returns paths with counts.
+`output=symbols` returns the full source of every enclosing function in the same call. `output=auto` does that only when a few enclosing symbols are hit and their bodies fit the budget; otherwise it is `matches`. The default stays `matches`. `output=files` returns paths with counts.
 
 ### `trace`: relationships, not text
 

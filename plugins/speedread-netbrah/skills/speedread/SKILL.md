@@ -58,7 +58,9 @@ Rules of thumb:
 - A skeleton is a map, not an answer: expand the body you need with `path#Name` or
   the `A-B` range shown on the collapsed line.
 - `search output=symbols` returns the full source of every enclosing function in
-  the same call — use it when you will read the callers anyway.
+  the same call — use it when you will read the callers anyway. `output=auto`
+  inlines those bodies only when a few symbols are hit and they fit the budget;
+  the default is still `matches`.
 - `trace` is syntactic (tree-sitter + name resolution, no type inference). Sites it
   cannot attribute to one of several same-named definitions are marked `?`.
 - `search ast=true` matches code shape, not text: `pattern` is code with

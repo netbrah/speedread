@@ -3,7 +3,8 @@
 //! ripgrep's matcher and searcher run on the macOS walker's threads. Hits are
 //! grouped under their innermost enclosing symbol, so an agent can go
 //! straight from a hit to `read path#symbol` — or ask for `output=symbols`
-//! and get those bodies in the same call.
+//! and get those bodies in the same call. `output=auto` is one or the other:
+//! [`resolve_auto`] inlines only when [`choose_auto`] says the bodies fit.
 
 use std::cell::RefCell;
 use std::io;
@@ -39,6 +40,101 @@ pub enum Output {
     /// Matching lines plus the header lines of the syntax that encloses
     /// them (loops, conditions, match arms …).
     Scopes,
+    /// [`Matches`] or [`Symbols`], chosen by [`choose_auto`]. Not the default.
+    Auto,
+}
+
+/// `output=symbols` inlines a body only when `end - start` is at most this.
+/// The same cap decides which bodies `output=auto` counts toward the budget.
+pub const SYMBOL_INLINE_MAX_SPAN: u32 = 200;
+
+/// Shipped `output=auto` policy, from the sweep in
+/// `evals/search_output_eval.py` (docs/specs/09-adaptive-search-output.md).
+/// N=3 is the smallest count that inlines the tasks where inlining is cheaper.
+/// K=25 is the conservative end of a tie: on that set every K from 25 to 100
+/// made the same choices, and no task had 3 or fewer symbols whose bodies sat
+/// between 25% and 100% of the budget.
+pub const AUTO_MAX_SYMBOLS: usize = 3;
+pub const AUTO_BUDGET_PERCENT: usize = 25;
+
+/// What one search found, in the units [`choose_auto`] compares to the budget.
+///
+/// Token fields are [`Engine::estimate`] of the text `output=symbols` would
+/// emit (the same counter [`Engine::enforce_budget`] cuts with), not a
+/// client tokenizer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AutoCensus {
+    /// Enclosing symbols of hit lines, including ones too long to inline.
+    pub distinct: usize,
+    /// Symbols `output=symbols` would inline (`span <= SYMBOL_INLINE_MAX_SPAN`).
+    pub inlineable: usize,
+    /// Numbered source lines of those inlined bodies, without file or symbol headers.
+    pub body_tokens: usize,
+    /// The full symbols-mode answer: preamble, headers, bodies, hit lines.
+    pub response_tokens: usize,
+    /// A file's symbols-mode rendering hit its per-file cap and dropped a later hit.
+    pub per_file_overflow: bool,
+    /// Every hit file was priced. An early exit is not complete.
+    pub complete: bool,
+}
+
+/// Thresholds for [`choose_auto`]. `budget_percent` is K in "bodies within K% of the budget".
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AutoPolicy {
+    pub max_symbols: usize,
+    pub budget_percent: usize,
+}
+
+/// Which concrete rendering `output=auto` collapses to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AutoChoice {
+    /// Render with [`Output::Symbols`].
+    Inline,
+    /// Render with [`Output::Matches`].
+    Matches,
+}
+
+impl AutoPolicy {
+    /// The pair linked from the design note. Overridable for the sweep via
+    /// `SPEEDREAD_AUTO_N` and `SPEEDREAD_AUTO_K` (not a supported flag).
+    pub fn shipped() -> AutoPolicy {
+        AutoPolicy {
+            max_symbols: env_usize("SPEEDREAD_AUTO_N", AUTO_MAX_SYMBOLS),
+            budget_percent: env_usize("SPEEDREAD_AUTO_K", AUTO_BUDGET_PERCENT).min(100),
+        }
+    }
+}
+
+fn env_usize(key: &str, default: usize) -> usize {
+    std::env::var(key)
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(default)
+}
+
+/// `SPEEDREAD_AUTO_CENSUS=1` prices every hit file and prints one stderr line.
+/// The choice still uses [`AutoPolicy::shipped`]; the print is the sweep's input.
+fn census_probe() -> bool {
+    std::env::var_os("SPEEDREAD_AUTO_CENSUS").is_some_and(|v| v == "1")
+}
+
+/// Inline only when the symbols-mode answer would show every inlined body
+/// without the budget cutter or the per-file cap dropping one.
+///
+/// `body_tokens * 100 <= budget * K` is the tuned gate. `response_tokens <= budget`
+/// is the existing budget contract: [`Engine::enforce_budget`] would otherwise
+/// clip the tail (it allows budget + 5%, which this check does not spend).
+pub fn choose_auto(c: &AutoCensus, budget_tokens: usize, p: AutoPolicy) -> AutoChoice {
+    if !c.complete || c.per_file_overflow || c.inlineable == 0 || c.distinct > p.max_symbols {
+        return AutoChoice::Matches;
+    }
+    if c.body_tokens.saturating_mul(100) > budget_tokens.saturating_mul(p.budget_percent) {
+        return AutoChoice::Matches;
+    }
+    if c.response_tokens > budget_tokens {
+        return AutoChoice::Matches;
+    }
+    AutoChoice::Inline
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -714,19 +810,11 @@ fn render_file(
     numbers_budget: usize,
 ) -> String {
     let mut out = String::new();
-    out.push_str("==> ");
-    out.push_str(&e.ws.display(&f.path));
-    if let Some(s) = src {
-        out.push_str(&format!(" @{:016x}", s.etag()));
-    }
+    push_file_header(&mut out, e, f, src, output == Output::Files);
     if output == Output::Files {
-        out.push_str(&format!(" ({})\n", f.matches));
         return out;
     }
-    out.push_str(&format!(" ({})\n", plural(f.matches, "match")));
-    let mut hits = f.hits.clone();
-    hits.sort_by_key(|h| (h.line, !h.is_match));
-    hits.dedup_by_key(|h| h.line);
+    let hits = ordered_hits(f);
     let mut shown_syms: Vec<usize> = Vec::new();
     let mut cur: Option<Option<usize>> = None;
     let mut shown_matches = 0usize;
@@ -752,7 +840,7 @@ fn render_file(
             if shown_syms.contains(&i) {
                 continue;
             }
-            if s.end - s.start <= 200 {
+            if s.end.saturating_sub(s.start) <= SYMBOL_INLINE_MAX_SPAN {
                 shown_syms.push(i);
                 symbol_header(&mut out, o, i);
                 render::push_lines(
@@ -814,6 +902,201 @@ fn render_file(
         ));
     }
     out
+}
+
+fn ordered_hits(f: &FileHits) -> Vec<Hit> {
+    let mut hits = f.hits.clone();
+    hits.sort_by_key(|h| (h.line, !h.is_match));
+    hits.dedup_by_key(|h| h.line);
+    hits
+}
+
+fn push_file_header(
+    out: &mut String,
+    e: &Engine,
+    f: &FileHits,
+    src: Option<&Arc<Source>>,
+    counts_only: bool,
+) {
+    out.push_str("==> ");
+    out.push_str(&e.ws.display(&f.path));
+    if let Some(s) = src {
+        out.push_str(&format!(" @{:016x}", s.etag()));
+    }
+    if counts_only {
+        out.push_str(&format!(" ({})\n", f.matches));
+    } else {
+        out.push_str(&format!(" ({})\n", plural(f.matches, "match")));
+    }
+}
+
+fn hit_owners(hits: &[Hit], outline: Option<&Outline>) -> Vec<usize> {
+    let Some(o) = outline else {
+        return Vec::new();
+    };
+    let mut owners = Vec::new();
+    for h in hits {
+        if let Some(i) = owner(o, h.line.saturating_sub(1))
+            && !owners.contains(&i)
+        {
+            owners.push(i);
+        }
+    }
+    owners
+}
+
+struct SymbolQuote {
+    body: String,
+    response: String,
+}
+
+/// Bodies `output=symbols` would inline, and whether that rendering drops a hit.
+fn price_symbols_file(
+    e: &Engine,
+    f: &FileHits,
+    src: Option<&Arc<Source>>,
+    outline: Option<&Arc<Outline>>,
+    matcher: &RegexMatcher,
+    per_file_cap: usize,
+    quote: &mut SymbolQuote,
+) -> bool {
+    let o = outline.map(|o| o.as_ref());
+    let hits = ordered_hits(f);
+    let owners = hit_owners(&hits, o);
+    if let (Some(src), Some(o)) = (src, o) {
+        for &i in &owners {
+            let s = &o.symbols[i];
+            if s.end.saturating_sub(s.start) <= SYMBOL_INLINE_MAX_SPAN {
+                render::push_lines(
+                    &mut quote.body,
+                    src,
+                    s.start as usize,
+                    s.end as usize,
+                    true,
+                    render::MAX_LINE,
+                    usize::MAX,
+                );
+            }
+        }
+    }
+    let block = render_file(
+        e,
+        f,
+        src,
+        outline,
+        None,
+        Output::Symbols,
+        matcher,
+        per_file_cap,
+    );
+    // Byte cap only. `⋯ N more matches in this file` is the shared hit cap.
+    let overflow = block.contains("more in this file (search with path=");
+    quote.response.push_str(&block);
+    overflow
+}
+
+/// Collapse `output=auto` to `matches` or `symbols`.
+///
+/// The text search and the JSON search both call this, so the choice does not
+/// depend on the frontend. An etag is not an input: both renderings print
+/// `Source::etag` on the file header, and `remember` still runs for every
+/// file the chosen rendering shows.
+pub(crate) fn resolve_auto(
+    e: &Engine,
+    files: &[FileHits],
+    preamble: &str,
+    matcher: &RegexMatcher,
+    budget_tokens: usize,
+    max_bytes: usize,
+) -> Output {
+    let policy = AutoPolicy::shipped();
+    let full = census_probe();
+    let per_file_cap = (max_bytes / 2).max(2000);
+    let mut quote = SymbolQuote {
+        body: String::new(),
+        response: String::from(preamble),
+    };
+    let mut census = AutoCensus {
+        distinct: 0,
+        inlineable: 0,
+        body_tokens: 0,
+        response_tokens: 0,
+        per_file_overflow: false,
+        complete: false,
+    };
+    // Gates only grow as files are added, so stopping at the first failure
+    // matches a census of every file. The probe does not stop: the sweep
+    // needs the real totals.
+    let mut finished = true;
+    for f in files {
+        let src = e.load_text(&f.path).ok();
+        let outline = src
+            .as_ref()
+            .filter(|s| s.data.len() <= MAX_GROUP_BYTES)
+            .and_then(|s| e.outline(s));
+        let owners = hit_owners(&ordered_hits(f), outline.as_deref());
+        census.distinct += owners.len();
+        census.inlineable += owners
+            .iter()
+            .filter(|&&i| {
+                src.is_some()
+                    && outline.as_ref().is_some_and(|o| {
+                        o.symbols[i].end.saturating_sub(o.symbols[i].start)
+                            <= SYMBOL_INLINE_MAX_SPAN
+                    })
+            })
+            .count();
+        // Past N, no later file can make this a candidate. Skip pricing it.
+        if !full && census.distinct > policy.max_symbols {
+            finished = false;
+            break;
+        }
+        if price_symbols_file(
+            e,
+            f,
+            src.as_ref(),
+            outline.as_ref(),
+            matcher,
+            per_file_cap,
+            &mut quote,
+        ) {
+            census.per_file_overflow = true;
+            if !full {
+                finished = false;
+                break;
+            }
+        }
+        if full {
+            continue;
+        }
+        census.body_tokens = e.estimate(quote.body.as_bytes());
+        census.response_tokens = e.estimate(quote.response.as_bytes());
+        if census.body_tokens.saturating_mul(100)
+            > budget_tokens.saturating_mul(policy.budget_percent)
+            || census.response_tokens > budget_tokens
+        {
+            finished = false;
+            break;
+        }
+    }
+    census.body_tokens = e.estimate(quote.body.as_bytes());
+    census.response_tokens = e.estimate(quote.response.as_bytes());
+    census.complete = finished;
+    if full {
+        eprintln!(
+            "auto-census distinct={} inlineable={} body_tokens={} response_tokens={} overflow={} complete={}",
+            census.distinct,
+            census.inlineable,
+            census.body_tokens,
+            census.response_tokens,
+            u8::from(census.per_file_overflow),
+            u8::from(census.complete),
+        );
+    }
+    match choose_auto(&census, budget_tokens, policy) {
+        AutoChoice::Inline => Output::Symbols,
+        AutoChoice::Matches => Output::Matches,
+    }
 }
 
 pub fn search(e: &Engine, req: &SearchRequest) -> String {
@@ -928,16 +1211,23 @@ fn search_request(e: &Engine, req: &SearchRequest) -> String {
             out.push('\n');
         }
     }
+    // `auto` collapses to matches or symbols before any byte is shown, so the
+    // answer is one of those two renderings (including its @etag header).
+    let output = if req.output == Output::Auto {
+        resolve_auto(e, &sc.files, &out, &matcher, budget, max_bytes)
+    } else {
+        req.output
+    };
     // Load sources/outlines lazily in small parallel chunks: only files that
     // can still fit in the budget are ever parsed.
-    let needs_outline = req.output != Output::Files;
+    let needs_outline = output != Output::Files;
     let prepare = |fs: &[FileHits]| -> Vec<Prepared> {
         fs.par_iter()
             .map(|f| {
                 let src = e.load_text(&f.path).ok();
                 // Ancestor lines come from the syntax tree: one parse yields
                 // it and the outline.
-                if req.output == Output::Scopes {
+                if output == Output::Scopes {
                     let both = src
                         .as_ref()
                         .filter(|s| s.data.len() <= MAX_GROUP_BYTES)
@@ -973,7 +1263,7 @@ fn search_request(e: &Engine, req: &SearchRequest) -> String {
             .get(k)
             .map(|(s, o, x)| (s.as_ref(), o.as_ref(), x.as_ref()))
             .unwrap_or((None, None, None));
-        let block = render_file(e, f, src, o, scopes, req.output, &matcher, per_file_cap);
+        let block = render_file(e, f, src, o, scopes, output, &matcher, per_file_cap);
         if out.len() + block.len() > max_bytes && rendered_files > 0 {
             break 'files;
         }
@@ -1240,5 +1530,106 @@ mod tests {
         ] {
             assert!(!looks(call), "is a call, not a definition: {call}");
         }
+    }
+
+    fn census(body: usize, response: usize, distinct: usize, inlineable: usize) -> AutoCensus {
+        AutoCensus {
+            distinct,
+            inlineable,
+            body_tokens: body,
+            response_tokens: response,
+            per_file_overflow: false,
+            complete: true,
+        }
+    }
+
+    /// The predicate, independent of the shipped N/K: equality inlines, one past either gate does not.
+    #[test]
+    fn choose_auto_boundary_is_the_closed_inequality() {
+        let budget = 1000usize;
+        let p = AutoPolicy {
+            max_symbols: 2,
+            budget_percent: 10,
+        };
+        // body * 100 <= budget * K, and response <= budget.
+        let body_ok = (budget * p.budget_percent) / 100;
+        assert_eq!(
+            choose_auto(&census(body_ok, body_ok, 2, 2), budget, p),
+            AutoChoice::Inline
+        );
+        assert_eq!(
+            choose_auto(&census(body_ok + 1, body_ok + 1, 2, 2), budget, p),
+            AutoChoice::Matches,
+            "one token past K% of the budget stays matches"
+        );
+        assert_eq!(
+            choose_auto(&census(body_ok, budget + 1, 2, 2), budget, p),
+            AutoChoice::Matches,
+            "a response the budget cutter would clip stays matches"
+        );
+        assert_eq!(
+            choose_auto(&census(body_ok, body_ok, 3, 3), budget, p),
+            AutoChoice::Matches,
+            "one symbol past N stays matches"
+        );
+        assert_eq!(
+            choose_auto(&census(0, 0, 0, 0), budget, p),
+            AutoChoice::Matches,
+            "nothing to inline"
+        );
+        let mut over = census(body_ok, body_ok, 2, 2);
+        over.per_file_overflow = true;
+        assert_eq!(choose_auto(&over, budget, p), AutoChoice::Matches);
+        over.per_file_overflow = false;
+        over.complete = false;
+        assert_eq!(
+            choose_auto(&over, budget, p),
+            AutoChoice::Matches,
+            "an unfinished census does not inline"
+        );
+        // A symbol too long to inline is distinct but not inlineable. With no
+        // inlineable body there is nothing to spend the budget on.
+        assert_eq!(
+            choose_auto(&census(0, 40, 1, 0), budget, p),
+            AutoChoice::Matches
+        );
+    }
+
+    #[test]
+    fn shipped_policy_uses_the_same_boundary() {
+        let p = AutoPolicy {
+            max_symbols: AUTO_MAX_SYMBOLS,
+            budget_percent: AUTO_BUDGET_PERCENT,
+        };
+        assert!(
+            (1..=32).contains(&p.max_symbols),
+            "N is a handful of symbols, got {}",
+            p.max_symbols
+        );
+        assert!(
+            (25..=100).contains(&p.budget_percent),
+            "K is a percent of the budget, got {}",
+            p.budget_percent
+        );
+        let budget = 8000usize;
+        let body_ok = (budget * p.budget_percent) / 100;
+        let at = census(body_ok, body_ok, p.max_symbols, p.max_symbols);
+        assert_eq!(choose_auto(&at, budget, p), AutoChoice::Inline);
+        assert_eq!(
+            choose_auto(
+                &census(body_ok + 1, body_ok + 1, p.max_symbols, p.max_symbols),
+                budget,
+                p
+            ),
+            AutoChoice::Matches
+        );
+        assert_eq!(
+            choose_auto(
+                &census(body_ok, body_ok, p.max_symbols + 1, p.max_symbols + 1),
+                budget,
+                p
+            ),
+            AutoChoice::Matches
+        );
     }
 }

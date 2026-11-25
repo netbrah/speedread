@@ -26,6 +26,7 @@ graders fixed when transcript review showed them wrong. Results are in
 | 3. Agent Q&A | Same model + harness answering code questions: accuracy, tokens, cost, time | real agent, capability | [`agent_eval.py`](agent_eval.py), [`agent_tasks.json`](agent_tasks.json) |
 | 3b. Agent relationships | Same, for callers, callees and implementations: does `trace` get used, and does it pay? | real agent, capability | [`agent_eval.py`](agent_eval.py), [`relationship_tasks.json`](relationship_tasks.json) |
 | 4. Agent coding | Same model + harness fixing real bugs: tests pass? at what cost? is the compression ever unsafe? does the agent even use the tool? | real agent, capability | [`coding_eval.py`](coding_eval.py), [`coding_tasks.json`](coding_tasks.json) |
+| 5. Search output | `matches` vs `symbols` vs `auto`: task success, tokens including follow-up reads, tool calls. N/K sweep is `--calibrate`. | deterministic | [`search_output_eval.py`](search_output_eval.py) |
 
 ## Suite 1 — tool scenarios (regression)
 
@@ -175,6 +176,8 @@ python3 evals/agent_eval.py  --bench <bench> --tasks evals/relationship_tasks.js
 python3 evals/coding_eval.py --bench <bench> --venvs <venvs> --verify
 python3 evals/coding_eval.py --bench <bench> --venvs <venvs> --trials 2
 python3 evals/stats.py evals/results/<run>      # bootstrap intervals, per-task wins
+python3 evals/search_output_eval.py --bench <bench> --speedread target/release/speedread --calibrate
+python3 evals/search_output_perf.py target/eval-repos/linux target/release/speedread
 ```
 
 Agent suites need [GitHub Copilot CLI](https://github.com/github/copilot-cli)

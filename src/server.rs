@@ -33,7 +33,7 @@ Targets:
 - `src/app.ts@9f86d081884c7d65` only what changed since the version whose @etag appeared in a header (after an edit), or lines appended to a log
 Output: `==> path @etag (N lines)` then `line<TAB>text`.";
 
-const SEARCH_DESC: &str = "Search file contents (ripgrep engine, .gitignore-aware; regex by default, literal=true for exact text). Hits are grouped by file and under their enclosing function/class with its line range, e.g. `[20-80] fn parse_header(...)`, so your next step can be read `path#parse_header` instead of guessing ranges. output=symbols returns the full source of every enclosing symbol in this same call; output=files lists paths with counts.";
+const SEARCH_DESC: &str = "Search file contents (ripgrep engine, .gitignore-aware; regex by default, literal=true for exact text). Hits are grouped by file and under their enclosing function/class with its line range, e.g. `[20-80] fn parse_header(...)`, so your next step can be read `path#parse_header` instead of guessing ranges. output=symbols returns the full source of every enclosing symbol in this same call; output=auto does that only when a few symbols are hit and their bodies fit the budget, otherwise it is matches; output=files lists paths with counts.";
 
 const MAP_DESC: &str = "Directory overview (.gitignore-aware): files with line counts, subdirectories expanded breadth-first until the budget is used, the rest summarized with file counts. symbols=true adds each file's top-level definitions (a compact repo map). Use first in an unfamiliar codebase instead of ls/find/tree.";
 
@@ -278,7 +278,7 @@ impl JsonSchema for SearchArgs {
                 "word": {"type": "boolean", "description": "Whole words only."},
                 "case": {"type": "string", "enum": ["smart", "sensitive", "insensitive"], "description": "smart (default): insensitive unless the pattern has uppercase."},
                 "context": {"type": "integer", "description": "Context lines per hit (default 0)."},
-                "output": {"type": "string", "enum": ["matches", "symbols", "files", "scopes"], "description": "matches (default) | symbols: full source of each enclosing symbol | files: paths + counts | scopes: matches plus the enclosing loop/condition/branch header lines."},
+                "output": {"type": "string", "enum": ["matches", "symbols", "files", "scopes", "auto"], "description": "matches (default) | symbols: full source of each enclosing symbol | auto: symbols when a few enclosing symbols fit the budget, else matches | files: paths + counts | scopes: matches plus the enclosing loop/condition/branch header lines."},
                 "budget": {"type": "integer", "description": "Max response tokens (default 8000)."},
                 "ast": {"type": "boolean", "description": "Pattern is code matched against syntax, not text: `$X` is any one node, `$$$ARGS` any number, e.g. `$X.unwrap()` or `router.$METHOD($$$ARGS)`. Skips comments and strings."},
                 "lang": {"type": "string", "description": "Language of an ast pattern, e.g. rust, ts (default: every language in scope that parses it)."},

@@ -1,0 +1,88 @@
+warmup /agent/repos/speedread/target/eval-repos/linux
+  warmup vfs_read matches: 10033 ms 61 MiB ok=True | 198 matches in 32 files for /vfs_read/
+  warmup vfs_read symbols: 3176 ms 59 MiB ok=True | 198 matches in 32 files for /vfs_read/
+  warmup vfs_read auto: 314 ms 63 MiB ok=True | 198 matches in 32 files for /vfs_read/
+  warmup kmalloc matches: 275 ms 65 MiB ok=True | 3,739 matches in 1,900 files for /kmalloc/
+  warmup kmalloc symbols: 276 ms 80 MiB ok=True | 3,739 matches in 1,900 files for /kmalloc/
+  warmup kmalloc auto: 279 ms 59 MiB ok=True | 3,739 matches in 1,900 files for /kmalloc/
+  warmup TODO matches: 194 ms 53 MiB ok=True | 5,000 matches in 2,557 files for /TODO/ (stopped at 5,000; narrow with path/glob
+  warmup TODO symbols: 188 ms 53 MiB ok=True | 5,000 matches in 2,527 files for /TODO/ (stopped at 5,000; narrow with path/glob
+  warmup TODO auto: 163 ms 58 MiB ok=True | 5,001 matches in 2,509 files for /TODO/ (stopped at 5,000; narrow with path/glob
+  warmup absent matches: 258 ms 47 MiB ok=True | No matches for /zzz_not_there_zzz/ in . (97,284 files searched; .gitignored file
+  warmup absent symbols: 258 ms 47 MiB ok=True | No matches for /zzz_not_there_zzz/ in . (97,284 files searched; .gitignored file
+  warmup absent auto: 257 ms 47 MiB ok=True | No matches for /zzz_not_there_zzz/ in . (97,284 files searched; .gitignored file
+  r0 vfs_read matches: 283 ms 66.7 MiB 17082 B ok=True
+  r0 vfs_read symbols: 294 ms 60.9 MiB 18535 B ok=True
+  r0 vfs_read auto: 295 ms 58.6 MiB 17082 B ok=True
+  r0 kmalloc matches: 273 ms 65.2 MiB 21239 B ok=True
+  r0 kmalloc symbols: 266 ms 72.4 MiB 21239 B ok=True
+  r0 kmalloc auto: 279 ms 63.2 MiB 21239 B ok=True
+  r0 TODO matches: 187 ms 51.5 MiB 21228 B ok=True
+  r0 TODO symbols: 161 ms 57.7 MiB 21238 B ok=True
+  r0 TODO auto: 196 ms 49.6 MiB 21228 B ok=True
+  r0 absent matches: 253 ms 45.3 MiB 92 B ok=True
+  r0 absent symbols: 261 ms 43.2 MiB 92 B ok=True
+  r0 absent auto: 275 ms 41.2 MiB 92 B ok=True
+  r1 vfs_read matches: 286 ms 76.5 MiB 17082 B ok=True
+  r1 vfs_read symbols: 281 ms 64.7 MiB 18535 B ok=True
+  r1 vfs_read auto: 294 ms 62.7 MiB 17082 B ok=True
+  r1 kmalloc matches: 276 ms 75.3 MiB 21239 B ok=True
+  r1 kmalloc symbols: 265 ms 76.9 MiB 21239 B ok=True
+  r1 kmalloc auto: 278 ms 61.0 MiB 21239 B ok=True
+  r1 TODO matches: 153 ms 55.5 MiB 21224 B ok=True
+  r1 TODO symbols: 165 ms 55.6 MiB 21242 B ok=True
+  r1 TODO auto: 195 ms 55.5 MiB 21238 B ok=True
+  r1 absent matches: 256 ms 47.3 MiB 92 B ok=True
+  r1 absent symbols: 255 ms 49.3 MiB 92 B ok=True
+  r1 absent auto: 252 ms 41.2 MiB 92 B ok=True
+  r2 vfs_read matches: 281 ms 62.7 MiB 17082 B ok=True
+  r2 vfs_read symbols: 281 ms 61.0 MiB 18535 B ok=True
+  r2 vfs_read auto: 292 ms 58.8 MiB 17082 B ok=True
+  r2 kmalloc matches: 269 ms 67.0 MiB 21239 B ok=True
+  r2 kmalloc symbols: 265 ms 82.8 MiB 21239 B ok=True
+  r2 kmalloc auto: 271 ms 53.4 MiB 21239 B ok=True
+  r2 TODO matches: 152 ms 45.5 MiB 21228 B ok=True
+  r2 TODO symbols: 199 ms 51.6 MiB 21244 B ok=True
+  r2 TODO auto: 198 ms 49.3 MiB 21228 B ok=True
+  r2 absent matches: 255 ms 45.2 MiB 92 B ok=True
+  r2 absent symbols: 253 ms 43.3 MiB 92 B ok=True
+  r2 absent auto: 259 ms 45.2 MiB 92 B ok=True
+  r3 vfs_read matches: 281 ms 62.4 MiB 17082 B ok=True
+  r3 vfs_read symbols: 283 ms 64.7 MiB 18535 B ok=True
+  r3 vfs_read auto: 294 ms 68.9 MiB 17082 B ok=True
+  r3 kmalloc matches: 271 ms 65.2 MiB 21239 B ok=True
+  r3 kmalloc symbols: 262 ms 64.6 MiB 21239 B ok=True
+  r3 kmalloc auto: 273 ms 63.3 MiB 21239 B ok=True
+  r3 TODO matches: 172 ms 55.7 MiB 21228 B ok=True
+  r3 TODO symbols: 188 ms 53.4 MiB 21242 B ok=True
+  r3 TODO auto: 159 ms 53.6 MiB 21228 B ok=True
+  r3 absent matches: 258 ms 43.2 MiB 92 B ok=True
+  r3 absent symbols: 253 ms 47.0 MiB 92 B ok=True
+  r3 absent auto: 255 ms 45.3 MiB 92 B ok=True
+  r4 vfs_read matches: 287 ms 72.7 MiB 17082 B ok=True
+  r4 vfs_read symbols: 281 ms 64.7 MiB 18535 B ok=True
+  r4 vfs_read auto: 292 ms 68.7 MiB 17082 B ok=True
+  r4 kmalloc matches: 270 ms 75.2 MiB 21239 B ok=True
+  r4 kmalloc symbols: 269 ms 62.6 MiB 21239 B ok=True
+  r4 kmalloc auto: 277 ms 67.4 MiB 21239 B ok=True
+  r4 TODO matches: 192 ms 45.4 MiB 21228 B ok=True
+  r4 TODO symbols: 181 ms 49.6 MiB 21244 B ok=True
+  r4 TODO auto: 162 ms 49.3 MiB 21201 B ok=True
+  r4 absent matches: 253 ms 46.9 MiB 92 B ok=True
+  r4 absent symbols: 257 ms 43.1 MiB 92 B ok=True
+  r4 absent auto: 251 ms 47.1 MiB 92 B ok=True
+
+| Query | Mode | median ms | min–max ms | median RSS MiB | min–max RSS | median bytes | failures |
+|---|---|---:|---:|---:|---:|---:|---:|
+| vfs_read | matches | 283 | 281–287 | 66.7 | 62.4–76.5 | 17082 | 0 |
+| vfs_read | symbols | 281 | 281–294 | 64.7 | 60.9–64.7 | 18535 | 0 |
+| vfs_read | auto | 294 | 292–295 | 62.7 | 58.6–68.9 | 17082 | 0 |
+| kmalloc | matches | 271 | 269–276 | 67.0 | 65.2–75.3 | 21239 | 0 |
+| kmalloc | symbols | 265 | 262–269 | 72.4 | 62.6–82.8 | 21239 | 0 |
+| kmalloc | auto | 277 | 271–279 | 63.2 | 53.4–67.4 | 21239 | 0 |
+| TODO | matches | 172 | 152–192 | 51.5 | 45.4–55.7 | 21228 | 0 |
+| TODO | symbols | 181 | 161–199 | 53.4 | 49.6–57.7 | 21242 | 0 |
+| TODO | auto | 195 | 159–198 | 49.6 | 49.3–55.5 | 21228 | 0 |
+| absent | matches | 255 | 253–258 | 45.3 | 43.2–47.3 | 92 | 0 |
+| absent | symbols | 255 | 253–261 | 43.3 | 43.1–49.3 | 92 | 0 |
+| absent | auto | 255 | 251–275 | 45.2 | 41.2–47.1 | 92 | 0 |

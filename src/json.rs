@@ -144,6 +144,9 @@ fn clip(text: &[u8]) -> (String, bool) {
 ///   (context lines carry `"context": true`).
 /// - `symbols`: `{path, symbol, matches, lines}` per enclosing symbol.
 /// - `files`: `{path, matches}` per file.
+/// - `auto`: the same records as `matches` or `symbols`, chosen by
+///   [`search::resolve_auto`]. JSON symbols records do not embed bodies;
+///   the choice is still the text rendering's choice.
 pub fn search(e: &Engine, req: &SearchRequest, w: &mut impl Write) -> Result<usize, String> {
     let matcher = search::line_matcher(req).map_err(|m| m.trim_end().to_string())?;
     let roots = search::resolve_roots(e, &req.paths).map_err(|m| m.trim_end().to_string())?;
@@ -166,7 +169,34 @@ pub fn search(e: &Engine, req: &SearchRequest, w: &mut impl Write) -> Result<usi
             req.max_matches.max(1),
         )
     };
-    let need_outline = req.output != Output::Files;
+    let output = if req.output == Output::Auto {
+        let total: usize = sc.files.iter().map(|f| f.matches).sum();
+        let preamble = format!(
+            "{} in {} for /{}/{}\n",
+            crate::util::plural(total, "match"),
+            crate::util::plural(sc.files.len(), "file"),
+            req.pattern,
+            if sc.stopped {
+                format!(
+                    " (stopped at {}; narrow with path/glob)",
+                    crate::util::thousands(req.max_matches)
+                )
+            } else {
+                String::new()
+            }
+        );
+        search::resolve_auto(
+            e,
+            &sc.files,
+            &preamble,
+            &matcher,
+            e.budget(req.budget),
+            e.bytes_for(e.budget(req.budget)),
+        )
+    } else {
+        req.output
+    };
+    let need_outline = output != Output::Files;
     let outlines: Vec<Option<std::sync::Arc<Outline>>> = sc
         .files
         .par_iter()
@@ -189,7 +219,7 @@ pub fn search(e: &Engine, req: &SearchRequest, w: &mut impl Write) -> Result<usi
             o.as_ref()
                 .and_then(|o| o.innermost_at(line.saturating_sub(1)))
         };
-        match req.output {
+        match output {
             Output::Files => {
                 write_line(w, &json!({"path": shown, "matches": f.matches})).map_err(err)?;
                 n += 1;
@@ -221,7 +251,7 @@ pub fn search(e: &Engine, req: &SearchRequest, w: &mut impl Write) -> Result<usi
             }
             Output::Matches | Output::Scopes => {
                 // Ancestor line numbers per record (`scopes` output only).
-                let scoped = (req.output == Output::Scopes)
+                let scoped = (output == Output::Scopes)
                     .then(|| e.load_text(&f.path).ok())
                     .flatten()
                     .filter(|s| !s.binary && s.data.len() <= search::MAX_GROUP_BYTES)
@@ -267,6 +297,9 @@ pub fn search(e: &Engine, req: &SearchRequest, w: &mut impl Write) -> Result<usi
                     write_line(w, &Value::Object(m)).map_err(err)?;
                     n += 1;
                 }
+            }
+            Output::Auto => {
+                return Err("output=auto did not resolve to matches or symbols".to_string());
             }
         }
     }
