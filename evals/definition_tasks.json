@@ -1,6 +1,6 @@
 {
   "suite": "definition-cost-gate",
-  "description": "Fixed tasks for the definition-token correctness gate. Canonical calls are replayed against the live server (argument validity on this machine). The same tasks are what the Grok/Copilot runner asks an agent, without naming a tool except where the ast task states the syntactic pattern. Not an unprompted-adoption experiment.",
+  "description": "Fixed tasks for the definition-token correctness gate. The product tools are map, search, and read (evals/definition_plan.py). trace tasks are not in this set. Canonical calls are replayed against the live server. The same tasks are what the Grok/Copilot runner asks an agent, without naming a tool except where the ast task states the syntactic pattern. Not an unprompted-adoption experiment.",
   "fixture": "evals/fixtures/definition-gate",
   "tasks": [
     {
@@ -110,42 +110,6 @@
       "contract": {"path_regex": ["^src/?$"], "symbols": true},
       "response_graders": ["add", "twice", "Greeting"],
       "answer_graders": ["add", "twice", "Greeting"]
-    },
-    {
-      "id": "trace-callers",
-      "tool": "trace",
-      "prompt": "Which functions call add? Name each caller.",
-      "canonical_arguments": {"target": "add", "direction": "callers"},
-      "contract": {"target_regex": ["(^|#|\\.)add$"], "direction": "callers"},
-      "response_graders": ["twice", "quad"],
-      "answer_graders": ["twice", "quad"]
-    },
-    {
-      "id": "trace-callees",
-      "tool": "trace",
-      "prompt": "Which functions does twice call? Name each callee.",
-      "canonical_arguments": {"target": "src/lib.rs#twice", "direction": "callees"},
-      "contract": {"target_regex": ["twice"], "direction": "callees"},
-      "response_graders": ["add"],
-      "answer_graders": ["add"]
-    },
-    {
-      "id": "trace-refs",
-      "tool": "trace",
-      "prompt": "Where is the name Greeting used? Include the trait itself. List the file paths.",
-      "canonical_arguments": {"target": "Greeting", "direction": "refs"},
-      "contract": {"target_regex": ["Greeting"], "direction": "refs"},
-      "response_graders": ["Greeting", "src/lib\\.rs"],
-      "answer_graders": ["src/lib\\.rs"]
-    },
-    {
-      "id": "trace-impls",
-      "tool": "trace",
-      "prompt": "Which types implement the Greeting trait? Name each type.",
-      "canonical_arguments": {"target": "Greeting", "direction": "impls"},
-      "contract": {"target_regex": ["Greeting"], "direction": "impls"},
-      "response_graders": ["Bot"],
-      "answer_graders": ["Bot"]
     }
   ]
 }

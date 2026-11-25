@@ -23,6 +23,8 @@ from definition_agent import (  # noqa: E402
     speedread_calls,
     surface_ok,
 )
+from definition_plan import TOOLS  # noqa: E402
+from mcp_allow import blocked_call, filter_tools_message  # noqa: E402
 
 FIXTURES = HERE / "fixtures" / "grok-gate"
 
@@ -57,50 +59,79 @@ def main() -> int:
     untrusted = [load("tools_untrusted.json")]
     trusted = [load("tools_trusted.json")]
     exclusive = [load("tools_exclusive.json")]
+    three = [load("tools_three.json")]
     if surface_ok(untrusted, "baseline") is not True:
         sys.exit("untrusted list should be a valid baseline surface")
     if surface_ok(untrusted, "available") is not False:
         sys.exit("search_tool/use_tool must not count as speedread on available")
     if surface_ok(untrusted, "exclusive") is not False:
         sys.exit("untrusted list must not pass exclusive")
-    if surface_ok(trusted, "available") is not True:
-        sys.exit("speedread__ names should satisfy available")
+    if surface_ok(trusted, "available", allow_extra=("trace",)) is not True:
+        sys.exit("map/search/read plus trace should be tolerated on current main")
+    if surface_ok(trusted, "available", allow_extra=()) is not False:
+        sys.exit("a 3-tool measurement must reject a list that still has trace")
     if surface_ok(trusted, "baseline") is not False:
         sys.exit("baseline must reject a list that contains speedread__")
-    if surface_ok(trusted, "exclusive") is not False:
+    if surface_ok(trusted, "exclusive", allow_extra=("trace",)) is not False:
         sys.exit("exclusive must reject a list that still has read_file")
-    if surface_ok(exclusive, "exclusive") is not True:
-        sys.exit("exclusive list with speedread__ and no file tools should pass")
+    if surface_ok(exclusive, "exclusive", allow_extra=("trace",)) is not True:
+        sys.exit("exclusive list with the three tools plus trace and no file tools should pass")
+    if surface_ok(exclusive, "exclusive", allow_extra=()) is not False:
+        sys.exit("filtered exclusive surface must not still list trace")
+    if surface_ok(three, "exclusive", allow_extra=()) is not True:
+        sys.exit("exactly map/search/read should pass exclusive")
+    if surface_ok(three, "available", allow_extra=()) is not True:
+        sys.exit("exactly map/search/read should pass available")
     if surface_ok([], "available") is not None:
         sys.exit("missing tools list should be unverified, not a pass")
 
-    argv = grok_argv("pong", "grok-4.7", "sid", "/tmp/gate", "read-only", True, 1)
+    raw = (HERE / "fork" / "definition-tokens" / "tools-list-run-0.jsonl").read_text()
+    filtered = filter_tools_message(raw, set(TOOLS))
+    names = [tool["name"] for tool in json.loads(filtered)["result"]["tools"]]
+    if names != ["map", "read", "search"]:
+        sys.exit(f"filter kept {names}")
+    if "trace" in filtered.split('"name":"trace"'):
+        # the name key of the trace tool must be gone; the word may remain inside read's description
+        pass
+    if '"name":"trace"' in filtered:
+        sys.exit("trace tool object was not removed")
+    if blocked_call('{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"trace","arguments":{}}}\n', set(TOOLS)) is None:
+        sys.exit("trace call should be refused by the filter")
+    if blocked_call('{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"read","arguments":{}}}\n', set(TOOLS)) is not None:
+        sys.exit("read call should pass the filter")
+
+    argv = grok_argv("pong", "grok-4.7", "sid", "/tmp/gate", "read-only", True, 1, ("trace",))
     if "--trust" not in argv:
         sys.exit(f"missing --trust: {argv}")
     deny = argv[argv.index("--disallowed-tools") + 1].split(",")
     if list(GROK_EXCLUSIVE_DENY) != deny:
         sys.exit(f"deny list {deny}")
-    if "bash" in deny:
-        sys.exit("bash is not Grok's shell tool")
+    if "bash" in deny or "speedread__trace" in deny:
+        sys.exit("MCP tools do not belong in --disallowed-tools")
+    if "MCPTool(speedread__trace)" not in argv:
+        sys.exit(f"missing MCP deny: {argv}")
     plain = grok_argv("pong", "grok-4.7", "sid", "/tmp/gate", "read-only", False, 1)
     if "--trust" not in plain or "--disallowed-tools" in plain:
         sys.exit(f"baseline argv {plain}")
 
     failed = load("init_failure.json")
-    problem = preflight_problem("exclusive", failed, "grok")
+    problem = preflight_problem("exclusive", failed, "grok", expected=TOOLS, allow_extra=())
     if not problem:
         sys.exit("init failure should abort")
     started = {
         "exit_code": 0,
         "stderr_tail": "",
         "stdout": "",
-        "events": exclusive,
+        "events": three,
         "session_id": "00000000-0000-0000-0000-000000000003",
     }
-    if preflight_problem("exclusive", started, "grok"):
-        sys.exit("a started exclusive session should pass preflight")
+    if preflight_problem("exclusive", started, "grok", expected=TOOLS, allow_extra=()):
+        sys.exit("a started 3-tool exclusive session should pass preflight")
+    leaked = dict(started, events=exclusive)
+    if not preflight_problem("exclusive", leaked, "grok", expected=TOOLS, allow_extra=()):
+        sys.exit("trace still listed should abort a 3-tool preflight")
     untrusted_session = dict(started, events=untrusted)
-    if not preflight_problem("available", untrusted_session, "grok"):
+    if not preflight_problem("available", untrusted_session, "grok", expected=TOOLS, allow_extra=()):
         sys.exit("available without speedread__ should abort")
 
     print("grok gate fixtures ok")

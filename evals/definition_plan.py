@@ -1,30 +1,34 @@
-"""Pre-registered sample sizes for the agent half of the definition-token gate.
+"""The product tool set and the pre-registered agent-gate sample size.
 
-These counts were chosen before any slimming and before the Grok runs. Do not
-change them after seeing a result. `definition_cost.py power` prints the
-arithmetic this file is the input to.
+TOOLS is the only list of speedread tools this gate scores. trace is being
+removed in another PR and is not part of the set. context is not shipping.
+A live server may still advertise trace; the harness can hide it. See
+mcp_allow.py. `definition_cost.py power` prints the arithmetic.
 """
 
-# 16 tasks, 4 tools, so a regression in one tool is not diluted across the pool.
-TASKS_PER_TOOL = 4
-TOOLS = ("read", "search", "map", "trace")
+# Product tools, in the order the server lists the ones that are staying.
+TOOLS = ("map", "search", "read")
 
-# 4 * 70 = 280 trials per tool. At two-sided α=0.05 this is about 80% power for
-# an argument-validity drop 0.98 → 0.93, and about 92% power for a selection or
-# task-success drop 0.90 → 0.80. See definition_cost.py power.
+# Advertised by current main. A surface check tolerates these in addition to
+# TOOLS until they disappear. They have no tasks. The 3-tool measurement
+# passes an empty extra set so a still-listed trace fails the preflight.
+TOLERATED_EXTRA = ("trace",)
+
+TASKS_PER_TOOL = 4
+
+# 4 tasks * 70 trials = 280 per tool. That is the same per-tool n as the
+# 4-tool plan, so the per-tool CI half-width does not change when trace
+# leaves. At two-sided α=0.05 this is about 80% power for an
+# argument-validity drop 0.98 → 0.93, and about 92% power for a selection or
+# task-success drop 0.90 → 0.80. Pooled sessions fall from 1120 to 840.
 TRIALS_PER_TASK = 70
 
-# First-call probe: one fixed prompt, no tool use, three conditions interleaved.
-# 200 sessions per condition is 80% power for a 200-token shift in the paired
-# (available − baseline) mean when the SD of that difference is up to ~1010 tokens.
 PROBE_SESSIONS_PER_CONDITION = 200
 PROBE_CONDITIONS = ("baseline", "available", "exclusive")
 
 ALPHA = 0.05
 POWER = 0.80
 
-# Planning base rates. The Grok baseline recomputes the drop that the realized
-# rate and this n can detect; it does not keep these rates if they were wrong.
 SELECTION_P0 = 0.90
 SELECTION_P1 = 0.80
 SUCCESS_P0 = 0.90
@@ -32,8 +36,10 @@ SUCCESS_P1 = 0.80
 ARGUMENT_P0 = 0.98
 ARGUMENT_P1 = 0.93
 
-# Minimum paired mean shift in full first-call input tokens that the probe is
-# sized to catch. Not a measurement.
 FIRST_CALL_DELTA_TOKENS = 200
 
 PROBE_PROMPT = "Reply with the single word pong. Do not call any tools."
+
+
+def speedread_wire_name(tool: str) -> str:
+    return f"speedread__{tool}"

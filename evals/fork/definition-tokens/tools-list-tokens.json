@@ -527,18 +527,18 @@
   ],
   "binary": "/agent/repos/speedread/target/fast/speedread",
   "host": {
-    "git_sha": "7478ebc4e93ea1faa11f18148669bb4a175b06d2",
+    "git_sha": "3b5a695e0d3cfe525c74f3282184b7681406c0e1",
     "nproc": 4,
-    "uptime_s": "1044.87",
-    "loadavg": "1.45 0.63 0.32 5/256 7592",
+    "uptime_s": "2980.01",
+    "loadavg": "0.00 0.00 0.09 1/298 10376",
     "uname": "Linux cursor 6.12.113+ #1 SMP PREEMPT_DYNAMIC Mon Nov 23 16:05:51 UTC 2026 x86_64",
     "cpu_model": "Intel(R) Xeon(R) Processor",
     "meminfo": {
       "MemTotal": "16387328 kB",
-      "MemFree": "4251592 kB",
-      "MemAvailable": "10861628 kB",
-      "Buffers": "404284 kB",
-      "Cached": "5573184 kB"
+      "MemFree": "3390524 kB",
+      "MemAvailable": "10541452 kB",
+      "Buffers": "416152 kB",
+      "Cached": "6097924 kB"
     },
     "balloon_mib": 4096.0,
     "rustc_stable": "rustc 1.100.0 (0ef1bc386 2026-11-09)",

@@ -196,7 +196,8 @@ python3 evals/definition_cost.py arguments --binary target/fast/speedread
 python3 scripts/fetch-chromium-corpus.py
 python3 evals/definition_cost.py chromium --binary target/fast/speedread
 python3 evals/definition_cost.py agent --harness grok \
-    --binary "$PWD/target/fast/speedread" --model <id from grok models> --yes
+    --binary "$PWD/target/fast/speedread" --model <id from grok models> \
+    --only-tools map,search,read --yes
 python3 evals/test_grok_gate.py
 ```
 

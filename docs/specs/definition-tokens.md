@@ -2,7 +2,11 @@
 
 Phase 1 baseline. No model-facing string was edited. Phase 2 does not start until this note is reviewed.
 
-**Headline:** the live `tools/list` result is **1578 o200k_base tokens** (cl100k_base **1551**), median of 5 launches, range **0**. Server `0.2.1-netbrah.1` at `7478ebc4e93ea1faa11f18148669bb4a175b06d2`. Payload sha256 `457a2cb09ba4a2a7b58bffdcbbaeaae5cd948a42c9221ed63579aac5e7bd3960`.
+**Headline, 4 tools (what main returns today):** the live `tools/list` result is **1578 o200k_base tokens** (cl100k_base **1551**), median of 5 launches, range **0**. Server `0.2.1-netbrah.1` at `7478ebc4e93ea1faa11f18148669bb4a175b06d2`. Payload sha256 `457a2cb09ba4a2a7b58bffdcbbaeaae5cd948a42c9221ed63579aac5e7bd3960`.
+
+**3-tool surface (map, read, search):** **1244 o200k_base tokens** (cl100k_base **1221**), range 0. That is the same live payload with the `trace` object removed and the other tool objects left as the server wrote them (`evals/mcp_allow.py`). Delta versus the 4-tool result: **−334** o200k. Instructions are not in either number, and they still mention `trace` because this branch does not edit them. Table: `evals/fork/definition-tokens/tools-list-tokens-3tool.md`.
+
+The product set is `map`, `search`, and `read`, the single list in `evals/definition_plan.py`. `trace` is being removed in another PR. `context` is not shipping. The per-tool columns below do not move when `trace` is dropped: map 261, read 447, search 515. The 334-token drop is the trace object plus the comma and the boundary tokens that sat on it.
 
 That number is the exact JSON of the `result` object, sliced from the line the server wrote, tokenized with tiktoken 0.14.0 `Encoding.encode(text, disallowed_special=())`. It is not a schema rebuilt from `src/server.rs`. Raw lines: `evals/fork/definition-tokens/tools-list-run-*.jsonl`. Table: `evals/fork/definition-tokens/tools-list-tokens.md`.
 
@@ -14,7 +18,7 @@ Three metrics. The first two were run on this machine. The third's agent half is
 
 2. **Correctness gate.**
    - *Canonical argument validity* (this machine): for each of 16 fixed tasks, the canonical arguments are sent to the live server. A pass is an accepted call whose response matches that task's graders. Three calls that omit a required field are counted separately and must be rejected. Tool-selection is not scored here and is not filled in with a fake rate.
-   - *Agent tool-selection, argument validity, task success, and first-call input delta* (Grok machine): the same 16 tasks, exclusive of the harness file tools, plus a first-call probe. Task success is the answer graders. Pending. Not invented.
+   - *Agent tool-selection, argument validity, task success, and first-call input delta* (Grok machine): the 12 product tasks, exclusive of the harness file tools, plus a first-call probe. Task success is the answer graders. Pending. Not invented.
 
 3. **Chromium-scale perf.** The query list in `scripts/fork-big-eval.py` (`REPOS["chromium"]["queries"]`), on the fetched Chromium tree. Per query: wall (first, median, min–max), peak RSS, answer tokens under the same two tokenizers. This is a non-regression gate for a later slim. A definition-token edit cannot honestly move these times. A later gap larger than this run's min–max is an observation error, not a win.
 
@@ -46,7 +50,7 @@ Limiter: tiktoken is deterministic. The five payloads were byte-identical, so th
 
 ## Canonical argument validity
 
-**16/16 pass**, one run, on `evals/fixtures/definition-gate`. **3/3** missing-required-field calls were rejected (`search` without `pattern`, `read` without `targets`, `trace` without `target`). Responses: `evals/fork/definition-tokens/argument-responses/`.
+**12/12 pass** on the product set (4 tasks each for map, search, and read), one run, on `evals/fixtures/definition-gate`. **2/2** missing-required-field calls were rejected (`search` without `pattern`, `read` without `targets`). The earlier 16/16 run, which included four trace tasks, is kept as `evals/fork/definition-tokens/argument-validity-4tool.json` and is not the current gate.
 
 Tool-selection rate: not measured. Task-success rate of an agent: not measured. Both are the pending Grok run.
 
@@ -56,8 +60,8 @@ Spend is not the constraint. The gate has to catch a real regression on one tool
 
 Pre-registered in `evals/definition_plan.py`, printed by `python3 evals/definition_cost.py power`, saved at `evals/fork/definition-tokens/power.md`.
 
-- 16 tasks, 4 per tool (`read`, `search`, `map`, `trace`).
-- **70 trials per task** on the exclusive condition: **280 trials per tool**, **1120** task sessions.
+- 12 tasks, 4 per tool (`map`, `search`, `read`). Four trace tasks were dropped. 12 is enough for the per-tool criterion: the per-tool n stays 280, so the per-tool CI half-width does not change (0.035 at a planning rate of 0.90, 0.016 at 0.98). Pooled sessions fall from 1120 to **840**, and the pooled half-width at 0.90 widens from 0.0176 to 0.0203. That pooled widening is not the acceptance criterion. More tasks would not tighten the per-tool interval.
+- **70 trials per task** on the exclusive condition: **280 trials per tool**, **840** task sessions.
 - Two-sided α = 0.05. At the planning rates, 280 trials is **92% power** for a drop 0.90 → 0.80 (selection and task success) and **82% power** for a drop 0.98 → 0.93 (argument validity). The n those rates need for 80% is 196 and 266. Per-tool tests stay at α = 0.05 rather than Bonferroni: a gate that blocks when any tool regresses would rather false-block than miss a one-tool break.
 - **200 probe sessions per condition** (`baseline`, `available`, `exclusive`), interleaved, one fixed prompt that forbids tool use, `--max-turns 1`. Primary first-call number is available − baseline on `grok usage` turn-1 `inputTokens` (already the full prompt; cache fields are not added). At n = 200 that is 80% power for a **200 token** shift while the SD of the paired difference is at most **1010** tokens. If the observed SD is higher, the report states the shift this n can actually detect and does not keep 200 by inertia.
 - Exclusive on Grok disallows `read_file`, `grep`, `list_dir`, `run_terminal_command`, `search_replace`, and `write`. The shell tool is `run_terminal_command`, not `bash`. `search_replace` refuses to start a session unless a Read tool remains or `skip_read_before_edit=true`; denying the edit tools is the read-only configuration that still inits. Copilot's exclusive list is unchanged (`view`, `grep`, `glob`, `rg`, `bash`). Sub-agents and web tools are off in every condition. This is not the unprompted-adoption arm.
@@ -69,18 +73,29 @@ Pre-registered in `evals/definition_plan.py`, printed by `python3 evals/definiti
 
 The planning rates are assumptions. Nothing here is a Grok measurement.
 
-One command, on a fresh checkout with a built binary and Grok CLI 1.0.92:
+3-tool command, on a fresh checkout with a built binary and Grok CLI. This is the run to use while `trace` is still in the binary, and after the removal PR merges (the filter then drops nothing):
 
 ```bash
 python3 evals/definition_cost.py agent --harness grok \
-    --binary "$PWD/target/fast/speedread" --model <id from grok models> --yes
+    --binary "$PWD/target/fast/speedread" --model <id from grok models> \
+    --only-tools map,search,read --yes
 ```
+
+`--only-tools` defaults to that set. The MCP server Grok starts is `evals/mcp_allow.py`, which forwards to speedread and deletes every other tool from `tools/list`. A call to a removed name is refused. `--disallowed-tools` does **not** do this: Grok documents it as a denylist of built-in tool ids, and MCP tools stay reachable through `search_tool` / `use_tool` ([headless mode](https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/14-headless-mode.md)). The harness also passes `--deny MCPTool(speedread__trace)`, which blocks a call but does not take the tool out of the catalog ([permissions](https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/22-permissions-and-safety.md)). A live check of the filter against this binary returned `map`, `read`, `search` and an error for `tools/call` of `trace`.
+
+While main still advertises `trace`, a surface check that is not filtering tolerates `speedread__trace` on top of the three. The filtered run does not: preflight aborts if `trace` is still listed. When the binary exposes only the three, the same check is exact.
+
+To score the unfiltered 4-tool server instead: `--only-tools map,search,read,trace`.
 
 Copilot, same gate: `--harness copilot`. Without `--yes` the command prints the plan and the argv and does not start sessions. Workdirs are created under `/tmp` as their own git roots so `grok mcp add --scope project` cannot write into this repository.
 
 Grok's `use_tool` call carries `rawInput.tool_name` (`speedread__read`) and `rawInput.tool_input` (the arguments). `grok usage` turn 1 reports `inputTokens` as the full prompt. `cachedReadTokens` and `cacheCreationTokens` are parts of that total and are not added to it. MCP tools are namespaced `server__tool` ([MCP servers](https://docs.x.ai/build/features/mcp-servers)). A fresh workdir does not load project MCP until the process is started with `--trust`.
 
 Published Copilot first-call medians (Suite 4, claude-sonnet-5, not re-measured): baseline 17,950, available 20,151, exclusive 18,858. That is a harness delta, not this `tools/list` count. See `evals/RESULTS.md`.
+
+## Chromium (4-tool binary, superseded for the 3-tool claim)
+
+These runs used the binary that still serves `trace`, and the query list includes four `trace` queries. They stand as the pre-removal measurement. They are not the 3-tool baseline. Do not delete them. Rerun `python3 evals/definition_cost.py chromium` after the removal PR merges; the search, read, and map queries do not depend on the tool definition text, but the trace queries will not exist. A definition-token edit still cannot move the wall times below.
 
 ## Chromium
 
@@ -132,13 +147,13 @@ Engineering Lead's track adds constants or parameters and one `context` tool reg
 
 **Shape B. One owner per fact, same names and arity.** The tool description owns when to call the tool. The field description owns how to fill that field. A fact that is said in both places keeps the copy on the field the model has to fill. The `base_dir` sentence has one source string, used by each schema (the payload will still repeat it if the SDK inlines it; the source does not). `INSTRUCTIONS` owns only cross-tool policy that is not already on a tool. The dialect URL stays owned by the SDK. No new tool, no renamed property, no new mode. `SKILL.md` is not the owner of a cue `tools/list` must carry: a client that only forwards `tools/list` never loads the skill, so moving a required cue there would make those callers know less than they need.
 
-**Pick B.** Each fact has one owner. Each of the 16 tasks still has one tool. Callers see each parameter's contract once, which is the least they need to form the call. Shape A can leave two sentences for the same fact, so a later edit updates one and not the other.
+**Pick B.** Each fact has one owner. Each of the 12 tasks still has one tool. Callers see each parameter's contract once, which is the least they need to form the call. Shape A can leave two sentences for the same fact, so a later edit updates one and not the other.
 
 This note does not propose replacement wording.
 
 ## The claim Phase 2 would have to support
 
-On main at `7478ebc4e93ea1faa11f18148669bb4a175b06d2`, `tools/list` result went from **1578** to M o200k_base tokens (cl100k_base from **1551** to M2), 5 launches, baseline range 0, same tokenizer and same `disallowed_special=()`. Canonical argument-validity stayed **16/16**, and the three negative calls stayed rejected. On the Grok exclusive gate (280 trials per tool), tool-selection and task success did not fall by the detectable drop computed from the observed baseline rate (10 points at the planning rate 0.90), and argument-validity did not fall by its detectable drop (5 points at 0.98). First-call median (available − baseline, 200 pairs) did not rise by more than the IQR of those pairs. Every Chromium query's median wall, peak RSS, and answer-token count stayed inside this run's min–max.
+On main at `7478ebc4e93ea1faa11f18148669bb4a175b06d2`, the product `tools/list` result (map, read, search, trace removed from the live payload) went from **1244** to M o200k_base tokens (cl100k_base from **1221** to M2). The unfiltered server, which still includes trace, is **1578** / **1551**, range 0, same tokenizer and same `disallowed_special=()`. Canonical argument-validity on the 12 product tasks stayed **12/12**, and the two negative calls stayed rejected. On the Grok exclusive gate (280 trials per tool, tools limited to map, search, and read), tool-selection and task success did not fall by the detectable drop computed from the observed baseline rate (10 points at the planning rate 0.90), and argument-validity did not fall by its detectable drop (5 points at 0.98). First-call median (available − baseline, 200 pairs, `inputTokens`) did not rise by more than the IQR of those pairs. Chromium numbers below are the 4-tool binary and have to be rerun after trace is removed before a latency claim uses them.
 
 What would change that decision:
 

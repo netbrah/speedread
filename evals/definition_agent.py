@@ -40,14 +40,16 @@ from definition_plan import (  # noqa: E402
     PROBE_CONDITIONS,
     PROBE_PROMPT,
     TASKS_PER_TOOL,
+    TOLERATED_EXTRA,
     TOOLS,
+    speedread_wire_name,
 )
 
 # Grok reaches MCP tools as `<server>__<tool>` via `use_tool` (`tool_name` +
 # `tool_input`). `search_tool` and `use_tool` themselves are built-ins and are
-# present on a baseline session that has no speedread server. `context` is
-# recognised so a fifth tool is scored as itself rather than dropped.
-SPEEDREAD_TOOLS = ("read", "search", "map", "trace", "context")
+# present on a baseline session that has no speedread server.
+# Product names live in definition_plan.TOOLS. trace is recognised only so a
+# call to it, while main still advertises it, scores as the wrong tool.
 # Exclusive is read-only. `search_replace` refuses to start a session unless a
 # Read tool is still allowed or `skip_read_before_edit=true`. Denying the edit
 # tools removes that dependency. The shell tool is `run_terminal_command`.
@@ -68,7 +70,7 @@ GROK_CACHE_CREATE_KEYS = ("cacheCreationTokens", "cache_creation_input_tokens")
 
 def match_tool(name: str) -> str | None:
     low = name.strip().lower()
-    for tool in SPEEDREAD_TOOLS:
+    for tool in tuple(TOOLS) + tuple(TOLERATED_EXTRA):
         if low == tool or low.endswith("__" + tool) or low.endswith("-" + tool) or low.endswith("/" + tool):
             return tool
     return None
@@ -222,25 +224,30 @@ def tool_names(events: list[dict]) -> list[str] | None:
     return found
 
 
-def speedread_listed(names: list[str]) -> bool:
-    """A real speedread MCP tool. Built-in `search_tool` / `use_tool` do not count."""
-    return any("speedread__" in name for name in names)
+def surface_ok(events: list[dict], condition: str, *, expected=None, allow_extra=()):
+    """True when the listed speedread tools are the expected set.
 
-
-def surface_ok(events: list[dict], condition: str):
-    """True when the listed tools match the condition, False when they do not, None if no list."""
+    `allow_extra` is tolerated on top of `expected` (trace, while main still
+    advertises it). Pass an empty extra when the harness has filtered the
+    server: a leftover trace then fails. When the binary exposes only the
+    expected names, extras are empty and the check is exact.
+    """
     names = tool_names(events)
     if names is None:
         return None
-    has_speedread = speedread_listed(names)
+    expected = tuple(expected) if expected is not None else TOOLS
+    required = {speedread_wire_name(tool) for tool in expected}
+    tolerated = {speedread_wire_name(tool) for tool in allow_extra}
+    speedread = {name for name in names if "speedread__" in name}
     if condition == "baseline":
-        return not has_speedread
-    if condition == "available":
-        return has_speedread
-    if condition == "exclusive":
-        leaked = [name for name in names if name in GROK_EXCLUSIVE_DENY]
-        return has_speedread and not leaked
-    return None
+        return not speedread
+    if condition not in ("available", "exclusive"):
+        return None
+    if not required <= speedread or not speedread <= required | tolerated:
+        return False
+    if condition == "exclusive" and any(name in GROK_EXCLUSIVE_DENY for name in names):
+        return False
+    return True
 
 
 def _usage_blobs(obj: dict) -> list[dict]:
@@ -397,7 +404,23 @@ def graders_ok(patterns: list[str], text: str) -> bool:
     return all(re.search(pat, text or "") for pat in patterns)
 
 
-def prepare_dirs(binary: str, harness: str, out: Path) -> dict[str, Path]:
+def mcp_server_command(binary: str, root: Path, allow: tuple[str, ...]) -> list[str]:
+    """Grok's MCP command: the allowlist proxy in front of the real binary."""
+    return [
+        sys.executable,
+        str(HERE / "mcp_allow.py"),
+        "--allow",
+        ",".join(allow),
+        "--",
+        str(Path(binary).resolve()),
+        "--root",
+        str(root),
+        *FLAGS,
+        "mcp",
+    ]
+
+
+def prepare_dirs(binary: str, harness: str, out: Path, allow: tuple[str, ...]) -> dict[str, Path]:
     """Copies of the fixture outside this repo, so project-scoped MCP config
     cannot land in speedread's git root."""
     base = Path(tempfile.mkdtemp(prefix="speedread-gate-", dir="/tmp"))
@@ -412,7 +435,7 @@ def prepare_dirs(binary: str, harness: str, out: Path) -> dict[str, Path]:
             raise SystemExit(f"workdir {path} is inside another git root ({top.stdout.strip()})")
     if harness == "grok":
         add = ["grok", "mcp", "add", "--scope", "project", "speedread", "--",
-               str(Path(binary).resolve()), "--root", str(rooted), *FLAGS, "mcp"]
+               *mcp_server_command(binary, rooted, allow)]
         subprocess.run(add, cwd=rooted, check=True)
         (out / "grok-mcp-add.txt").write_text(" ".join(add) + "\n")
     else:
@@ -433,7 +456,7 @@ def prepare_dirs(binary: str, harness: str, out: Path) -> dict[str, Path]:
     return {"baseline": plain, "available": rooted, "exclusive": rooted}
 
 
-def grok_argv(prompt, model, session_id, cwd, sandbox, exclusive, max_turns) -> list[str]:
+def grok_argv(prompt, model, session_id, cwd, sandbox, exclusive, max_turns, deny_mcp=()) -> list[str]:
     cmd = [
         "grok", "--no-auto-update", "--trust", "-p", prompt,
         "--output-format", "streaming-json",
@@ -444,7 +467,10 @@ def grok_argv(prompt, model, session_id, cwd, sandbox, exclusive, max_turns) -> 
         "--max-turns", str(max_turns),
     ]
     if exclusive:
+        # Built-ins only. MCP names are not removed by this flag.
         cmd += ["--disallowed-tools", ",".join(GROK_EXCLUSIVE_DENY)]
+    for tool in deny_mcp:
+        cmd += ["--deny", f"MCPTool({speedread_wire_name(tool)})"]
     return cmd
 
 
@@ -469,19 +495,19 @@ def init_failure(got: dict) -> str | None:
     return None
 
 
-def preflight_problem(condition: str, got: dict, harness: str) -> str | None:
+def preflight_problem(condition: str, got: dict, harness: str, *, expected=None, allow_extra=()) -> str | None:
     """None when this one session is safe to follow with the rest of the run."""
     failed = init_failure(got)
     if failed:
         return failed
     if harness != "grok":
         return None
-    surface = surface_ok(got.get("events") or [], condition)
+    surface = surface_ok(got.get("events") or [], condition, expected=expected, allow_extra=allow_extra)
     if surface is False:
         names = tool_names(got.get("events") or [])
         return f"tool surface does not match {condition}: {names}"
     if condition in ("available", "exclusive") and surface is None:
-        return "no tools list; cannot confirm a speedread__ tool (--trust, then grok mcp doctor)"
+        return "no tools list; cannot confirm speedread__map/search/read (--trust, then grok mcp doctor)"
     return None
 
 
@@ -581,6 +607,8 @@ def plan_text(args) -> str:
         "  first-call delta primary pair is available − baseline on grok usage inputTokens",
         "  one preflight session per condition runs first and aborts the rest on init failure",
         "  every grok argv passes --trust so a fresh git workdir loads project MCP",
+        f"  speedread tools the agent may see: {','.join(getattr(args, 'allow', TOOLS))}",
+        "  tools/list is filtered by evals/mcp_allow.py; --disallowed-tools does not hide MCP tools",
         "  this is not the unprompted-adoption experiment",
         "",
     ])
@@ -591,20 +619,22 @@ def example_commands(args, workdirs: dict[str, Path] | None) -> str:
     plain = (workdirs or {}).get("baseline", Path("/tmp/speedread-gate-EXAMPLE/baseline"))
     lines = ["Example argv (session id is fresh per run):", ""]
     if args.harness == "grok":
+        allow = tuple(getattr(args, "allow", TOOLS))
         lines.append("MCP (once, cwd is its own git root outside this repo):")
         lines.append("  " + " ".join([
             "grok", "mcp", "add", "--scope", "project", "speedread", "--",
-            str(Path(args.binary).resolve()), "--root", str(cwd), *FLAGS, "mcp",
+            *mcp_server_command(args.binary, cwd, allow),
         ]))
         lines.append("")
         lines.append("Probe, available:")
-        lines.append("  " + " ".join(grok_argv(PROBE_PROMPT, args.model, "<uuid>", cwd, args.sandbox, False, 1)))
+        hidden = tuple(tool for tool in TOLERATED_EXTRA if tool not in allow)
+        lines.append("  " + " ".join(grok_argv(PROBE_PROMPT, args.model, "<uuid>", cwd, args.sandbox, False, 1, hidden)))
         lines.append("")
         lines.append("Probe, baseline (no MCP server in that workdir):")
-        lines.append("  " + " ".join(grok_argv(PROBE_PROMPT, args.model, "<uuid>", plain, args.sandbox, False, 1)))
+        lines.append("  " + " ".join(grok_argv(PROBE_PROMPT, args.model, "<uuid>", plain, args.sandbox, False, 1, hidden)))
         lines.append("")
         lines.append("Task, exclusive:")
-        lines.append("  " + " ".join(grok_argv("<task prompt>", args.model, "<uuid>", cwd, args.sandbox, True, 12)))
+        lines.append("  " + " ".join(grok_argv("<task prompt>", args.model, "<uuid>", cwd, args.sandbox, True, 12, hidden)))
         lines.append("")
         lines.append("Usage, turn 1:")
         lines.append("  grok usage <session-id> 1")
@@ -618,7 +648,22 @@ def example_commands(args, workdirs: dict[str, Path] | None) -> str:
     return "\n".join(lines)
 
 
+def bind_allow(args):
+    raw = getattr(args, "only_tools", ",".join(TOOLS))
+    allow = tuple(part.strip() for part in raw.split(",") if part.strip())
+    known = set(TOOLS) | set(TOLERATED_EXTRA)
+    bad = [name for name in allow if name not in known]
+    if bad:
+        sys.exit(f"unknown tool in --only-tools: {bad}; known are {tuple(TOOLS) + tuple(TOLERATED_EXTRA)}")
+    args.allow = allow
+    # The filter removes every speedread tool outside this list, so a leftover
+    # trace is a preflight failure rather than something to tolerate.
+    args.allow_extra = ()
+    args.deny_mcp = tuple(tool for tool in TOLERATED_EXTRA if tool not in allow)
+
+
 def cmd_agent(args) -> int:
+    bind_allow(args)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     text = plan_text(args) + "\n" + example_commands(args, None)
@@ -630,7 +675,7 @@ def cmd_agent(args) -> int:
         print("Not running. The pre-registered count starts only with --yes.")
         return 2
     tasks = load_tasks()
-    workdirs = prepare_dirs(args.binary, args.harness, out)
+    workdirs = prepare_dirs(args.binary, args.harness, out, args.allow)
     print(example_commands(args, workdirs))
     version = subprocess.run([args.harness, "version"], capture_output=True, text=True)
     meta = {
@@ -654,7 +699,7 @@ def cmd_agent(args) -> int:
         session = str(uuid.uuid4())
         exclusive = condition == "exclusive"
         if args.harness == "grok":
-            cmd = grok_argv(prompt, args.model, session, cwd, args.sandbox, exclusive, max_turns)
+            cmd = grok_argv(prompt, args.model, session, cwd, args.sandbox, exclusive, max_turns, args.deny_mcp)
         else:
             cfg = mcp_config if condition != "baseline" else None
             cmd = copilot_argv(prompt, args.model, cfg, exclusive, args.max_credits)
@@ -687,14 +732,15 @@ def cmd_agent(args) -> int:
     preflight_rows = []
     for condition in PROBE_CONDITIONS:
         got = launch(PROBE_PROMPT, condition, "preflight", 1, 90)
-        problem = preflight_problem(condition, got, args.harness)
+        problem = preflight_problem(
+            condition, got, args.harness, expected=args.allow, allow_extra=args.allow_extra)
         preflight_rows.append({
             "condition": condition,
             "exit_code": got["exit_code"],
             "session_id": got["session_id"],
             "full_input_tokens": got["full_input_tokens"],
             "tool_names": tool_names(got["events"]),
-            "surface_ok": surface_ok(got["events"], condition) if args.harness == "grok" else None,
+            "surface_ok": surface_ok(got["events"], condition, expected=args.allow, allow_extra=args.allow_extra) if args.harness == "grok" else None,
             "problem": problem,
             "stderr_tail": got["stderr_tail"],
         })
@@ -716,7 +762,7 @@ def cmd_agent(args) -> int:
                 got = launch(PROBE_PROMPT, condition, "probe", 1, 90)
                 rec = {k: v for k, v in got.items() if k not in ("events", "stdout", "cmd")}
                 rec["repeat"] = repeat
-                rec["surface_ok"] = surface_ok(got["events"], condition)
+                rec["surface_ok"] = surface_ok(got["events"], condition, expected=args.allow, allow_extra=args.allow_extra)
                 fh.write(json.dumps(rec) + "\n")
                 fh.flush()
                 (transcripts / f"probe-{repeat:04d}-{condition}.jsonl").write_text(got["stdout"])
@@ -752,7 +798,7 @@ def cmd_agent(args) -> int:
                     arg_note = f"first speedread tool was {first['tool']}"
                 answer = assistant_text(got["events"])
                 success = graders_ok(task["answer_graders"], answer)
-                surface = surface_ok(got["events"], "exclusive")
+                surface = surface_ok(got["events"], "exclusive", expected=args.allow, allow_extra=args.allow_extra)
                 scored = surface is not False
                 rec = {
                     "task": task["id"],

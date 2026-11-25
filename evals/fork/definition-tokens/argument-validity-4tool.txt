@@ -1,0 +1,3 @@
+argument-validity-4tool.json is the 16-task run that included four trace tasks,
+taken while the server still advertised trace. The current gate is the 12-task
+product set in argument-validity.json (map, search, read).

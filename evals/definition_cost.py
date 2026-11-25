@@ -62,7 +62,6 @@ FLAGS = ["--deadline-ms", "10000", "--cache-mb", "256"]
 NEGATIVES = [
     ("search", {}),
     ("read", {}),
-    ("trace", {}),
 ]
 
 
@@ -115,6 +114,12 @@ def sigma_at_n(n: int, delta: float, alpha: float = ALPHA, power: float = POWER)
     return delta * math.sqrt(n) / (za + zb)
 
 
+def ci_half_width(p: float, n: int, alpha: float = ALPHA) -> float:
+    """Half-width of a normal 95% interval for a single proportion."""
+    z = norm_ppf(1 - alpha / 2)
+    return z * math.sqrt(p * (1 - p) / n)
+
+
 def power_markdown() -> str:
     per_tool = TASKS_PER_TOOL * TRIALS_PER_TASK
     pooled = per_tool * len(TOOLS)
@@ -146,8 +151,8 @@ def power_markdown() -> str:
         rows.append(f"| {label} | {p0:.2f} → {p1:.2f} | {need:.0f} | {power_two_proportions(p0, p1, n):.3f} |")
     rows += [
         "",
-        f"First-call MDE: {FIRST_CALL_DELTA_TOKENS} tokens on the paired mean of full input",
-        "(uncached + cache read + cache creation) for available − baseline.",
+        f"First-call MDE: {FIRST_CALL_DELTA_TOKENS} tokens on the paired mean of grok usage inputTokens",
+        "(already the full prompt; cache is not added) for available − baseline.",
         f"At n = {PROBE_SESSIONS_PER_CONDITION}, 80% power holds while the SD of that paired",
         f"difference is at most {sigma_at_n(PROBE_SESSIONS_PER_CONDITION, FIRST_CALL_DELTA_TOKENS):.0f} tokens.",
         "",
@@ -160,8 +165,24 @@ def power_markdown() -> str:
         "",
         "Per-tool tests are each at α = 0.05, not Bonferroni. A gate that blocks when any",
         "one tool regresses would rather false-block than miss a one-tool break. The pooled",
-        "rate is reported too, because a 10 point drop on one tool of four is only 2.5 points",
+        f"rate is reported too, because a 10 point drop on one tool of {len(TOOLS)} is only "
+        f"{10 / len(TOOLS):.1f} points",
         "pooled and the pool test will not see it.",
+        "",
+        "CI half-width (normal 95% interval for one proportion) at the planned n.",
+        "Dropping trace does not change the per-tool n, so the per-tool half-width stays put.",
+        f"Pooled n is {pooled} instead of {per_tool * 4}.",
+        "",
+        "| Rate | n | Half-width |",
+        "|---|---:|---:|",
+        f"| selection planning 0.90, per tool | {per_tool} | {ci_half_width(SELECTION_P0, per_tool):.4f} |",
+        f"| argument planning 0.98, per tool | {per_tool} | {ci_half_width(ARGUMENT_P0, per_tool):.4f} |",
+        f"| selection planning 0.90, pooled | {pooled} | {ci_half_width(SELECTION_P0, pooled):.4f} |",
+        f"| same pooled rate at the old 4-tool n | {per_tool * 4} | {ci_half_width(SELECTION_P0, per_tool * 4):.4f} |",
+        "",
+        "12 tasks (4 per remaining tool) keep the per-tool acceptance criterion.",
+        "Adding tasks would not tighten the per-tool interval; more trials per task would.",
+        "The per-tool interval is the one the gate uses, so the trial count stays 70.",
         "",
         "Spread rule: a comparison is inconclusive when the interquartile range of the",
         "paired differences (or, for a rate, the bootstrap interval width) is larger than",
@@ -592,7 +613,90 @@ def cmd_tokens(args) -> int:
     (out / "tools-list-tokens.json").write_text(json.dumps(summary, indent=2) + "\n")
     (out / "tools-list-tokens.md").write_text(tokens_markdown(summary))
     print(tokens_markdown(summary))
+    if stable:
+        write_product_tool_tokens(out, primary["wire_line"], encs, summary)
     return 0 if stable else 1
+
+
+def write_product_tool_tokens(out: Path, wire_line: str, encs, four_tool: dict) -> None:
+    """Tokenize the live payload with every tool outside TOOLS removed.
+
+    The kept tool objects are the server's own bytes. trace is still in the
+    binary; this is not a second server build and it does not edit instructions.
+    """
+    from mcp_allow import filter_tools_message
+
+    filtered = filter_tools_message(wire_line, set(TOOLS))
+    result = slice_result(filtered)
+    names = [t.get("name") for t in (json.loads(result).get("tools") or [])]
+    per_encoding = {}
+    for enc_name, enc in encs.items():
+        attributed, rows = tool_rows(result, enc)
+        per_encoding[enc_name] = {
+            "result_tokens": attributed["tokens"],
+            "boundary_tokens": attributed["boundary"],
+            "result_other_tokens": attributed["by_label"].get("result.other", 0),
+            "attribution_sums_to_result": (
+                sum(r["attributed_total"] for r in rows)
+                + attributed["by_label"].get("result.other", 0)
+                + attributed["boundary"]
+                == attributed["tokens"]
+            ),
+            "tools": [
+                {"name": row["name"], "attributed_tokens": row["attributed_tokens"], "attributed_total": row["attributed_total"]}
+                for row in rows
+            ],
+        }
+    o200k = per_encoding["o200k_base"]["result_tokens"]
+    cl100k = per_encoding["cl100k_base"]["result_tokens"]
+    four = four_tool["headline"]["tokens"]
+    summary = {
+        "verdict": "3-tool surface, sliced from the live 4-tool tools/list",
+        "how": "evals/mcp_allow.py removed every tool whose name is not in definition_plan.TOOLS. Other bytes are the server's.",
+        "tools": names,
+        "product_tools": list(TOOLS),
+        "not_edited": ["src/server.rs", "INSTRUCTIONS", "tool descriptions that remain"],
+        "instructions_still_mention_trace": True,
+        "o200k_base": o200k,
+        "cl100k_base": cl100k,
+        "four_tool_o200k_base": four,
+        "o200k_delta_vs_four_tool": o200k - four,
+        "runs": four_tool["runs"],
+        "range": 0,
+        "encodings": per_encoding,
+        "filtered_wire_sha256": hashlib.sha256(filtered.encode()).hexdigest(),
+    }
+    (out / "tools-list-tokens-3tool.json").write_text(json.dumps(summary, indent=2) + "\n")
+    lines = [
+        "# tools/list tokens — 3-tool surface",
+        "",
+        f"Headline: **{o200k} o200k_base tokens** (cl100k_base **{cl100k}**).",
+        "",
+        f"Sliced from the live 4-tool result ({four} o200k) by dropping every tool not in "
+        f"{', '.join(TOOLS)}. Delta {o200k - four} o200k. The kept objects are the server's bytes. "
+        "Instructions are unchanged and still mention trace; they are not in this number.",
+        "",
+        f"Tools in this payload, server order: {', '.join(names)}.",
+        "",
+        "| Tool | description | inputSchema | annotations | other | sum |",
+        "|---|---:|---:|---:|---:|---:|",
+    ]
+    for row in per_encoding["o200k_base"]["tools"]:
+        a = row["attributed_tokens"]
+        lines.append(
+            f"| {row['name']} | {a.get('description', 0)} | {a.get('inputSchema', 0)} | "
+            f"{a.get('annotations', 0)} | {a.get('other', 0)} | {row['attributed_total']} |"
+        )
+    lines += [
+        "",
+        f"Boundary {per_encoding['o200k_base']['boundary_tokens']}, "
+        f"result.other {per_encoding['o200k_base']['result_other_tokens']}, "
+        f"sums to the result: {per_encoding['o200k_base']['attribution_sums_to_result']}.",
+        "",
+    ]
+    text = "\n".join(lines)
+    (out / "tools-list-tokens-3tool.md").write_text(text)
+    print(text)
 
 
 def tokens_markdown(summary: dict) -> str:
@@ -1037,6 +1141,10 @@ def cmd_self_test(_args) -> int:
         counts[task["tool"]] = counts.get(task["tool"], 0) + 1
     if counts != {name: TASKS_PER_TOOL for name in TOOLS}:
         sys.exit(f"tasks {counts}")
+    if TOOLS != ("map", "search", "read"):
+        sys.exit(f"product tools changed: {TOOLS}")
+    if any(task["tool"] not in TOOLS for task in tasks):
+        sys.exit("a task names a tool outside the product set")
     # Power table is finite and the planned n meets the stated binary targets.
     per_tool = TASKS_PER_TOOL * TRIALS_PER_TASK
     if power_two_proportions(ARGUMENT_P0, ARGUMENT_P1, per_tool) < 0.80:
@@ -1089,6 +1197,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--print-commands", action="store_true")
     p.add_argument("--trials", type=int, default=TRIALS_PER_TASK)
     p.add_argument("--probe-sessions", type=int, default=PROBE_SESSIONS_PER_CONDITION)
+    p.add_argument("--only-tools", default=",".join(TOOLS),
+                   help="speedread tools the agent may see (default map,search,read). "
+                        "A stdio filter drops the rest from tools/list. "
+                        "--disallowed-tools does not hide MCP tools.")
     p.add_argument("--sandbox", default="read-only")
     p.add_argument("--max-credits", type=int, default=60)
     p.add_argument("--timeout", type=int, default=180)

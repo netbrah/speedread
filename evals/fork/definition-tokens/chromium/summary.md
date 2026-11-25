@@ -1,3 +1,5 @@
+Superseded for the 3-tool claim. This is the 4-tool binary, including four trace queries. Kept on purpose. See SUPERSEDED.txt. Rerun after trace is removed.
+
 # Chromium query baseline
 
 Runs per query: 5. Flags: `--deadline-ms 10000 --cache-mb 256`. Tokenizer: tiktoken 0.14.0.
