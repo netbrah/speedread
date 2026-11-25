@@ -1,0 +1,7 @@
+4 matches in 2 files for structural `add($$$A)` (rust)
+==> src/lib.rs @1619622437581e91 (1 match)
+[6-8] pub fn twice(x: i32) -> i32
+7	    add(x, x)	$$$A=x, x
+==> src/use.rs @5a37ffabc8e8f95b (3 matches)
+[3-7] pub fn quad(x: i32) -> i32
+6	    add(add(x, x), add(x, x))	$$$A=add(x, x), add(x, x)	$$$A=x, x	$$$A=x, x

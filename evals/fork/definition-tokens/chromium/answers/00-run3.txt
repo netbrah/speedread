@@ -1,0 +1,182 @@
+5,000 matches in 1,328 files for /base::BindOnce/ (stopped at 5,000; narrow with path/glob)
+==> android_webview/browser/aw_browser_main_parts.cc @4259b1a0424c948e (1 match)
+[115-152] int AwBrowserMainParts::PreEarlyInitialization() (in android_webview)
+147	        base::BindOnce(&AwBrowserProcess::FetchHostAppCacheQuota,
+==> android_webview/browser/aw_browser_process.cc @0a9573af0c4dfc2e (1 match)
+[350-363] void AwBrowserProcess::FetchHostAppCacheQuota() (in android_webview)
+357	      FROM_HERE, base::BindOnce(
+==> android_webview/browser/aw_browser_terminator.cc @0b893b287f0570c4 (1 match)
+[158-186] void AwBrowserTerminator::OnChildExit(const crash_reporter::ChildExitObserver::TerminationInfo& info) (in android_webview)
+184	                 base::BindOnce(OnRenderProcessGone, java_web_contents,
+==> android_webview/browser/aw_content_browser_client.cc @98b4c789b777a0fb (3 matches)
+[1029-1104] bool AwContentBrowserClient::HandleExternalProtocol(const GURL& url, content::WebContents::Getter wc_getter, content::FrameTreeNodeId frame_tree_node_id, content::NavigationUIData*… (in android_webview)
+1079	      base::BindOnce(
+[1188-1329] void AwContentBrowserClient::WillCreateURLLoaderFactory(content::BrowserContext* browser_context, content::RenderFrameHost* frame, int render_process_id, URLLoaderFactoryType type,… (in android_webview)
+1299	        base::BindOnce(
+1315	        base::BindOnce(
+==> android_webview/browser/aw_contents.cc @846304dc3f23ba15 (5 matches)
+[617-624] void AwContents::DocumentHasImages(JNIEnv* env, const JavaRef<jobject>& message) (in android_webview)
+623	      base::BindOnce(&DocumentHasImagesCallback, j_message));
+[681-690] void AwContents::GenerateMHTML(JNIEnv* env, const std::string& path, const JavaRef<jobject>& callback) (in android_webview)
+688	      base::BindOnce(&GenerateMHTMLCallback,
+[746-754] void ShowGeolocationPromptHelper(const JavaObjectWeakGlobalRef& java_ref, const GURL& origin) (in android_webview.(anonymous))
+752	        base::BindOnce(&ShowGeolocationPromptHelperTask, java_ref, origin));
+[1463-1470] void AwContents::InsertVisualStateCallback(JNIEnv* env, int64_t request_id, const JavaRef<jobject>& callback) (in android_webview)
+1468	      base::BindOnce(&InvokeVisualStateCallback, java_ref_, request_id,
+[1795-1806] void LogSiteVisitOnBackgroundThread(int64_t site_hash) (in android_webview.(anonymous))
+1800	      FROM_HERE, base::BindOnce(
+==> android_webview/browser/aw_contents_client_bridge_unittest.cc @717bebb76005ad86 (1 match)
+[169-196] TEST_F(AwContentsClientBridgeTest, PendingJsDialogsCanceledOnDestruction) (in android_webview)
+174	  auto callback = base::BindOnce(
+==> android_webview/browser/aw_contents_io_thread_client.cc @ec3bc21f1fd909bb (5 matches)
+[486-516] void OnShouldInterceptCallback(const base::TimeTicks request_started, AwContentsIoThreadClient::ShouldInterceptRequestResponseCallback callback, AwWebResourceInterceptResponse java… (in android_webview.(anonymous))
+515	      FROM_HERE, base::BindOnce(std::move(callback), std::move(response_data)));
+[518-550] void StartShouldInterceptRequest(AwWebResourceRequest request, const base::TimeTicks request_started, AwContentsIoThreadClient::ShouldInterceptRequestResponseCallback callback, Jav… (in android_webview.(anonymous))
+539	        FROM_HERE, base::BindOnce(std::move(callback), NoInterceptRequest()));
+548	          env, base::BindOnce(&OnShouldInterceptCallback, request_started,
+[648-674] void AwContentsIoThreadClient::ShouldInterceptRequestAsync(AwWebResourceRequest request, ShouldInterceptRequestResponseCallback callback) (in android_webview)
+665	        base::BindOnce(&StartShouldInterceptRequest, std::move(request),
+[676-688] void AwContentsIoThreadClient::InterceptHeadersAsync(std::vector<scoped_refptr<AwHeaderInterceptorStore::InterceptorEntry>> eligible_interceptors, AwWebResourceRequest request, net… (in android_webview)
+685	      base::BindOnce(&StartInterceptHeaders, std::move(eligible_interceptors),
+==> android_webview/browser/aw_contents_statics.cc @169fae14154ae516 (3 matches)
+[87-96] static void JNI_AwContentsStatics_ClearClientCertPreferences(JNIEnv* env, const JavaRef<jobject>& callback) (in android_webview)
+93	      FROM_HERE, base::BindOnce(&NotifyClientCertificatesChanged),
+94	      base::BindOnce(&ClientCertificatesCleared,
+[108-119] static void JNI_AwContentsStatics_SetSafeBrowsingAllowlist(JNIEnv* env, std::vector<std::string> rules, const JavaRef<jobject>& callback) (in android_webview)
+117	      base::BindOnce(&SafeBrowsingAllowlistAssigned,
+==> android_webview/browser/aw_http_auth_handler.cc @e8ae7a39da704726 (1 match)
+[28-47] AwHttpAuthHandler::AwHttpAuthHandler(const net::AuthChallengeInfo& auth_info, content::WebContents* web_contents, bool first_auth_attempt, content::LoginDelegate::LoginAuthRequired… (in android_webview)
+46	      base::BindOnce(&AwHttpAuthHandler::Start, weak_factory_.GetWeakPtr()));
+==> android_webview/browser/aw_pac_processor.cc @99a6c1a83bba6731 (7 matches)
+[297-302] bool ExecSync() (in android_webview.Job)
+299	        FROM_HERE, base::BindOnce(&Job::Exec, base::Unretained(this)));
+[334-340] SetProxyScriptJob(AwPacProcessor* processor, std::string script) (in android_webview.SetProxyScriptJob)
+336	    task_ = base::BindOnce(
+339	        base::BindOnce(&SetProxyScriptJob::OnSignal, base::Unretained(this)));
+[354-360] MakeProxyRequestJob(AwPacProcessor* processor, std::string url) (in android_webview.MakeProxyRequestJob)
+356	    task_ = base::BindOnce(
+359	        base::BindOnce(&MakeProxyRequestJob::OnSignal, base::Unretained(this)));
+[391-395] void AwPacProcessor::CancelJobs() (in android_webview)
+393	      FROM_HERE, base::BindOnce(&AwPacProcessor::CancelJobsOnPacThread,
+[461-478] void AwPacProcessor::SetNetworkAndLinkAddresses(net_handle_t net_handle, const std::vector<std::string>& string_link_addresses) (in android_webview)
+475	      FROM_HERE, base::BindOnce(&HostResolver::SetNetworkAndLinkAddresses,
+==> android_webview/browser/aw_permission_manager.cc @3921512bd4636044 (3 matches)
+[295-472] void AwPermissionManager::RequestPermissionsFromCurrentDocument(content::RenderFrameHost* render_frame_host, const content::PermissionRequestDescription& request_description, base:… (in android_webview)
+362	            base::BindOnce(&OnRequestResponse, weak_ptr_factory_.GetWeakPtr(),
+368	            base::BindOnce(&OnRequestResponse, weak_ptr_factory_.GetWeakPtr(),
+374	            base::BindOnce(&OnRequestResponse, weak_ptr_factory_.GetWeakPtr(),
+==> android_webview/browser/aw_permission_manager_unittest.cc @31b1661de27644de (31 matches)
+[264-272] TEST_F(AwPermissionManagerTest, MIDIPermissionIsGrantedSynchronously) (in android_webview.(anonymous))
+268	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[274-282] TEST_F(AwPermissionManagerTest, ClipboardPermissionIsGrantedSynchronously) (in android_webview.(anonymous))
+278	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[284-293] TEST_F(AwPermissionManagerTest, LocalNetworkAccessPermissionIsGrantedSynchronously) (in android_webview.(anonymous))
+289	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[295-303] TEST_F(AwPermissionManagerTest, LocalAccessPermissionIsGrantedSynchronously) (in android_webview.(anonymous))
+299	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[305-314] TEST_F(AwPermissionManagerTest, LoopbackAccessPermissionIsGrantedSynchronously) (in android_webview.(anonymous))
+310	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[316-340] TEST_F(AwPermissionManagerTest, SinglePermissionRequestIsGrantedSynchronously) (in android_webview.(anonymous))
+325	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+336	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[342-359] TEST_F(AwPermissionManagerTest, SinglePermissionRequestIsGrantedAsynchronously) (in android_webview.(anonymous))
+349	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[361-376] TEST_F(AwPermissionManagerTest, ManagerIsDeletedWhileDelegateProcesses) (in android_webview.(anonymous))
+367	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[378-403] TEST_F(AwPermissionManagerTest, MultiplePermissionRequestsAreGrantedTogether) (in android_webview.(anonymous))
+385	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+391	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[405-436] TEST_F(AwPermissionManagerTest, MultiplePermissionRequestsAreGrantedRespectively) (in android_webview.(anonymous))
+412	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+418	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[438-456] TEST_F(AwPermissionManagerTest, SinglePermissionsRequestIsGrantedSynchronously) (in android_webview.(anonymous))
+450	      base::BindOnce(&AwPermissionManagerTest::PermissionsRequestResponse,
+[458-481] TEST_F(AwPermissionManagerTest, SinglePermissionsRequestIsGrantedAsynchronously) (in android_webview.(anonymous))
+468	      base::BindOnce(&AwPermissionManagerTest::PermissionsRequestResponse,
+[483-552] TEST_F(AwPermissionManagerTest, ComplicatedRequestScenario1) (in android_webview.(anonymous))
+495	      base::BindOnce(&AwPermissionManagerTest::PermissionsRequestResponse,
+501	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+523	      base::BindOnce(&AwPermissionManagerTest::PermissionsRequestResponse,
+535	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[554-626] TEST_F(AwPermissionManagerTest, ComplicatedRequestScenario2) (in android_webview.(anonymous))
+567	      base::BindOnce(&AwPermissionManagerTest::PermissionsRequestResponse,
+573	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+595	      base::BindOnce(&AwPermissionManagerTest::PermissionsRequestResponse,
+611	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[628-699] TEST_F(AwPermissionManagerTest, ComplicatedRequestScenario3) (in android_webview.(anonymous))
+640	      base::BindOnce(&AwPermissionManagerTest::PermissionsRequestResponse,
+647	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+672	      base::BindOnce(&AwPermissionManagerTest::PermissionsRequestResponse,
+684	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+[701-781] TEST_F(AwPermissionManagerTest, ComplicatedRequestScenario4) (in android_webview.(anonymous))
+714	      base::BindOnce(&AwPermissionManagerTest::PermissionsRequestResponse,
+721	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+749	      base::BindOnce(&AwPermissionManagerTest::PermissionsRequestResponse,
+761	      base::BindOnce(&AwPermissionManagerTest::PermissionRequestResponse,
+==> android_webview/browser/aw_preconnector.cc @d1ff5efeb8b156a7 (3 matches)
+[298-349] void AwPreconnector::PrewarmDictionary(const GURL& url) (in android_webview)
+314	          base::BindOnce(&AwPreconnector::OnDictionaryExpired,
+327	  entry->remote.set_disconnect_handler(base::BindOnce(
+334	                       base::BindOnce(&AwPreconnector::OnDictionaryExpired,
+==> android_webview/browser/aw_preconnector_unittest.cc @b922139c36317a53 (1 match)
+[54-69] void PreloadSharedDictionaryInfoForDocument(const std::vector<GURL>& urls, mojo::PendingReceiver<network::mojom::PreloadedSharedDictionaryInfoHandle> preload_handle) override (in android_webview.(anonymous).AwPreconnectorTestNetworkContext)
+66	        base::BindOnce(&AwPreconnectorTestNetworkContext::OnHandleDisconnected,
+==> android_webview/browser/aw_print_manager.cc @d4b3e93cb69c9915 (2 matches)
+[155-204] void AwPrintManager::DidPrintDocument(printing::mojom::DidPrintDocumentParamsPtr params, DidPrintDocumentCallback callback) (in android_webview)
+200	          base::BindOnce(&SaveDataToFd, std::move(print_fd), number_pages(),
+202	          base::BindOnce(&AwPrintManager::OnDidPrintDocumentWritingDone,
+==> android_webview/browser/aw_proxy_controller.cc @b5e6df0852f76896 (2 matches)
+[49-80] static std::string JNI_AwProxyController_SetProxyOverride(JNIEnv* env, const base::android::JavaRef<jobjectArray>& jurl_schemes, const base::android::JavaRef<jobjectArray>& jproxy_… (in android_webview)
+76	      base::BindOnce(&ProxyOverrideChanged,
+[82-89] static void JNI_AwProxyController_ClearProxyOverride(JNIEnv* env, const JavaRef<jobject>& listener, const JavaRef<jobject>& executor) (in android_webview)
+86	  AwProxyConfigMonitor::GetInstance()->ClearProxyOverride(base::BindOnce(
+==> android_webview/browser/aw_quota_manager_bridge.cc @eaf699785f7d6509 (7 matches)
+[86-94] void OnBrowsingDataRemoverDone(uint64_t failed_data_types) override (in android_webview.(anonymous).DeleteDataObserver)
+92	        FROM_HERE, base::BindOnce(&DeleteDataObserver::OnRemovalDone,
+[211-270] void AwQuotaManagerBridge::GetOrigins(JNIEnv* env, const JavaRef<jobject>& object, const JavaRef<jobject>& callback) (in android_webview)
+215	  GetOriginsResultCallback ui_callback = base::BindOnce(
+234	  GetQuotaManagerProxy()->PostTaskWithQuotaManager(base::BindOnce(
+241	        quota_manager->GetAllStorageKeys(base::BindOnce(
+250	                    base::BindOnce(
+[272-291] void AwQuotaManagerBridge::GetUsageAndQuotaForOrigin(const std::u16string& origin, const JavaRef<jobject>& callback, bool is_quota) (in android_webview)
+281	      base::BindOnce(
+289	          .Then(base::BindOnce(&base::android::RunLongCallbackAndroid,
+==> android_webview/browser/aw_speech_recognition_manager_delegate.cc @c0b4812314764f82 (2 matches)
+[57-82] void AwSpeechRecognitionManagerDelegate::CheckRecognitionIsAllowed(int session_id, base::OnceCallback<void(bool ask_user, bool is_allowed)> callback) (in android_webview)
+81	      base::BindOnce(&CheckRenderFrameType, std::move(callback), global_id));
+[89-100] void AwSpeechRecognitionManagerDelegate::CheckRenderFrameType(base::OnceCallback<void(bool ask_user, bool is_allowed)> callback, content::GlobalRenderFrameHostId global_id) (in android_webview)
+98	      base::BindOnce(std::move(callback), true /* check_permission */,
+==> android_webview/browser/content_restriction/aw_content_restriction_manager_client.cc @c629ee64919667fe (3 matches)
+[74-91] void AwContentRestrictionManagerClient::ClassificationRequestTracker:: RegisterClassificationRequest(int64_t navigation_id, ContentClassificationCallback callback) (in android_webview)
+89	      base::BindOnce(&ClassificationRequestTracker::OnTimeout,
+[174-183] AwContentRestrictionManagerClient::AwContentRestrictionManagerClient(std::unique_ptr<Delegate> delegate, PrefService* pref_service) : delegate_(std::move(delegate)), pref_service_(… (in android_webview)
+180	      FROM_HERE, base::BindOnce(&AwContentRestrictionManagerClient::
+[215-233] void AwContentRestrictionManagerClient::RequestContentClassification(int64_t navigation_id, const network::ResourceRequest& request, ContentClassificationCallback callback) (in android_webview)
+231	      base::BindOnce(&ClassificationRequestTracker::OnClassificationResult,
+==> android_webview/browser/content_restriction/aw_content_restriction_manager_client_unittest.cc @718ff46a0d877e79 (1 match)
+[99-117] void RequestContentClassification(bool* callback_run, bool* callback_result) (in android_webview.(anonymous).AwContentRestrictionManagerClientTest)
+105	        base::BindOnce(
+==> android_webview/browser/content_restriction/aw_content_restriction_url_loader_throttle.cc @127006db1fd6787a (12 matches)
+[131-138] explicit SpoolCoordinator(scoped_refptr<base::SequencedTaskRunner> task_runner) : base::RefCountedDeleteOnSequence<SpoolCoordinator>(task_runner) (in android_webview.(anonymous).SpoolCoordinator)
+136	                          base::BindOnce(&SpoolCoordinator::InitializeSpoolFile,
+[302-317] void WriteDataToPipe(std::vector<uint8_t> data) (in android_webview.AwContentRestrictionURLLoaderThrottle.DataPipeStreamerBase)
+307	        base::BindOnce(
+[327-352] static std::unique_ptr<NonChunkedDataPipeStreamer> Create(scoped_refptr<base::RefCountedData<base::ScopedFD>> write_fd_wrapper, mojo::PendingRemote<network::mojom::DataPipeGetter> … (in android_webview.AwContentRestrictionURLLoaderThrottle.NonChunkedDataPipeStreamer)
+345	        base::BindOnce(&NonChunkedDataPipeStreamer::CleanUp,
+349	        base::BindOnce(&NonChunkedDataPipeStreamer::OnReadComplete,
+[397-409] void OnDataAvailable(base::span<const uint8_t> data) override (in android_webview.AwContentRestrictionURLLoaderThrottle.ChunkedDataPipeStreamer)
+407	        FROM_HERE, base::BindOnce(&SpoolCoordinator::OnDataAvailable,
+[411-418] void OnDataComplete() override (in android_webview.AwContentRestrictionURLLoaderThrottle.ChunkedDataPipeStreamer)
+416	        base::BindOnce(&SpoolCoordinator::OnDataComplete, spool_coordinator_));
+[468-474] void StartReading(mojo::ScopedDataPipeProducerHandle pipe) override (in android_webview.AwContentRestrictionURLLoaderThrottle.ProxyChunkedDataPipeGetter)
+472	        FROM_HERE, base::BindOnce(&SpoolCoordinator::StartReading,
+[483-569] void AwContentRestrictionURLLoaderThrottle::WriteRequestBodyToPipe(int write_fd, scoped_refptr<network::ResourceRequestBody> request_body) (in android_webview)
+506	            base::BindOnce(&WriteDataElementBytesToPipe, write_fd_wrapper,
+520	            base::BindOnce(&WriteDataElementFileToPipe, write_fd_wrapper,
+562	      base::BindOnce(
+[618-651] void AwContentRestrictionURLLoaderThrottle::WillStartRequest(network::ResourceRequest* request, bool* defer) (in android_webview)
+647	        base::BindOnce(
+[653-674] void AwContentRestrictionURLLoaderThrottle::WillRedirectRequest(net::RedirectInfo* redirect_info, const network::mojom::URLResponseHead& response_head, bool* defer, network::HttpRe… (in android_webview)
+670	        base::BindOnce(
+… 1307 more files: android_webview/browser/cookie_manager.cc (45), android_webview/browser/file_system_access/aw_file_system_access_permission_context.cc (2), android_webview/browser/gfx/aw_draw_fn_impl.cc (2), android_webview/browser/gfx/aw_vulkan_context_provider.cc (1), android_webview/browser/gfx/browser_view_renderer.cc (2), android_webview/browser/gfx/browser_view_renderer_unittest.cc (6), android_webview/browser/gfx/hardware_renderer.cc (4), android_webview/browser/gfx/overlay_processor_webview.cc (11), android_webview/browser/gfx/render_thread_manager.cc (4), android_webview/browser/gfx/root_frame_sink_proxy.cc (10), android_webview/browser/gfx/task_queue_webview.cc (2), android_webview/browser/gfx/test/fake_window.cc (8), android_webview/browser/gfx/test/invalidate_test.cc (5), android_webview/browser/gfx/test/rendering_test.cc (1), android_webview/browser/gfx/viz_compositor_thread_runner_webview.cc (6), android_webview/browser/icon_helper.cc (1), android_webview/browser/js_java_interaction/js_reply_proxy.cc (1), android_webview/browser/metrics/android_metrics_log_uploader.cc (2), android_webview/browser/metrics/aw_metrics_service_client.cc (1), android_webview/browser/metrics/memory_metrics_logger.cc (5), android_webview/browser/network_service/aw_proxy_config_monitor.cc (2), android_webview/browser/network_service/aw_proxying_restricted_cookie_manager.cc (1), android_webview/browser/network_service/aw_proxying_restricted_cookie_manager_unittest.cc (5), android_webview/browser/network_service/aw_proxying_url_loader_factory.cc (14), android_webview/browser/permission/media_access_permission_request_unittest.cc (1), android_webview/browser/prefetch/aw_prefetch_manager.cc (3), android_webview/browser/prefetch/aw_prefetch_manager_unittest.cc (1), android_webview/browser/safe_browsing/aw_safe_browsing_allowlist_manager.cc (3), android_webview/browser/safe_browsing/aw_safe_browsing_allowlist_manager_unittest.cc (1), android_webview/browser/safe_browsing/aw_url_checker_delegate_impl.cc (3), android_webview/browser/signin/signin_url_loader_throttle.cc (1), android_webview/browser/supervised_user/aw_supervised_user_throttle.cc (2), android_webview/browser/tracing/aw_background_tracing_metrics_provider.cc (1), android_webview/browser/tracing/aw_background_tracing_metrics_provider_unittest.cc (1), android_webview/browser/tracing/aw_tracing_controller.cc (2), android_webview/js_sandbox/service/js_sandbox_isolate.cc (13), android_webview/js_sandbox/service/js_sandbox_message_port.cc (2), android_webview/renderer/aw_content_renderer_client.cc (1), android_webview/renderer/aw_render_thread_observer.cc (1), cc/animation/animation_host.cc (1), cc/base/delayed_unique_notifier.cc (2), cc/base/unique_notifier.cc (1), cc/benchmarks/micro_benchmark_controller_unittest.cc (7), cc/benchmarks/micro_benchmark_impl.cc (1), cc/benchmarks/rasterize_and_record_benchmark.cc (1), cc/benchmarks/unittest_only_benchmark.cc (1), cc/input/scrollbar_animation_controller.cc (1), cc/input/scrollbar_controller.cc (1), cc/layers/layer_unittest.cc (6), cc/layers/surface_layer_impl_unittest.cc (1), cc/layers/texture_layer.cc (2), cc/layers/texture_layer_impl.cc (1), cc/layers/texture_layer_impl_unittest.cc (2), …. Narrow with path/glob or raise budget.
+not fully searched: 2 files have a line longer than 4 MiB and were read only up to it, e.g. tools/perf/testdata/task_output_dir/1/memory.desktop/perf_results.json

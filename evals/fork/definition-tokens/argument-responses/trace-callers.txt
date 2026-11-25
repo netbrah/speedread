@@ -1,0 +1,9 @@
+==> callers of add (src/lib.rs:1-4)
+pub fn add(a: i32, b: i32) -> i32
+2 call sites in 2 functions · syntactic: comments, strings and the definition excluded
+src/lib.rs
+  [6-8] pub fn twice(x: i32) -> i32
+    7	add(x, x)
+src/use.rs
+  [3-7] pub fn quad(x: i32) -> i32
+    6	add(add(x, x), add(x, x))

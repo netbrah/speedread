@@ -1,0 +1,8 @@
+==> ./ (5 files, 667 B; .gitignore respected)
+data/
+  notes.json 6L
+src/
+  app.py 2L
+  lib.rs 24L
+  use.rs 7L
+README.md 5L

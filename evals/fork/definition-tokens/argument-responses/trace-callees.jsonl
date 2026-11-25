@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":15,"result":{"content":[{"type":"text","text":"==> callees of twice (src/lib.rs:6-8)\npub fn twice(x: i32) -> i32\n1 call resolved in the workspace · syntactic: best match by receiver, file and package\n  7\tadd(x, x)\n    → src/lib.rs:1-4 pub fn add(a: i32, b: i32) -> i32\n"}],"isError":false}}

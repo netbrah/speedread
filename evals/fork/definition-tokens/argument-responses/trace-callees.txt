@@ -1,0 +1,5 @@
+==> callees of twice (src/lib.rs:6-8)
+pub fn twice(x: i32) -> i32
+1 call resolved in the workspace · syntactic: best match by receiver, file and package
+  7	add(x, x)
+    → src/lib.rs:1-4 pub fn add(a: i32, b: i32) -> i32

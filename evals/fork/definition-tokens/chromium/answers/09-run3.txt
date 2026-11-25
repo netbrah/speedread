@@ -1,0 +1,133 @@
+==> callers of (anonymous).Spec.Run (components/search_engines/search_engine_choice/search_engine_choice_eligibility_unittest.cc:1021-1027)
+struct Run
+372 call sites in 270 functions, 34 inside closures · syntactic: comments, strings and the definition excluded; λ = inside a closure (may run later or never); 3470 other definitions named `Run`; ? = receiver unknown; +38071 textual matches in 5,897 files farther away not examined (raise budget); stopped after 20000 lines
+cc/base/delayed_unique_notifier.cc
+  ? [70-95] void DelayedUniqueNotifier::NotifyIfTime() (in cc)
+    94	closure_.Run();
+cc/base/delayed_unique_notifier_unittest.cc
+  ? [60-117] TEST_F(DelayedUniqueNotifierTest, SmallDelay) (in cc.(anonymous))
+    81	std::move(tasks[0].task).Run();
+    98	std::move(tasks[0].task).Run();
+    112	std::move(tasks[0].task).Run();
+  ? [119-159] TEST_F(DelayedUniqueNotifierTest, RescheduleDelay) (in cc.(anonymous))
+    143	std::move(tasks[0].task).Run();
+    157	std::move(tasks[0].task).Run();
+  ? [161-228] TEST_F(DelayedUniqueNotifierTest, CancelAndHasPendingNotification) (in cc.(anonymous))
+    186	std::move(tasks[0].task).Run();
+    204	std::move(tasks[0].task).Run();
+    222	std::move(tasks[0].task).Run();
+  ? [230-268] TEST_F(DelayedUniqueNotifierTest, ShutdownWithScheduledTask) (in cc.(anonymous))
+    253	std::move(tasks[0].task).Run();
+cc/base/unique_notifier.cc
+  ? [42-56] void UniqueNotifier::Notify() (in cc)
+    55	closure_.Run();
+      ← components/search_engines/search_engine_choice/search_engine_choice_service.cc ? [1295-1315] void SearchEngineChoiceService::SetSavedSearchEngineBetweenGuestSessions(std::optional<int> prepopulated_id) (in search_engines)
+        1314	observers_.Notify(&Observer::OnSavedGuestSearchChanged);
+      ← components/search_engines/ai_mode_button_service.cc ? [83-97] void AiModeButtonService::OnTemplateURLServiceChanged()
+        96	callbacks_.Notify(GetCurrentConfig());
+      ← components/search_engines/template_url_service.cc ? [2739-2758] void TemplateURLService::ChangeToLoadedState()
+        2757	on_loaded_callbacks_.Notify();
+      ← components/account_manager_core/account_manager_facade_impl.cc ? [110-113] void AccountManagerFacadeImpl::OnTokenUpserted(const Account& account) (in account_manager)
+        111	observer_list_.Notify(&AccountManagerFacade::Observer::OnAccountUpserted,
+      ← components/account_manager_core/account_manager_facade_impl.cc ? [115-118] void AccountManagerFacadeImpl::OnAccountRemoved(const Account& account) (in account_manager)
+        116	observer_list_.Notify(&AccountManagerFacade::Observer::OnAccountRemoved,
+      ← components/account_settings/account_setting_service_impl.cc ? [95-101] void AccountSettingServiceImpl::OnDataLoadedFromDisk() (in account_settings)
+        100	observers_.Notify(&AccountSettingService::Observer::OnAccountSettingsLoaded);
+      ← components/account_settings/account_setting_service_impl.cc ? [103-107] void AccountSettingServiceImpl::OnDataUpdated(const std::string& setting_name) (in account_settings)
+        104	observers_.Notify(
+      ← components/account_settings/account_setting_sync_bridge.cc ? [114-145] std::optional<syncer::ModelError> AccountSettingSyncBridge::ApplyIncrementalSyncChanges(std::unique_ptr<syncer::MetadataChangeList> metadata_change_list, syncer::EntityChangeList e… (in account_settings)
+        129	observers_.Notify(&Observer::OnDataUpdated, change->storage_key());
+        135	observers_.Notify(&Observer::OnDataUpdated, change->storage_key());
+      ← components/account_settings/account_setting_sync_bridge.cc ? [147-162] void AccountSettingSyncBridge::ApplyDisableSyncChanges(std::unique_ptr<syncer::MetadataChangeList> delete_metadata_change_list) (in account_settings)
+        160	observers_.Notify(&Observer::OnDataUpdated, name);
+      ← components/account_settings/account_setting_sync_bridge.cc ? [217-237] void AccountSettingSyncBridge::StartSyncingWithDataAndMetadata(const std::optional<syncer::ModelError>& error, std::unique_ptr<syncer::DataTypeStore::RecordList> data, std::unique_… (in account_settings)
+        236	observers_.Notify(&Observer::OnDataLoadedFromDisk);
+      ← components/affiliations/core/browser/facet_manager_unittest.cc ? [137-143] void RequestNotificationAtTime(const FacetURI& facet_uri, base::Time time) override (in affiliations.(anonymous).MockFacetManagerHost)
+        142	notifier_->Notify(time);
+      ← components/application_locale_storage/application_locale_storage.cc ? [43-48] void ApplicationLocaleStorage::SetTag(base::i18n::LanguageTag new_locale)
+        47	on_locale_changed_callback_list_.Notify(locale_);
+cc/benchmarks/micro_benchmark.cc
+  ? [29-32] void MicroBenchmark::NotifyDone(base::DictValue result) (in cc)
+    30	std::move(callback_).Run(std::move(result));
+cc/input/scrollbar_animation_controller_unittest.cc
+  ? [246-278] TEST_P(ScrollbarAnimationControllerOverlayTest, BasicAppearAndFadeOut) (in cc.(anonymous))
+    269	std::move(client_.start_fade()).Run();
+  ? [280-307] TEST_P(ScrollbarAnimationControllerOverlayTest, BasicAppearByWillUpdateScrollThenFadeOut) (in cc.(anonymous))
+    298	std::move(client_.start_fade()).Run();
+  ? [630-667] TEST_P(ScrollbarAnimationControllerOverlayTest, MoveNearScrollbarWhileFading) (in cc.(anonymous))
+    641	std::move(client_.start_fade()).Run();
+  ? [669-731] TEST_F(ScrollbarAnimationControllerAuraOverlayTest, TestCantCaptureWhenFaded) (in cc.(anonymous))
+    679	std::move(client_.start_fade()).Run();
+    724	std::move(client_.start_fade()).Run();
+  ? [786-813] TEST_P(ScrollbarAnimationControllerOverlayTest, FadeAnimated) (in cc.(anonymous))
+    800	std::move(client_.start_fade()).Run();
+  ? [815-858] TEST_P(ScrollbarAnimationControllerOverlayTest, NotifyChangedVisibility) (in cc.(anonymous))
+    831	std::move(client_.start_fade()).Run();
+  ? [1068-1098] TEST_F(ScrollbarAnimationControllerAuraOverlayTest, BasicMouseHoverFadeIn) (in cc.(anonymous))
+    1084	std::move(client_.start_fade()).Run();
+  ? [1149-1187] TEST_F(ScrollbarAnimationControllerAuraOverlayTest, MouseHoverThenLeaveShouldCancelShowThenEnterShouldFadeIn) (in cc.(anonymous))
+    1180	std::move(client_.start_fade()).Run();
+  ? [1189-1235] TEST_F(ScrollbarAnimationControllerAuraOverlayTest, MouseHoverThenMouseDownShouldCancelFadeInThenReleaseNearShouldFadeIn) (in cc.(anonymous))
+    1228	std::move(client_.start_fade()).Run();
+  ? [1322-1349] TEST_F(ScrollbarAnimationControllerFluentOverlayTest, DidMouseMoveWithVisibleScrollbarQueuesAnimations) (in cc.(anonymous))
+    1338	std::move(client_.start_fade()).Run();
+  ? [1366-1405] TEST_F(ScrollbarAnimationControllerFluentOverlayTest, ScrollAndMouseOverGoesToFullMode) (in cc.(anonymous))
+    1393	std::move(client_.start_fade()).Run();
+  ? [1407-1434] TEST_F(ScrollbarAnimationControllerFluentOverlayTest, FadeWhenMouseLeaves) (in cc.(anonymous))
+    1420	std::move(client_.start_fade()).Run();
+  ? [1436-1472] TEST_F(ScrollbarAnimationControllerFluentOverlayTest, HidesWhenReleasedOutsideArea) (in cc.(anonymous))
+    1463	std::move(client_.start_fade()).Run();
+  ? [1683-1752] TEST_F(ScrollbarAnimationControllerAndroidTest, AwakenByScrollingGesture) (in cc.(anonymous))
+    1700	std::move(start_fade_).Run();
+    1726	std::move(start_fade_).Run();
+  ? [1754-1822] TEST_F(ScrollbarAnimationControllerAndroidTest, AwakenByProgrammaticScroll) (in cc.(anonymous))
+    1760	std::move(start_fade_).Run();
+    1776	std::move(start_fade_).Run();
+    1799	std::move(start_fade_).Run();
+  ? [1824-1868] TEST_F(ScrollbarAnimationControllerAndroidTest, AnimationPreservedByNonScrollingGesture) (in cc.(anonymous))
+    1829	std::move(start_fade_).Run();
+  ? [1870-1904] TEST_F(ScrollbarAnimationControllerAndroidTest, AnimationOverriddenByScrollingGesture) (in cc.(anonymous))
+    1876	std::move(start_fade_).Run();
+cc/layers/layer.cc
+  ? [1064-1085] void Layer::SetScrollOffsetFromImplSide(const gfx::PointF& scroll_offset) (in cc)
+    1081	inputs.did_scroll_callback.Run(scroll_offset, element_id());
+cc/layers/surface_layer.cc
+  ? [159-182] void SurfaceLayer::SetLayerTreeHost(LayerTreeHost* host) (in cc)
+    171	callback.Run(false, nullptr);
+cc/layers/surface_layer_impl.cc
+  ? [168-193] bool SurfaceLayerImpl::WillDraw(DrawMode draw_mode, viz::ClientResourceProvider* resource_provider) (in cc)
+    184	update_submission_state_callback_.Run(will_draw, &event);
+    187	update_submission_state_callback_.Run(will_draw, nullptr);
+cc/layers/texture_layer.cc
+  ? [251-263] TextureLayer::TransferableResourceHolder::~TransferableResourceHolder() (in cc)
+    255	std::move(release_callback_).Run(sync_token_, is_lost_);
+cc/layers/texture_layer_impl.cc
+  ? [248-264] void TextureLayerImpl::FreeTransferableResource() (in cc)
+    255	.Run(transferable_resource_.sync_token(), false);
+cc/layers/texture_layer_unittest.cc
+  ? [259-262] void DidCommitAndDrawFrame(int source_frame_number) override (in cc.(anonymous).RunOnCommitLayerTreeHostDelegate)
+    261	std::move(run_on_commit_and_draw_).Run();
+  ? [268-329] TEST_F(TextureLayerTest, ShutdownWithResource) (in cc.(anonymous))
+    310	loop.Run();
+  ? [469-522] TEST_F(TextureLayerTransferableResourceHolderTest, TwoCompositors_BothReleaseThenMain) (in cc.(anonymous))
+    504	std::move(compositor1).Run(sync_token1_, false);
+    505	std::move(compositor2).Run(sync_token2_, false);
+  ? [524-577] TEST_F(TextureLayerTransferableResourceHolderTest, TwoCompositors_MainReleaseBetween) (in cc.(anonymous))
+    558	std::move(compositor1).Run(sync_token1_, false);
+    574	std::move(compositor2).Run(sync_token2_, true);
+  ? [579-633] TEST_F(TextureLayerTransferableResourceHolderTest, TwoCompositors_MainReleasedFirst) (in cc.(anonymous))
+    620	std::move(compositor2).Run(sync_token2_, false);
+    630	std::move(compositor1).Run(sync_token1_, true);
+cc/metrics/events_metrics_manager.cc
+  ? [31-51] void End() (in cc.EventsMetricsManager.ScopedMonitorImpl)
+    36	metrics = std::move(done_callback_).Run(handled);
+cc/metrics/frame_sequence_metrics.cc
+  ? [283-459] void FrameSequenceMetrics::ReportMetrics() (in cc)
+    295	std::move(custom_reporter_).Run(std::move(custom_data));
+cc/metrics/frame_sequence_tracker_collection.cc
+cc/metrics/video_playback_roughness_reporter.cc
+  ? [115-138] void VideoPlaybackRoughnessReporter::SubmitPlaybackRoughness() (in cc)
+    133	reporting_cb_.Run(measurement);
+… 233 more in: cc/metrics/frame_sequence_tracker_collection.cc, cc/mojo_embedder/async_layer_tree_frame_sink_unittest.cc, cc/paint/image_provider.cc, cc/paint/paint_op.cc, cc/paint/paint_op_buffer.cc, cc/paint/skottie_mru_resource_provider.cc, cc/paint/skottie_wrapper_impl.cc, cc/raster/categorized_worker_pool.cc, …. Raise budget or trace a narrower target.
+incomplete: the name is in more files than a lookup examines (at most 20,000 searched, 5,000 parsed); definitions may be missing. Qualify it (path#Name) or narrow with a path.
+not fully searched: 2 files have a line longer than 4 MiB and were read only up to it, e.g. tools/perf/testdata/task_output_dir/1/memory.desktop/perf_results.json

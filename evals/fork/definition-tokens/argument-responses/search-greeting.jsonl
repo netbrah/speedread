@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":7,"result":{"content":[{"type":"text","text":"2 matches in 1 file for /Greeting/\n==> src/lib.rs @1619622437581e91 (2 matches)\n[14-16] pub trait Greeting\n14\tpub trait Greeting {\n[20-24] impl Greeting for Bot\n20\timpl Greeting for Bot {\n"}],"isError":false}}

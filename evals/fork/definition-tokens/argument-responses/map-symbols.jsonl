@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":13,"result":{"content":[{"type":"text","text":"==> src/ (3 files, 512 B; .gitignore respected)\napp.py 2L: hello\nlib.rs 24L: add, twice, parse_header, Greeting, Bot, Bot\nuse.rs 7L: quad\n"}],"isError":false}}

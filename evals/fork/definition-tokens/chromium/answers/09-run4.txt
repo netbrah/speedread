@@ -1,0 +1,130 @@
+==> callers of (anonymous).Spec.Run (components/search_engines/search_engine_choice/search_engine_choice_eligibility_unittest.cc:1021-1027)
+struct Run
+425 call sites in 333 functions, 62 inside closures · syntactic: comments, strings and the definition excluded; λ = inside a closure (may run later or never); 3514 other definitions named `Run` (2 sites attributed to them left out); ? = receiver unknown; +38308 textual matches in 5,303 files farther away not examined (raise budget); stopped after 20000 lines
+components/browser_sync/active_devices_provider_impl.cc
+  ? [133-139] void ActiveDevicesProviderImpl::OnDeviceInfoChange() (in browser_sync)
+    137	callback_.Run();
+components/browser_sync/common_controller_builder.cc
+  ? [184-190] base::WeakPtr<syncer::DataTypeControllerDelegate> AiThreadDelegateFromGetter(const base::RepeatingCallback<contextual_tasks::ContextualTasksService*()>& contextual_tasks_service_ge… (in browser_sync.(anonymous))
+    188	contextual_tasks_service_getter.Run();
+  ? [192-199] base::WeakPtr<syncer::DataTypeControllerDelegate> GeminiThreadDelegateFromGetter(const base::RepeatingCallback<contextual_tasks::ContextualTasksService*()>& contextual_tasks_servic… (in browser_sync.(anonymous))
+    197	contextual_tasks_service_getter.Run();
+components/browser_sync/sync_internals_message_handler.cc
+  ? [325-336] void SyncInternalsMessageHandler::SendAboutInfoAndEntityCounts() (in browser_sync)
+    326	base::DictValue value = get_about_sync_data_cb_.Run(sync_service_, channel_);
+components/browser_sync/sync_internals_message_handler_unittest.cc
+  ? [139-151] TEST_F(SyncInternalsMessageHandlerTest, AddRemoveObservers) (in browser_sync.(anonymous))
+    145	.Run(base::ListValue());
+  ? [153-171] TEST_F(SyncInternalsMessageHandlerTest, AddRemoveObserversDisableMessages) (in browser_sync.(anonymous))
+    159	.Run(base::ListValue());
+  ? [173-190] TEST_F(SyncInternalsMessageHandlerTest, AddRemoveObserversSyncDisabled) (in browser_sync.(anonymous))
+    185	.Run(base::ListValue());
+  ? [192-221] TEST_F(SyncInternalsMessageHandlerTest, HandleGetAllNodes) (in browser_sync.(anonymous))
+    199	.Run(base::ListValue().Append("getAllNodes_0"));
+    201	std::move(get_all_nodes_callback).Run(base::ListValue());
+    207	.Run(base::ListValue().Append("getAllNodes_1"));
+    212	std::move(get_all_nodes_callback).Run(base::ListValue());
+    218	.Run(base::ListValue().Append("getAllNodes_2"));
+    220	std::move(get_all_nodes_callback).Run(base::ListValue());
+  ? [234-246] TEST_F(SyncInternalsMessageHandlerTest, WriteUserEvent) (in browser_sync.(anonymous))
+    238	.Run(base::ListValue().Append("1000000000000000000").Append("-1"));
+  ? [248-260] TEST_F(SyncInternalsMessageHandlerTest, WriteUserEventBadParse) (in browser_sync.(anonymous))
+    252	.Run(base::ListValue().Append("123abc").Append("abcde"));
+  ? [262-277] TEST_F(SyncInternalsMessageHandlerTest, WriteUserEventBlank) (in browser_sync.(anonymous))
+    266	.Run(base::ListValue().Append("").Append(""));
+  ? [279-294] TEST_F(SyncInternalsMessageHandlerTest, WriteUserEventZero) (in browser_sync.(anonymous))
+    283	.Run(base::ListValue().Append("0").Append("0"));
+  ? [297-310] TEST_F(SyncInternalsMessageHandlerTest, RequestStart) (in browser_sync.(anonymous))
+    303	handler()->GetMessageHandlerMap().at(kRequestStart).Run(base::ListValue());
+components/browser_sync/sync_to_signin_migration.cc
+  ? [446-455] bool RunBlockingOperations(bool migration_successful, std::vector<BlockingOperation> blocking_operations) (in browser_sync.(anonymous))
+    450	if (!std::move(operation).Run()) {
+components/browser_sync/sync_to_signin_migration_unittest.cc
+  ? [70-92] void MaybeMigrateSyncingUserToSignedInWrapper(bool is_blocking_allowed, const base::FilePath& profile_path, PrefService* pref_service)
+    91	run_loop.Run();
+components/commerce/content/browser/web_contents_wrapper.cc
+  ? [46-56] void WebContentsWrapper::RunJavascript(const std::u16string& script, base::OnceCallback<void(const base::Value)> callback) (in commerce)
+    50	std::move(callback).Run(base::Value());
+components/commerce/content/browser/web_extractor_impl.cc
+  ? [45-50] void WebExtractorImpl::OnExtractionMetaInfo(mojo::Remote<commerce_web_extractor::mojom::CommerceWebExtractor> extractor, base::OnceCallback<void(base::Value)> callback, base::Value… (in commerce)
+    49	std::move(callback).Run(std::move(result));
+components/commerce/content/browser/web_extractor_impl_unittest.cc
+  ? [48-80] TEST_F(WebExtractorImplTest, TestExtraction) (in commerce)
+    71	std::move(callback).Run(base::Value("123"));  λ
+    74	EXPECT_CALL(callback, Run(testing::_))
+components/commerce/content/renderer/commerce_web_extractor.cc
+  ? [32-52] void CommerceWebExtractor::ExtractMetaInfo(ExtractMetaInfoCallback callback) (in commerce)
+    51	std::move(callback).Run(base::Value(std::move(result)));
+components/commerce/core/discount_infos_storage.cc
+  ? [85-113] void DiscountInfosStorage::OnLoadDiscounts(const GURL& url, DiscountInfoCallback callback, bool succeeded, DiscountInfosKeyAndValues data) (in commerce)
+    90	std::move(callback).Run(url, {});
+    112	std::move(callback).Run(url, std::move(unexpired_infos));
+components/commerce/core/discount_infos_storage_unittest.cc
+  ? [233-247] void MockLoadAllResponseSingleMatch(const std::string& url, bool succeeded, bool discount1_expired, bool discount2_expired) (in (anonymous).MockProtoStorage)
+    243	std::move(callback).Run(  λ
+  ? [248-266] void MockLoadAllResponseMultipleMatches(bool succeeded, const std::string& url1, bool discount1_expired, bool discount2_expired, const std::string& url2, bool discount3_expired) (in (anonymous).MockProtoStorage)
+    261	std::move(callback).Run(  λ
+  ? [289-320] TEST_F(DiscountInfosStorageTest, TestLoadDiscountsWithPrefix_AllDiscountsUnexpired) (in commerce)
+    319	run_loop.Run();
+  ? [322-365] TEST_F(DiscountInfosStorageTest, TestLoadDiscountsWithPrefix_AllDiscountsWithDuplicateDiscountCode) (in commerce)
+    333	std::move(callback).Run(  λ
+    364	run_loop.Run();
+  ? [367-399] TEST_F(DiscountInfosStorageTest, TestLoadDiscountsWithPrefix_MultipleMatches_AllDiscountsUnexpired) (in commerce)
+    398	run_loop.Run();
+  ? [401-421] TEST_F(DiscountInfosStorageTest, TestLoadDiscountsWithPrefix_MultipleMatches_AllDiscountsExpired) (in commerce)
+    420	run_loop.Run();
+  ? [423-450] TEST_F(DiscountInfosStorageTest, TestLoadDiscountsWithPrefix_PartDiscountsExpired) (in commerce)
+    449	run_loop.Run();
+  ? [452-480] TEST_F(DiscountInfosStorageTest, TestLoadDiscountsWithPrefix_MultipleMatches_PartDiscountsExpired) (in commerce)
+    479	run_loop.Run();
+  ? [482-496] TEST_F(DiscountInfosStorageTest, TestLoadDiscountsWithPrefix_AllDiscountsExpired) (in commerce)
+    495	run_loop.Run();
+components/commerce/core/internals/commerce_internals_handler.cc
+  ? [134-138] void CommerceInternalsHandler::GetIsShoppingListEligible(GetIsShoppingListEligibleCallback callback) (in commerce)
+    136	std::move(callback).Run(
+  ? [147-171] void CommerceInternalsHandler::GetProductInfoForUrl(const GURL& url, GetProductInfoForUrlCallback callback) (in commerce)
+    151	std::move(callback).Run(commerce::shared::mojom::ProductInfo::New());
+    162	std::move(callback).Run(  λ
+    167	std::move(callback).Run(ProductInfoToMojoProduct(  λ
+  ? [173-193] void CommerceInternalsHandler::GetSubscriptionDetails(GetSubscriptionDetailsCallback callback) (in commerce)
+    177	std::move(callback).Run(std::move(subscription_list));
+    188	std::move(callback).Run(GetSubscriptionsMojom(  λ
+  ? [195-255] void CommerceInternalsHandler::GetShoppingEligibilityDetails(GetShoppingEligibilityDetailsCallback callback) (in commerce)
+    200	std::move(callback).Run(std::move(details));
+    254	std::move(callback).Run(std::move(details));
+components/commerce/core/price_tracking_utils.cc
+  ? [34-83] void UpdateBookmarksForSubscriptionsResult(base::WeakPtr<bookmarks::BookmarkModel> model, base::OnceCallback<void(bool)> callback, bool enabled, uint64_t cluster_id, bool success) (in commerce.(anonymous))
+    82	std::move(callback).Run(success);
+  ? [85-128] void RemoveDanglingSubscriptionsImpl(ShoppingService* service, bookmarks::BookmarkModel* model, base::OnceCallback<void(size_t)> callback, std::vector<CommerceSubscription> subscri… (in commerce.(anonymous))
+    91	std::move(callback).Run(0);
+    123	bool success) { std::move(callback).Run(count); },  λ
+    126	std::move(callback).Run(0);
+  ? [328-385] void GetAllPriceTrackedBookmarks(ShoppingService* shopping_service, bookmarks::BookmarkModel* bookmark_model, base::OnceCallback<void(std::vector<const bookmarks::BookmarkNode*>)> … (in commerce)
+    381	std::move(callback).Run(std::move(tracked_bookmarks));  λ
+  ? [601-636] void RemoveDanglingSubscriptions(ShoppingService* shopping_service, bookmarks::BookmarkModel* bookmark_model, base::OnceCallback<void(size_t)> completed_callback) (in commerce)
+    619	std::move(callback).Run(0);  λ
+components/commerce/core/price_tracking_utils_unittest.cc
+  ? [102-150] TEST_P(PriceTrackingUtilsTest, SetPriceTrackingStateUpdatesAll_UnsubscribeSuccess) (in commerce.(anonymous))
+    141	run_loop.Run();
+  ? [152-182] TEST_P(PriceTrackingUtilsTest, SetPriceTrackingState_Unsubscribe_TrackByDefault) (in commerce.(anonymous))
+    170	run_loop.Run();
+    178	run_loop2.Run();
+  ? [184-222] TEST_P(PriceTrackingUtilsTest, SetPriceTrackingState_SubscribeOldBookmark) (in commerce.(anonymous))
+    216	run_loop.Run();
+  ? [224-238] TEST_P(PriceTrackingUtilsTest, SetPriceTrackingState_ErrorCases_NoService) (in commerce.(anonymous))
+    237	run_loop.Run();
+  ? [240-262] TEST_P(PriceTrackingUtilsTest, SetPriceTrackingState_ErrorCases_NoBookmark) (in commerce.(anonymous))
+    261	run_loop.Run();
+  ? [264-284] TEST_P(PriceTrackingUtilsTest, SetPriceTrackingState_ErrorCases_NoInfo) (in commerce.(anonymous))
+    283	run_loop.Run();
+  ? [286-316] TEST_P(PriceTrackingUtilsTest, SetPriceTrackingForClusterId) (in commerce.(anonymous))
+    312	run_loop.Run();
+  ? [347-373] TEST_P(PriceTrackingUtilsTest, GetAllPriceTrackedBookmarks) (in commerce.(anonymous))
+    372	run_loop.Run();
+  ? [385-405] TEST_P(PriceTrackingUtilsTest, IsBookmarkPriceTracked_Tracked) (in commerce.(anonymous))
+    404	run_loop.Run();
+components/commerce/core/shopping_service.cc
+components/commerce/core/shopping_service_unittest.cc
+… 287 more in: components/commerce/core/price_tracking_utils_unittest.cc, components/commerce/core/shopping_service.cc, components/commerce/core/shopping_service_unittest.cc, components/commerce/core/subscriptions/subscriptions_manager.cc, components/commerce/core/subscriptions/subscriptions_manager_unittest.cc, components/commerce/core/subscriptions/subscriptions_server_proxy.cc, components/commerce/core/subscriptions/subscriptions_server_proxy_unittest.cc, components/commerce/core/subscriptions/subscriptions_storage.cc, …. Raise budget or trace a narrower target.
+incomplete: the name is in more files than a lookup examines (at most 20,000 searched, 5,000 parsed); definitions may be missing. Qualify it (path#Name) or narrow with a path.
+not fully searched: 2 files have a line longer than 4 MiB and were read only up to it, e.g. tools/perf/testdata/task_output_dir/1/memory.desktop/perf_results.json

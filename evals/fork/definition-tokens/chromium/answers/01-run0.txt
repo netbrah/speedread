@@ -1,0 +1,277 @@
+4,340 matches in 2,999 files for /ScopedObservation/
+==> agents/knowledge_base/rules/general/cpp_naming_and_comments/annotate-temporary-compatibility-stubs-with-todo.md @969af6716db51515 (2 matches)
+[25-78] ## Examples
+34	class ScopedObservation {
+60	class ScopedObservation {
+==> agents/knowledge_base/rules/general/docs_l10n_and_configs/document-ratcheting-rollout-plan-in-migration-commit-message.md @8af66bb61b3e4ee6 (2 matches)
+[21-40] ## Examples
+26	In order to reduce the number of base::ScopedObservation<...> identified
+34	In order to reduce the number of base::ScopedObservation<...> identified
+==> agents/skills/first-run-feature-showcase-reviewer/references/review-checklist.md @ddf538c64132933f (1 match)
+[29-52] ## 1. Eligibility Checkers (in Feature Showcase Code Review Checklist)
+34	  (`base::ScopedObservation`, a stored callback) overrides `OnTimeout()` to
+==> android_webview/browser/aw_quota_manager_bridge.cc @eaf699785f7d6509 (1 match)
+[75-108] class DeleteDataObserver : public content::BrowsingDataRemover::Observer (in android_webview.(anonymous))
+104	  base::ScopedObservation<content::BrowsingDataRemover,
+==> android_webview/browser/gfx/display_scheduler_webview.h @fb321ed9d254bd7d (2 matches)
+[28-87] class DisplaySchedulerWebView : public viz::DisplaySchedulerBase, public viz::SurfaceObserver, public viz::FrameSinkObserver (in android_webview)
+81	  base::ScopedObservation<viz::SurfaceManager, viz::SurfaceObserver>
+83	  base::ScopedObservation<viz::FrameSinkManagerImpl, viz::FrameSinkObserver>
+==> android_webview/browser/gfx/display_webview.h @6454f37b120f6b39 (1 match)
+[19-66] class DisplayWebView : public viz::Display, public viz::FrameSinkObserver (in android_webview)
+64	  base::ScopedObservation<viz::FrameSinkManagerImpl, viz::FrameSinkObserver>
+==> android_webview/browser/metrics/aw_metrics_service_client.h @8070fe69c68003e6 (1 match)
+[110-348] class AwMetricsServiceClient : public metrics::MetricsServiceClient, public metrics::EnabledStateProvider, public content::RenderProcessHostCreationObserver, public content::Render… (in android_webview)
+310	  base::ScopedObservation<variations::SyntheticTrialRegistry,
+==> apps/app_lifetime_monitor.h @8965e0c4a22a12c5 (1 match)
+[24-88] class AppLifetimeMonitor : public KeyedService, public extensions::AppWindowRegistry::Observer, public extensions::ExtensionHostRegistry::Observer (in apps)
+85	  base::ScopedObservation<extensions::ExtensionHostRegistry,
+==> apps/saved_files_service.h @38fa86657bd2b675 (1 match)
+[39-114] class SavedFilesService : public extensions::SavedFilesServiceInterface, public KeyedService, public extensions::ExtensionHostRegistry::Observer (in apps)
+111	  base::ScopedObservation<extensions::ExtensionHostRegistry,
+==> ash/accessibility/accessibility_controller.h @feb72917ed089dbc (1 match)
+1029	  base::ScopedObservation<InputDeviceSettingsController,
+==> ash/accessibility/accessibility_controller_unittest.cc @b9c8c14b01168e8c (1 match)
+[115-133] class TestAccessibilityObserver : public AccessibilityObserver (in ash)
+131	  base::ScopedObservation<AccessibilityController, AccessibilityObserver>
+==> ash/accessibility/flash_screen_controller.h @030a5f62378d7a5f (1 match)
+[21-69] class FlashScreenController : public message_center::MessageCenterObserver, public gfx::AnimationDelegate (in ash)
+67	  base::ScopedObservation<message_center::MessageCenter, MessageCenterObserver>
+==> ash/accessibility/mouse_locator/mouse_shake_detector.h @a2365e25092cd050 (1 match)
+[19-95] class ASH_EXPORT MouseShakeDetector (in ash)
+22	// Observers should manage their lifetime using base::ScopedObservation.
+==> ash/accessibility/mouse_locator/mouse_shake_detector_unittest.cc @8748f7d649c1b06a (1 match)
+[51-99] class MouseShakeDetectorTest : public testing::Test (in ash)
+92	  base::ScopedObservation<MouseShakeDetector, MouseShakeDetector::Observer>
+==> ash/accessibility/mouse_locator/mouse_shake_to_locate_controller.h @521221afa31c6a1d (1 match)
+[15-72] namespace ash
+66	  base::ScopedObservation<MouseShakeDetector, MouseShakeDetector::Observer>
+==> ash/accessibility/ui/accessibility_animation_one_shot.h @afbb91a6b08c6145 (1 match)
+[20-46] class AccessibilityAnimationOneShot : public ui::CompositorAnimationObserver (in ash)
+44	  base::ScopedObservation<ui::Compositor, ui::CompositorAnimationObserver>
+==> ash/ambient/ambient_animation_ui_launcher.h @2e5ccdcaba01bb36 (1 match)
+[22-61] class AmbientAnimationUiLauncher : public AmbientUiLauncher, public AmbientBackendModelObserver, public SessionObserver (in ash)
+57	  base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+==> ash/ambient/ambient_controller.h @0074239aedc014a5 (6 matches)
+[49-393] namespace ash
+312	  base::ScopedObservation<AmbientUiModel, AmbientUiModelObserver>
+314	  base::ScopedObservation<SessionControllerImpl, SessionObserver>
+316	  base::ScopedObservation<PowerStatus, PowerStatus::Observer>
+318	  base::ScopedObservation<chromeos::PowerManagerClient,
+321	  base::ScopedObservation<ui::UserActivityDetector, ui::UserActivityObserver>
+324	  base::ScopedObservation<BacklightsForcedOffSetter, ScreenBacklightObserver>
+==> ash/ambient/ambient_controller_unittest.cc @8723062e73f4507e (1 match)
+[120-155] class AmbientUiVisibilityBarrier : public AmbientUiModelObserver (in ash.(anonymous))
+152	  base::ScopedObservation<AmbientUiModel, AmbientUiModelObserver> observation_{
+==> ash/ambient/ambient_managed_photo_controller.h @e2a012079c49e909 (1 match)
+[25-131] class ASH_EXPORT AmbientManagedPhotoController : public AmbientViewDelegateObserver (in ash)
+127	  base::ScopedObservation<AmbientViewDelegate, AmbientViewDelegateObserver>
+==> ash/ambient/ambient_managed_photo_controller_unittest.cc @5e58c542e4538348 (2 matches)
+[108-123] void RunUntilImagesReady() (in ash.AmbientManagedPhotoControllerTest)
+115	    base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+[125-141] void RunUntilNextImagesAdded(size_t expected_topics) (in ash.AmbientManagedPhotoControllerTest)
+129	    base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+==> ash/ambient/ambient_managed_slideshow_ui_launcher.h @5aba7aecb45ddd62 (1 match)
+[24-77] class AmbientManagedSlideshowUiLauncher : public AmbientUiLauncher, public AmbientBackendModelObserver, public AmbientManagedPhotoController::Observer, public SessionObserver (in ash)
+69	  base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+==> ash/ambient/ambient_photo_controller.h @2cfd07f9b7136a3c (1 match)
+[42-270] class ASH_EXPORT AmbientPhotoController : public AmbientViewDelegateObserver (in ash)
+263	  base::ScopedObservation<AmbientViewDelegate, AmbientViewDelegateObserver>
+==> ash/ambient/ambient_photo_controller_unittest.cc @f37a6c38736cb1b5 (4 matches)
+[154-176] bool RunUntilImagesReady() (in ash.AmbientPhotoControllerTest)
+163	    base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+[178-198] bool RunUntilNextTopicsAdded(int num_expected_topics) (in ash.AmbientPhotoControllerTest)
+184	    base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+[78-203] class AmbientPhotoControllerTest : public AmbientAshTestBase (in ash)
+201	  base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+[696-728] TEST_F(AmbientPhotoControllerTest, ShouldNotLoadDuplicateImages) (in ash)
+698	  base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+==> ash/ambient/ambient_slideshow_ui_launcher.h @e0a97d6056a5e283 (1 match)
+[19-48] class AmbientSlideshowUiLauncher : public AmbientUiLauncher, public AmbientBackendModelObserver, public SessionObserver (in ash)
+44	  base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+==> ash/ambient/autotest_ambient_api.cc @48b12ebf652b79ea (1 match)
+[35-98] class PhotoTransitionAnimationObserver : public AmbientViewDelegateObserver (in ash.(anonymous))
+96	  base::ScopedObservation<AmbientViewDelegate, AmbientViewDelegateObserver>
+==> ash/ambient/model/ambient_animation_attribution_provider.h @373c1e847af1ae80 (1 match)
+[22-54] class ASH_EXPORT AmbientAnimationAttributionProvider : public AmbientAnimationPhotoProvider::Observer (in ash)
+51	  base::ScopedObservation<AmbientAnimationPhotoProvider,
+==> ash/ambient/model/ambient_animation_photo_provider_unittest.cc @1cf74a28433d05be (1 match)
+[75-96] class MockObserver : public AmbientAnimationPhotoProvider::Observer (in ash.(anonymous))
+93	  base::ScopedObservation<AmbientAnimationPhotoProvider,
+==> ash/ambient/model/ambient_backend_model_unittest.cc @6809987750721b21 (6 matches)
+[216-229] TEST_F(AmbientBackendModelTest, ShouldNotifyObserversIfImagesFailed) (in ash)
+219	  base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+[231-249] TEST_F(AmbientBackendModelTest, ShouldResetFailuresOnAddImage) (in ash)
+233	  base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+[251-265] TEST_F(AmbientBackendModelTest, ShouldNotifyObserversOnImagesReady) (in ash)
+253	  base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+[267-280] TEST_F(AmbientBackendModelTest, ShouldNotifyObserversOnImageAdded) (in ash)
+269	  base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+[282-294] TEST_F(AmbientBackendModelTest, DoesNotTimeoutIfMinimumTopicsUnavailable) (in ash)
+284	  base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+[331-350] TEST_F(AmbientBackendModelTestWithAnimationConfig, TimesOutWithMinimumTopicsAvailable) (in ash)
+334	  base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+==> ash/ambient/ui/ambient_animation_player.h @1ad62f6c11f39aa1 (1 match)
+[26-82] class ASH_EXPORT AmbientAnimationPlayer : public lottie::AnimationObserver (in ash)
+80	  base::ScopedObservation<lottie::Animation, lottie::AnimationObserver>
+==> ash/ambient/ui/ambient_animation_shield_controller.h @421477e2665c6594 (1 match)
+[22-46] class ASH_EXPORT AmbientAnimationShieldController : public ColorModeObserver (in ash)
+44	  base::ScopedObservation<DarkLightModeControllerImpl, ColorModeObserver>
+==> ash/ambient/ui/ambient_animation_view.h @0da61ad86018c3de (2 matches)
+[32-103] namespace ash
+91	  base::ScopedObservation<View, ViewObserver> animated_image_view_observer_{
+93	  base::ScopedObservation<lottie::Animation, lottie::AnimationObserver>
+==> ash/ambient/ui/glanceable_info_view.h @90940bc99385de39 (1 match)
+[22-87] namespace ash
+85	  base::ScopedObservation<AmbientWeatherModel, AmbientWeatherModelObserver>
+==> ash/ambient/ui/media_string_view.h @ba6b6213ae81c29e (1 match)
+[27-123] class MediaStringView : public views::View, public views::ViewObserver, public media_session::mojom::MediaControllerObserver, public ui::ImplicitAnimationObserver (in ash)
+119	  base::ScopedObservation<views::View, views::ViewObserver> observed_view_{
+==> ash/ambient/ui/photo_view.h @50bb6afe58cf58a4 (1 match)
+[25-94] namespace ash
+92	  base::ScopedObservation<AmbientBackendModel, AmbientBackendModelObserver>
+==> ash/annotator/annotation_source_watcher.h @c6f3a07b1038682e (2 matches)
+[22-60] namespace ash
+56	  base::ScopedObservation<CaptureModeController, CaptureModeObserver>
+58	  base::ScopedObservation<ProjectorSession, ProjectorSessionObserver>
+==> ash/annotator/annotation_tray.h @f948e899fa98cb93 (1 match)
+[37-102] class AnnotationTray : public ImagedTrayIcon, public SessionObserver (in ash)
+100	  base::ScopedObservation<SessionControllerImpl, SessionObserver>
+==> ash/annotator/annotations_overlay_controller.h @68d2df5454602580 (2 matches)
+[28-105] namespace ash
+101	  base::ScopedObservation<display::Screen, display::DisplayObserver>
+103	  base::ScopedObservation<aura::Window, aura::WindowObserver>
+==> ash/app_list/app_list_badge_controller.h @3682b518cf59b8a0 (2 matches)
+[24-87] namespace ash
+81	  base::ScopedObservation<AppListModel, AppListModelObserver>
+84	  base::ScopedObservation<apps::AppRegistryCache,
+==> ash/app_list/app_list_controller_impl.h @537fc5fabcd73ab6 (2 matches)
+[58-551] namespace ash
+542	  base::ScopedObservation<SplitViewController, SplitViewObserver>
+546	  base::ScopedObservation<SunfishScannerFeatureWatcher,
+==> ash/app_list/app_list_presenter_impl.h @654abe521e42e448 (1 match)
+[34-212] namespace ash
+197	  base::ScopedObservation<Shelf, ShelfObserver> shelf_observer_{this};
+==> ash/app_list/app_waiter.h @0ee7ab487b716700 (2 matches)
+[17-48] class AppWaiter : public apps::AppRegistryCache::Observer, public apps::AppRegistryCacheWrapper::Observer (in ash)
+42	  base::ScopedObservation<apps::AppRegistryCacheWrapper,
+45	  base::ScopedObservation<apps::AppRegistryCache,
+==> ash/app_list/model/app_icon_load_helper.cc @cf6ceffe0a0d648b (2 matches)
+[16-35] class AppIconLoadHelper::AppItemHelper : public AppListItemObserver (in ash)
+33	  base::ScopedObservation<AppListItem, AppListItemObserver>
+[60-85] class AppIconLoadHelper::AppItemListHelper : public AppListItemListObserver (in ash)
+82	  base::ScopedObservation<AppListItemList, AppListItemListObserver>
+==> ash/app_list/model/app_list_folder_item.h @3b3204778bf97c0b (1 match)
+[30-148] namespace ash
+145	  base::ScopedObservation<AppListConfigProvider,
+==> ash/app_list/quick_app_access_model.h @8a90ffdb031a701a (2 matches)
+[27-108] class QuickAppAccessModel : public AppListItemObserver, public AppListControllerObserver (in ash)
+98	  base::ScopedObservation<AppListItem, AppListItemObserver> item_observation_{
+100	  base::ScopedObservation<AppListController, AppListControllerObserver>
+==> ash/app_list/views/app_list_folder_view.cc @e85881f55ac945d4 (1 match)
+[100-221] class BackgroundAnimation : public AppListFolderView::Animation, public ui::ImplicitAnimationObserver, public views::ViewObserver
+217	  base::ScopedObservation<views::View, views::ViewObserver>
+==> ash/app_list/views/app_list_folder_view.h @d0b1ea0c76e51d87 (2 matches)
+[28-293] namespace ash
+279	  base::ScopedObservation<AppListModel, AppListModelObserver>
+286	  base::ScopedObservation<views::View, views::ViewObserver>
+==> ash/app_list/views/apps_grid_view.cc @20f88398c5cbb0c2 (2 matches)
+[175-233] class AppsGridView::FolderIconItemHider : public AppListItemObserver, public views::ViewObserver
+231	  base::ScopedObservation<AppListItem, AppListItemObserver>
+[235-266] class AppsGridView::DragViewHider : public views::ViewObserver
+264	  base::ScopedObservation<views::View, views::ViewObserver> view_observer_{
+==> ash/app_list/views/continue_task_container_view.h @f5947f1f0c702ff3 (1 match)
+[24-208] namespace ash
+204	  base::ScopedObservation<SearchModel::SearchResults, ui::ListModelObserver>
+==> ash/app_list/views/continue_task_view.h @a3fd2c36431a0f24 (1 match)
+[25-134] namespace ash
+130	  base::ScopedObservation<SearchResult, SearchResultObserver>
+==> ash/app_list/views/pagination_model_transition_waiter.h @aabf84dc3e4a05f8 (1 match)
+[21-43] class PaginationModelTransitionWaiter : public PaginationModelObserver (in ash)
+41	  base::ScopedObservation<PaginationModel, PaginationModelObserver>
+==> ash/app_list/views/search_box_view.h @e750ea210ad7cd99 (1 match)
+[34-344] namespace ash
+340	  base::ScopedObservation<SearchBoxModel, SearchBoxModelObserver>
+==> ash/app_menu/notification_menu_controller.h @accccc3a14736efd (1 match)
+[20-80] namespace ash
+77	  base::ScopedObservation<message_center::MessageCenter,
+==> ash/auth/active_session_auth_controller_impl.h @a246a5bab9319099 (2 matches)
+[34-225] namespace ash
+192	  base::ScopedObservation<views::View, ViewObserver> contents_view_observer_{
+194	  base::ScopedObservation<SessionControllerImpl, SessionObserver>
+==> ash/auth/views/active_session_auth_view.h @a3eadbbe3ff45623 (1 match)
+[35-146] namespace ash
+142	  base::ScopedObservation<AuthHeaderView, AuthHeaderView::Observer>
+==> ash/auth/views/auth_input_row_view.h @88e0103a4f27efdd (1 match)
+[30-182] namespace ash
+171	  base::ScopedObservation<ImeController, ImeController::Observer>
+==> ash/auth/views/fingerprint_view.h @7d97fcf643fa144f (1 match)
+[24-127] namespace ash
+112	  base::ScopedObservation<lottie::Animation, lottie::AnimationObserver>
+==> ash/autotest_private_api_utils.cc @4f72825a6d45f1ac (1 match)
+[94-119] class LauncherAnimationWaiter : public ui::LayerAnimationObserver (in ash.(anonymous))
+117	  base::ScopedObservation<ui::LayerAnimator, ui::LayerAnimationObserver>
+==> ash/birch/birch_coral_provider.h @c42f2f61086e04aa (2 matches)
+[29-250] namespace ash
+230	  base::ScopedObservation<OverviewController, OverviewObserver>
+237	  base::ScopedObservation<signin::IdentityManager,
+==> ash/booting/booting_animation_controller.h @725084ee3732452a (2 matches)
+[17-70] namespace ash
+62	  base::ScopedObservation<display::DisplayConfigurator,
+66	  base::ScopedObservation<lottie::Animation, lottie::AnimationObserver>
+==> ash/capture_mode/capture_mode_camera_preview_view.h @7245f4b4ba01254f (1 match)
+[63-219] class CameraPreviewView : public views::View, public CaptureModeSessionFocusCycler::HighlightableView, public AccessibilityObserver (in ash)
+208	  base::ScopedObservation<AccessibilityController, AccessibilityObserver>
+==> ash/capture_mode/capture_mode_controller.h @6ffd4e20a7050962 (1 match)
+[60-951] namespace ash
+941	  base::ScopedObservation<Shell, ShellObserver> shell_observation_{this};
+==> ash/capture_mode/folder_selection_dialog_controller.h @7bc7d32012f73eb3 (1 match)
+[25-101] class FolderSelectionDialogController : public ui::SelectFileDialog::Listener, public wm::TransientWindowObserver (in ash)
+98	  base::ScopedObservation<wm::TransientWindowManager,
+==> ash/capture_mode/sunfish_scanner_feature_watcher.h @66c8ae62325b68cb (2 matches)
+[18-112] namespace ash
+107	  base::ScopedObservation<SessionControllerImpl, SessionObserver>
+109	  base::ScopedObservation<Shell, ShellObserver> shell_observation_{this};
+==> ash/capture_mode/user_nudge_controller.h @e9a795d74a2ab377 (1 match)
+[28-108] class UserNudgeController : public views::WidgetObserver (in ash)
+104	  base::ScopedObservation<views::Widget, views::WidgetObserver>
+==> ash/clipboard/clipboard_history_controller_unittest.cc @36721f34cff725bd (1 match)
+[93-107] class MockObserver : public ClipboardHistoryController::Observer (in ash.(anonymous))
+104	  base::ScopedObservation<ClipboardHistoryController,
+==> ash/clipboard/clipboard_nudge_controller.h @714852fe3441c168 (3 matches)
+[33-197] namespace ash
+186	  base::ScopedObservation<ClipboardHistory, ClipboardHistory::Observer>
+190	  base::ScopedObservation<ClipboardHistoryController,
+195	  base::ScopedObservation<ui::ClipboardMonitor, ui::ClipboardObserver>
+==> ash/curtain/security_curtain_widget_controller.cc @a1c8667339cee071 (1 match)
+[74-116] class SecurityCurtainWidgetController::WidgetMaximizer : public aura::WindowObserver (in ash.curtain)
+112	  base::ScopedObservation<aura::Window, aura::WindowObserver>
+==> ash/curtain/session.cc @acc57479622e642a (1 match)
+[40-56] class Session::RootWindowsObserver : public ShellObserver (in ash.curtain)
+55	  base::ScopedObservation<Shell, ShellObserver> shell_observation_{this};
+==> ash/dbus/privacy_screen_service_provider.h @8a2587d735a69345 (1 match)
+[20-65] namespace ash
+55	  base::ScopedObservation<PrivacyScreenController,
+==> ash/detachable_base/detachable_base_handler.h @ed705430f8b318f9 (3 matches)
+[28-161] namespace ash
+145	  base::ScopedObservation<HammerdClient, HammerdClient::Observer>
+147	  base::ScopedObservation<chromeos::PowerManagerClient,
+150	  base::ScopedObservation<SessionController, SessionObserver>
+==> ash/detachable_base/detachable_base_notification_controller.h @11e075d6bbdb67c8 (1 match)
+[15-73] namespace ash
+70	  base::ScopedObservation<DetachableBaseHandler, DetachableBaseObserver>
+==> ash/display/cursor_window_controller.h @e9663c2e8e68031b (1 match)
+[32-199] class ASH_EXPORT CursorWindowController : public aura::WindowObserver (in ash)
+197	  base::ScopedObservation<aura::Window, aura::WindowObserver>
+==> ash/display/display_manager_unittest.cc @823577355a9014d9 (2 matches)
+[102-196] class DisplayManagerObserverValidator : public display::DisplayObserver, public display::DisplayManagerObserver (in ash.(anonymous))
+193	  base::ScopedObservation<display::DisplayManager,
+[200-355] class DisplayManagerTest : public AshTestBase, public display::DisplayObserver, public aura::WindowObserver, public display::DisplayManagerObserver (in ash)
+352	  base::ScopedObservation<display::DisplayManager,
+==> ash/display/refresh_rate_controller.h @008d03ac6d4ec650 (3 matches)
+[21-121] namespace ash
+111	  base::ScopedObservation<ash::PowerStatus, ash::PowerStatus::Observer>
+113	  base::ScopedObservation<aura::Window, aura::WindowObserver>
+116	  base::ScopedObservation<display::DisplayConfigurator,
+… 2924 more files: ash/display/screen_orientation_controller.cc (3), ash/display/screen_orientation_controller.h (1), ash/drag_drop/mock_drag_drop_observer.h (1), ash/drag_drop/scoped_drag_drop_observer.h (2), ash/events/accessibility_event_rewriter.h (1), ash/fast_ink/laser/laser_pointer_controller.h (1), ash/frame/frame_view_ash.h (1), ash/frame/frame_view_ash_unittest.cc (1), ash/frame_sink/frame_sink_holder.h (2), ash/frame_sink/frame_sink_host.h (1), ash/game_dashboard/game_dashboard_context.h (1), …. Narrow with path/glob or raise budget.
+not fully searched: 3 files have a line longer than 4 MiB and were read only up to it, e.g. third_party/webxr_test_pages/webxr-samples/proposals/opencv/opencv.js

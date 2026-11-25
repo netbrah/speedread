@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":16,"result":{"content":[{"type":"text","text":"==> references of Greeting (src/lib.rs:14-16)\npub trait Greeting\n1 reference (0 calls, 0 imports, 1 other) in 1 scope · syntactic: comments, strings and the definition excluded\nsrc/lib.rs\n  [20-24] impl Greeting for Bot\n    20\timpl Greeting for Bot {\n"}],"isError":false}}

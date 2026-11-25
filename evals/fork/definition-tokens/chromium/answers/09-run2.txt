@@ -1,0 +1,107 @@
+==> callers of (anonymous).Spec.Run (components/search_engines/search_engine_choice/search_engine_choice_eligibility_unittest.cc:1021-1027)
+struct Run
+36 call sites in 33 functions · syntactic: comments, strings and the definition excluded; 3528 other definitions named `Run`; ? = receiver unknown; +40214 textual matches in 5,899 files farther away not examined (raise budget); stopped after 20000 lines
+(also matched: third_party/pylint/pylint/lint.py:1079 Run, third_party/pylint/pylint/pyreverse/main.py:87 Run; pass path#Name or Type.name to pick one)
+android_webview/browser/aw_browser_context_unittest.cc
+  ? [50-62] void TearDown() override (in android_webview.AwBrowserContextTest)
+    58	run_loop.Run();
+      ← components/search_engines/template_url_prepopulate_data_unittest.cc ? [1452-1455] void TearDown() override (in TemplateURLPrepopulateDataUpdateRequirementsTest)
+        1454	TemplateURLPrepopulateDataTest::TearDown();
+      ← components/android_autofill/browser/android_autofill_client_unittest.cc ? [102-105] void TearDown() override (in android_autofill.(anonymous).AndroidAutofillClientTest)
+        104	content::RenderViewHostTestHarness::TearDown();
+      ← components/android_autofill/browser/android_autofill_provider_unittest.cc ? [244-247] void TearDown() override (in autofill.(anonymous).AndroidAutofillProviderTestBase)
+        246	content::RenderViewHostTestHarness::TearDown();
+      ← components/android_autofill/browser/android_autofill_provider_unittest.cc ? [1515-1518] void TearDown() override (in autofill.(anonymous).AndroidAutofillProviderWithCredManTest)
+        1517	AndroidAutofillProviderTestBase::TearDown();
+      ← components/android_autofill/browser/android_autofill_provider_unittest.cc ? [1864-1868] void TearDown() override (in autofill.(anonymous).AndroidAutofillProviderWithCredManMultiFrameTest)
+        1867	AndroidAutofillProviderWithCredManTest::TearDown();
+      ← components/android_autofill/browser/android_autofill_provider_unittest.cc ? [2448-2451] void TearDown() override (in autofill.(anonymous).AndroidAutofillProviderCredManSpoofSheetStatusTest)
+        2450	AndroidAutofillProviderWithCredManTest::TearDown();
+      ← components/android_autofill/browser/android_autofill_provider_unittest.cc ? [3167-3170] void TearDown() override (in autofill.(anonymous).AndroidAutofillProviderTestHidingLogic)
+        3169	AndroidAutofillProviderTest::TearDown();
+      ← components/autofill/android/touch_to_fill_keyboard_suppressor_unittest.cc ? [57-60] void TearDown() override (in autofill.(anonymous).TouchToFillKeyboardSuppressorTest)
+        59	content::RenderViewHostTestHarness::TearDown();
+      ← components/autofill/content/browser/content_autofill_driver_factory_unittest.cc ? [480-486] void TearDown() override (in autofill.(anonymous).ContentAutofillDriverFactoryTestLifecycleState)
+        485	ContentAutofillDriverFactoryTest::TearDown();
+      ← components/autofill/content/browser/content_autofill_driver_unittest.cc ? [543-549] void TearDown() override (in autofill.(anonymous).ContentAutofillDriverWithMultiFrameCreditCardForm)
+        548	ContentAutofillDriverTest::TearDown();
+      ← components/autofill/content/browser/integrators/custom_form_controls/custom_form_control_script_runner_unittest.cc ? [104-107] void TearDown() override (in autofill.(anonymous).CustomFormControlScriptRunnerTest)
+        106	content::RenderViewHostTestHarness::TearDown();
+      ← components/autofill/content/browser/integrators/email_verifier/email_verifier_delegate_unittest.cc ? [223-226] void TearDown() override (in autofill.EmailVerifierDelegateTestBase)
+        225	content::RenderViewHostTestHarness::TearDown();
+      ← components/autofill/content/renderer/custom_form_control_agent_impl_browsertest.cc ? [61-64] void TearDown() override (in autofill.(anonymous).CustomFormControlAgentImplTest)
+        63	content::RenderViewTest::TearDown();
+      ← components/autofill/content/renderer/custom_form_control_script_executor_browsertest.cc ? [99-102] void TearDown() override (in autofill.(anonymous).CustomFormControlScriptExecutorTest)
+        101	content::RenderViewTest::TearDown();
+      ← components/autofill/content/renderer/form_autofill_util_browsertest.cc ? [3485-3488] void TearDown() override (in autofill.form_util.(anonymous).FormFillAndPreviewTest)
+        3487	test::AutofillRendererTest::TearDown();
+      ← components/autofill/content/renderer/form_autofill_util_browsertest.cc ? [5098-5101] void TearDown() override (in autofill.form_util.(anonymous).FormDataConversionTest)
+        5100	test::AutofillRendererTest::TearDown();
+      ← components/autofill/content/renderer/form_autofill_util_browsertest.cc ? [5849-5852] void TearDown() override (in autofill.form_util.(anonymous).FormFieldConversionTest)
+        5851	test::AutofillRendererTest::TearDown();
+      ← components/autofill/content/renderer/form_autofill_util_browsertest.cc ? [6458-6461] void TearDown() override (in autofill.form_util.(anonymous).FormAutofillWithConstraintsTest)
+        6460	test::AutofillRendererTest::TearDown();
+      ← components/autofill/content/renderer/form_cache_browsertest.cc ? [91-94] void TearDown() override (in autofill.(anonymous).FormCacheBrowserTest)
+        93	test::AutofillRendererTest::TearDown();
+      ← components/autofill/core/browser/actor/actor_form_filling_service_unittest.cc ? [666-670] void TearDown() override (in autofill.(anonymous).ActorFormFillingServiceWithSafetyListTest)
+        669	ActorFormFillingServiceTest::TearDown();
+  ? [114-135] TEST_F(AwBrowserContextTest, MigrateVisitedLinksDisabled) (in android_webview)
+    128	run_loop.Run();
+  ? [137-163] TEST_F(AwBrowserContextTest, MigrateVisitedLinksEnabled) (in android_webview)
+    155	run_loop.Run();
+android_webview/browser/aw_content_browser_client.cc
+  ? [192-208] base::WeakPtr<AsyncCheckTracker> GetAsyncCheckTracker(const base::RepeatingCallback<content::WebContents*()>& wc_getter, content::FrameTreeNodeId frame_tree_node_id) (in android_webview.(anonymous))
+    196	content::WebContents* web_contents = wc_getter.Run();
+  ? [388-406] void AwContentBrowserClient::OnStartupComplete() (in android_webview)
+    397	std::move(startup_info_.enable_native_task_execution_callback).Run();
+  ? [549-572] void AwContentBrowserClient::AllowCertificateError(content::WebContents* web_contents, int cert_error, const net::SSLInfo& ssl_info, const GURL& request_url, bool is_primary_main_f… (in android_webview)
+    570	.Run(content::CERTIFICATE_REQUEST_RESULT_TYPE_DENY);
+  ? [1029-1104] bool AwContentBrowserClient::HandleExternalProtocol(const GURL& url, content::WebContents::Getter wc_getter, content::FrameTreeNodeId frame_tree_node_id, content::NavigationUIData*… (in android_webview)
+    1056	content::WebContents* web_contents = wc_getter.Run();
+android_webview/browser/aw_content_browser_client_receiver_bindings.cc
+  ? [52-54] void CreateOriginId(cdm::MediaDrmStorageImpl::OriginIdObtainedCB callback) (in android_webview.(anonymous))
+    53	std::move(callback).Run(true, base::UnguessableToken::Create());
+android_webview/browser/aw_content_browser_client_unittest.cc
+  ? [63-81] TEST_F(AwContentBrowserClientTest, ClientTaskNotRunBeforeStartupComplete) (in android_webview.(anonymous))
+    74	run_loop.Run();
+    80	task_run_loop.Run();
+  ? [83-94] TEST_F(AwContentBrowserClientTest, TaskRunAfterStartupComplete) (in android_webview.(anonymous))
+    93	run_loop.Run();
+  ? [96-121] TEST_F(AwContentBrowserClientTest, MultipleTasksBeforeStartup) (in android_webview.(anonymous))
+    120	run_loop.Run();
+  ? [123-136] TEST_F(AwContentBrowserClientTest, OnUiTaskRunnerReadyCallbackRunAfterStartupComplete) (in android_webview.(anonymous))
+    135	run_loop.Run();
+android_webview/browser/aw_contents.cc
+  ? [770-788] void AwContents::InvokeGeolocationCallback(bool value, const std::string& origin) (in android_webview)
+    781	std::move(pending_geolocation_prompts_.front().second).Run(value);
+  ? [1590-1618] void AwContents::PrerenderInfo::OnLifecycleStateChanged(content::PrerenderLifecycleStatus status) (in android_webview)
+    1613	std::move(cb).Run();
+android_webview/browser/aw_contents_client_bridge.cc
+  ? [112-132] AwContentsClientBridge::~AwContentsClientBridge() (in android_webview)
+    129	std::move(*iter.GetCurrentValue()).Run(false, std::u16string());
+  ? [163-174] void AwContentsClientBridge::ProceedSslError(bool proceed, int32_t id) (in android_webview)
+    170	std::move(*callback).Run(
+  ? [264-308] void AwContentsClientBridge::RunJavaScriptDialog(content::JavaScriptDialogType dialog_type, const GURL& origin_url, const std::u16string& message_text, const std::u16string& defaul… (in android_webview)
+    275	std::move(callback).Run(false, std::u16string());
+  ? [310-333] void AwContentsClientBridge::RunBeforeUnloadDialog(const GURL& origin_url, content::JavaScriptDialogManager::DialogClosedCallback callback) (in android_webview)
+    318	std::move(callback).Run(false, std::u16string());
+  ? [488-500] void AwContentsClientBridge::ConfirmJsResult(int id, std::optional<std::u16string> prompt) (in android_webview)
+    498	std::move(*callback).Run(true, prompt.value_or(std::u16string()));
+  ? [502-515] void AwContentsClientBridge::TakeSafeBrowsingAction(int action, bool reporting, int request_id) (in android_webview)
+    511	std::move(*callback).Run(
+  ? [517-527] void AwContentsClientBridge::CancelJsResult(int id) (in android_webview)
+    525	std::move(*callback).Run(false, std::u16string());
+android_webview/browser/aw_contents_io_thread_client.cc
+  ? [648-674] void AwContentsIoThreadClient::ShouldInterceptRequestAsync(AwWebResourceRequest request, ShouldInterceptRequestResponseCallback callback) (in android_webview)
+    672	std::move(callback).Run(NoInterceptRequest());
+android_webview/browser/aw_http_auth_handler.cc
+  ? [55-61] void AwHttpAuthHandler::Proceed(const std::u16string& user, const std::u16string& password) (in android_webview)
+    59	std::move(callback_).Run(net::AuthCredentials(user, password));
+  ? [63-68] void AwHttpAuthHandler::Cancel() (in android_webview)
+    66	std::move(callback_).Run(std::nullopt);
+  ? [70-86] void AwHttpAuthHandler::Start() (in android_webview)
+    77	std::move(callback_).Run(std::nullopt);
+    84	std::move(callback_).Run(std::nullopt);
+android_webview/browser/aw_pac_processor.cc
+… 8 more in: android_webview/browser/aw_javascript_dialog_manager.cc, android_webview/browser/aw_pac_processor.cc, android_webview/browser/aw_permission_manager.cc, android_webview/browser/aw_permission_manager_unittest.cc. Raise budget or trace a narrower target.
+incomplete: the name is in more files than a lookup examines (at most 20,000 searched, 5,000 parsed); definitions may be missing. Qualify it (path#Name) or narrow with a path.

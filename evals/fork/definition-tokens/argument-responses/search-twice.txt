@@ -1,0 +1,4 @@
+1 match in 1 file for /fn twice/
+==> src/lib.rs @1619622437581e91 (1 match)
+[6-8] pub fn twice(x: i32) -> i32
+6	pub fn twice(x: i32) -> i32 {

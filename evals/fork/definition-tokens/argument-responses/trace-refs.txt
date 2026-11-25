@@ -1,0 +1,6 @@
+==> references of Greeting (src/lib.rs:14-16)
+pub trait Greeting
+1 reference (0 calls, 0 imports, 1 other) in 1 scope · syntactic: comments, strings and the definition excluded
+src/lib.rs
+  [20-24] impl Greeting for Bot
+    20	impl Greeting for Bot {

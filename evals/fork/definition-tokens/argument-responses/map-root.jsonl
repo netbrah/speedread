@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":10,"result":{"content":[{"type":"text","text":"==> ./ (5 files, 667 B; .gitignore respected)\ndata/\n  notes.json 6L\nsrc/\n  app.py 2L\n  lib.rs 24L\n  use.rs 7L\nREADME.md 5L\n"}],"isError":false}}

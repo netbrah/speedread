@@ -1,0 +1,144 @@
+==> ./ (400,000 files, 3.2 GB; .gitignore respected; listing capped)
+agents/ (1,516 files, 4.8 MB: .md 1109, .py 124, (no ext) 97)
+android_webview/ (1,715 files, 11.3 MB: .java 747, .cc 265, .h 210)
+ash/ (12,260 files, 104.1 MB: .sha1 2907, .cc 1055, .h 789)
+base/ (4,270 files, 29.7 MB: .cc 1751, .h 1353, .java 482)
+build/ (1,531 files, 8.3 MB: .py 558, .gn 190, .gni 155)
+cc/ (1,186 files, 14.8 MB: .cc 610, .h 515, .mojom 19)
+chrome/
+  android/ (5,480 files, 54.2 MB: .java 3344, .xml 653, (no ext) 593)
+  app/ (8,815 files, 135.5 MB: .sha1 4869, .grdp 29, .cc 22)
+  app_shim/ (21 files, 131.2 KB: .mm 9, .h 5, (no ext) 4)
+  browser/ (53,513 files, 416.6 MB: .cc 2420, .h 1579, (no ext) 411)
+  build/ (12 files, 1.5 KB: .txt 11, (no ext) 1)
+  child/ (7 files, 5.0 KB)
+  chrome_elf/ (63 files, 255.5 KB: .cc 33, .h 20, (no ext) 5)
+  chrome_proxy/ (5 files, 4.1 KB)
+  common/ (615 files, 3.3 MB: .cc 216, .h 134, (no ext) 62)
+  credential_provider/ (292 files, 2.0 MB: .cc 81, .xtb 81, .h 61)
+  elevation_service/ (26 files, 125.0 KB: .cc 13, .h 4, (no ext) 3)
+  enterprise_companion/ (112 files, 537.7 KB: .cc 57, .h 28, .gn 7)
+  gpu/ (7 files, 16.6 KB)
+  install_static/ (36 files, 207.1 KB: .cc 16, .h 13, (no ext) 4)
+  installer/ (494 files, 4.1 MB: .cc 179, .h 114, .py 60)
+  notification_helper/ (23 files, 42.3 KB: .cc 10, .h 6, (no ext) 3)
+  renderer/ (401 files, 2.8 MB: .cc 160, .h 107, (no ext) 64)
+  services/ (530 files, 2.8 MB: .cc 232, .h 159, (no ext) 58)
+  test/ (14,704 files, 120.6 MB: .html 1359, .js 1131, .json 942)
+  tools/ (63 files, 264.1 KB: .py 19, (no ext) 18, .cc 9)
+  updater/ (645 files, 23.3 MB: .cc 261, .h 182, .py 34)
+  utility/ (100 files, 735.1 KB: .cc 43, .h 33, (no ext) 10)
+  views_examples/ (13 files, 25.0 KB: .py 7, (no ext) 1, .gn 1)
+  windows_services/ (74 files, 211.6 KB: .cc 33, .h 24, (no ext) 7)
+  ⋯ 2 more directories, 6 files (docs, third_party)
+  .ruff.toml 32L
+  BUILD.gn 2173L
+  DEPS 52L
+  DIR_METADATA 7L
+  MAJOR_BRANCH_DATE 1L
+  OWNERS 102L
+  PRESUBMIT.py 341L
+  PRESUBMIT_test.py 47L
+  README.md 16L
+  VERSION 4L
+  browser_exposed_mojom_targets.gni 376L
+  chrome_paks.gni 793L
+  chrome_repack_locales.gni 133L
+  process_version_rc_template.gni 63L
+  version.gni 19.0 KB
+chromecast/ (1,372 files, 5.3 MB: .cc 539, .h 430, .java 95)
+chromeos/ (11,120 files, 50.5 MB: .cc 1843, .h 1452, .sha1 705)
+components/
+  autofill/ (2,386 files, 24.5 MB: .cc 1021, .h 834, .txt 137)
+  autofill_payments_strings_grdp/ (436 files, 17.4 KB: .sha1 433, (no ext) 2, .md 1)
+  autofill_strings_grdp/ (543 files, 21.5 KB: .sha1 540, (no ext) 2, .md 1)
+  browser_ui/ (2,004 files, 14.4 MB: .sha1 625, .java 578, .xml 556)
+  cronet/ (501 files, 4.2 MB: .java 265, .py 50, .cc 40)
+  enterprise/ (791 files, 3.9 MB: .cc 348, .h 272, (no ext) 59)
+  exo/ (443 files, 3.3 MB: .cc 220, .h 179, .tmpl 10)
+  metrics/ (479 files, 2.5 MB: .cc 230, .h 169, (no ext) 25)
+  omnibox/ (640 files, 6.2 MB: .cc 243, .h 166, .icon 93)
+  optimization_guide/ (570 files, 4.2 MB: .cc 249, .h 180, .proto 90)
+  password_manager/ (847 files, 7.6 MB: .cc 419, .h 328, (no ext) 30)
+  payments/ (589 files, 2.8 MB: .cc 183, (no ext) 130, .h 127)
+  performance_manager/ (479 files, 3.3 MB: .cc 260, .h 197, (no ext) 10)
+  permissions/ (477 files, 2.7 MB: .cc 133, .h 115, .xtb 81)
+  policy/ (3,426 files, 37.1 MB: .yaml 1535, .json 1180, .cc 293)
+  safe_browsing/ (601 files, 5.6 MB: .cc 253, .h 190, (no ext) 65)
+  segmentation_platform/ (542 files, 2.7 MB: .cc 292, .h 197, .java 14)
+  services/ (546 files, 3.7 MB: .cc 229, .h 167, (no ext) 64)
+  signin/ (449 files, 4.4 MB: .cc 190, .h 143, .java 47)
+  sync/ (807 files, 5.4 MB: .cc 347, .h 300, .proto 98)
+  test/ (1,686 files, 31.1 MB: .html 543, .sql 211, .out 199)
+  vector_icons/ (527 files, 939.7 KB: .icon 513, (no ext) 4, .template 3)
+  viz/ (825 files, 8.6 MB: .cc 412, .h 337, (no ext) 42)
+  webapps/ (483 files, 2.3 MB: .cc 136, .h 109, .xtb 81)
+  ⋯ 393 more directories, 20,208 files (access_code_cast, accessibility, account_id, account_manager_core, account_settings, activity_reporter, …)
+  .ruff.toml 15L
+  BUILD.gn 1524L
+  DEPS 17L
+  OWNERS 110L
+  PRESUBMIT.py 87L
+  README.md 147L
+  android_system_error_page_strings.grdp 18L
+  arc_strings.grdp 127L
+  autofill_payments_strings.grdp 1812L
+  autofill_strings.grdp 2220L
+  blocked_content_strings.grdp 11L
+  bookmark_bar_strings.grdp 42L
+  bookmark_component_strings.grdp 37L
+  browsing_data_strings.grdp 249L
+  ⋯ 67 files more (.grdp 60, .grd 6, .gritdeps 1)
+content/ (16,610 files, 103.9 MB: .cc 2526, .h 1551, (no ext) 393)
+device/ (1,694 files, 11.1 MB: .cc 659, .h 642, .xtb 162)
+extensions/ (2,945 files, 19.0 MB: .cc 1113, .h 937, .json 276)
+gpu/ (1,236 files, 15.5 MB: .cc 587, .h 509, .txt 33)
+infra/ (3,843 files, 37.2 MB: .json 3515, .star 125, .txt 67)
+ios/ (21,935 files, 140.8 MB: .sha1 3366, .mm 519, .h 492)
+media/ (3,858 files, 51.9 MB: .cc 1802, .h 1366, (no ext) 157)
+mojo/ (1,802 files, 8.2 MB: .cc 340, .h 325, .golden 168)
+net/ (5,733 files, 78.6 MB: (no ext) 1316, .cc 1224, .h 856)
+remoting/ (2,147 files, 15.6 MB: .cc 967, .h 761, .xtb 81)
+services/ (3,869 files, 27.0 MB: .cc 1578, .h 1187, .mojom 335)
+third_party/ (149,293 files, 1.1 GB: .html 1243, (no ext) 843, .cc 716)
+tools/ (6,775 files, 105.1 MB: .py 1334, (no ext) 532, .cc 464)
+ui/ (10,357 files, 83.6 MB: .cc 1318, .h 1232, .sha1 608)
+⋯ 26 more directories, 5,457 files (.agents, .claude, .gemini, .github, apps, build_overrides, …)
+.clang-format 76L
+.clang-tidy 102L
+.clangd 7L
+.cursorignore 10L
+.geminiignore 4L
+.git-blame-ignore-revs 932L
+.gitallowed 5L
+.gitattributes 59L
+.gitignore 353L
+.gitmodules 961L
+.gn 481L
+.mailmap 15L
+.ruff.toml 23L
+.rustfmt.toml 38L
+.yapfignore 20L
+ATL_OWNERS 10L
+AUTHORS 2073L
+BRANCH_FEATURE_OWNERS 2L
+BRANCH_OWNERS 8L
+BUILD.gn 1681L
+CODE_OF_CONDUCT.md 100L
+CPPLINT.cfg 9L
+CRYPTO_OWNERS 10L
+DEPS 4930L
+DIR_METADATA 15L
+LICENSE 27L
+LICENSE.chromium_os 27L
+OWNERS 328L
+PRESUBMIT.py 10065L
+PRESUBMIT_test.py 8114L
+PRESUBMIT_test_mocks.py 474L
+README.md 21L
+SECURITY_OWNERS 9L
+WATCHLISTS 3525L
+codereview.settings 8L
+package.json 10L
+vpython.toml 143L
+vpython.toml.uv.lock 2075L

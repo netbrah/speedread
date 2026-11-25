@@ -1,0 +1,27 @@
+Agent gate plan (pre-registered; not a result)
+  harness: grok
+  model: grok-4.6
+  exclusive task sessions: 1120 (4 tasks × 70 trials × 4 tools)
+  per tool: 280 trials
+  first-call probe sessions: 600 (200 × baseline, available, exclusive, interleaved)
+  total sessions: 1720
+  selection / argument-validity / task-success are scored on exclusive only
+  first-call delta primary pair is available − baseline on the probe prompt
+  this is not the unprompted-adoption experiment
+
+Example argv (session id is fresh per run):
+
+MCP (once, cwd is its own git root outside this repo):
+  grok mcp add --scope project speedread -- /agent/repos/speedread/target/fast/speedread --root /tmp/speedread-gate-EXAMPLE/with-mcp --deadline-ms 10000 --cache-mb 256 mcp
+
+Probe, available:
+  grok --no-auto-update -p Reply with the single word pong. Do not call any tools. --output-format streaming-json --always-approve -m grok-4.6 -s <uuid> --cwd /tmp/speedread-gate-EXAMPLE/with-mcp --no-subagents --disable-web-search --no-memory --sandbox read-only --max-turns 1
+
+Probe, baseline (no MCP server in that workdir):
+  grok --no-auto-update -p Reply with the single word pong. Do not call any tools. --output-format streaming-json --always-approve -m grok-4.6 -s <uuid> --cwd /tmp/speedread-gate-EXAMPLE/baseline --no-subagents --disable-web-search --no-memory --sandbox read-only --max-turns 1
+
+Task, exclusive:
+  grok --no-auto-update -p <task prompt> --output-format streaming-json --always-approve -m grok-4.6 -s <uuid> --cwd /tmp/speedread-gate-EXAMPLE/with-mcp --no-subagents --disable-web-search --no-memory --sandbox read-only --max-turns 12 --disallowed-tools read_file,grep,list_dir,bash
+
+Usage, turn 1:
+  grok usage <session-id> 1

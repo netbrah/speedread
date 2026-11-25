@@ -1,0 +1,311 @@
+{
+  "verdict": "pass",
+  "argument_validity_rate": 1.0,
+  "passed": 16,
+  "tasks": 16,
+  "unit": "trials",
+  "runs": 1,
+  "what": "canonical arguments for each fixed task, sent to the live server; pass means the server accepted the call and every response grader matched",
+  "tool_selection_rate": null,
+  "tool_selection_note": "not measured here; the agent subcommand scores it. This command does not invent a selection rate.",
+  "task_success_rate": null,
+  "task_success_note": "agent answer graders run on the Grok machine. Canonical response graders are the argument-validity check above.",
+  "negatives_rejected": "3/3",
+  "negatives": [
+    {
+      "tool": "search",
+      "arguments": {},
+      "rejected": true,
+      "error": {
+        "content": [
+          {
+            "type": "text",
+            "text": "failed to deserialize parameters: missing field `pattern`"
+          }
+        ],
+        "isError": true
+      },
+      "text_head": ""
+    },
+    {
+      "tool": "read",
+      "arguments": {},
+      "rejected": true,
+      "error": {
+        "content": [
+          {
+            "type": "text",
+            "text": "failed to deserialize parameters: missing field `targets`"
+          }
+        ],
+        "isError": true
+      },
+      "text_head": ""
+    },
+    {
+      "tool": "trace",
+      "arguments": {},
+      "rejected": true,
+      "error": {
+        "content": [
+          {
+            "type": "text",
+            "text": "failed to deserialize parameters: missing field `target`"
+          }
+        ],
+        "isError": true
+      },
+      "text_head": ""
+    }
+  ],
+  "rows": [
+    {
+      "id": "read-add",
+      "tool": "read",
+      "accepted": true,
+      "grader_hits": [
+        true,
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "c344c6d3ab935b9b6beedfae2b5222aa8ad27bcffd996527148a9810bc75b05b",
+      "text_bytes": 131
+    },
+    {
+      "id": "read-range",
+      "tool": "read",
+      "accepted": true,
+      "grader_hits": [
+        true,
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "e140587c9b0932dfd2210ff8178c6ea43a4508c86a13efbc0b35cb016cf9a19a",
+      "text_bytes": 182
+    },
+    {
+      "id": "read-install",
+      "tool": "read",
+      "accepted": true,
+      "grader_hits": [
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "6bb08494ee3a825efb145f6c78d6d8f6ea56d0af3e7c08c2b5c9ec24b7e2a49f",
+      "text_bytes": 145
+    },
+    {
+      "id": "read-version",
+      "tool": "read",
+      "accepted": true,
+      "grader_hits": [
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "b0c9df44d02d16c513fa78d9ce9275516a92d8d09f344da132b5123e2f1f568f",
+      "text_bytes": 84
+    },
+    {
+      "id": "search-twice",
+      "tool": "search",
+      "accepted": true,
+      "grader_hits": [
+        true,
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "56da9f9bda94afe1c0816946b2c4c0f2a48fd305c872ce11ac438be303a41431",
+      "text_bytes": 142
+    },
+    {
+      "id": "search-greeting",
+      "tool": "search",
+      "accepted": true,
+      "grader_hits": [
+        true,
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "506820ec58f1383115c91d16895b98e4c36e0ac99a5c3eebc2fdea9c66415a64",
+      "text_bytes": 188
+    },
+    {
+      "id": "search-files",
+      "tool": "search",
+      "accepted": true,
+      "grader_hits": [
+        true,
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "3eb73eb4253f4c91a58e8b7942da64c38104173799182e13ed60826b10038003",
+      "text_bytes": 74
+    },
+    {
+      "id": "search-ast",
+      "tool": "search",
+      "accepted": true,
+      "grader_hits": [
+        true,
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "1c39dd2ccc60332c0b4e8f61f1f9ee402db9834e4a6a763e44c6cd9f1c2abb42",
+      "text_bytes": 314
+    },
+    {
+      "id": "map-root",
+      "tool": "map",
+      "accepted": true,
+      "grader_hits": [
+        true,
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "646c178c019d72d9e082cf6f57d69b13e2f78b27757eb1cd390b0a1c2912026b",
+      "text_bytes": 123
+    },
+    {
+      "id": "map-src",
+      "tool": "map",
+      "accepted": true,
+      "grader_hits": [
+        true,
+        true,
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "87de7a056b2d7a936d786ec46ffb8e60d78fe3d0a6a43e6d6c1b0f6d8d43d5d5",
+      "text_bytes": 79
+    },
+    {
+      "id": "map-py",
+      "tool": "map",
+      "accepted": true,
+      "grader_hits": [
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "93a0727ba0b3c5b2e11dc9e8e4f628b1beab18022af083ab85af92e5f538aacb",
+      "text_bytes": 61
+    },
+    {
+      "id": "map-symbols",
+      "tool": "map",
+      "accepted": true,
+      "grader_hits": [
+        true,
+        true,
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "beb49d5b191ca3772064ef21b1c062ebea063352e88e28b4ff3fc79bcc08fdfc",
+      "text_bytes": 138
+    },
+    {
+      "id": "trace-callers",
+      "tool": "trace",
+      "accepted": true,
+      "grader_hits": [
+        true,
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "6e584ffbf27d6430a0c217aef7a40d9f2721e78c4c2950ab6631db9aea2648b0",
+      "text_bytes": 299
+    },
+    {
+      "id": "trace-callees",
+      "tool": "trace",
+      "accepted": true,
+      "grader_hits": [
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "4e1aaf3e0130f2e0bd064cb3656971b5c5832b47da3f1efcac8dc0d2e94db70d",
+      "text_bytes": 225
+    },
+    {
+      "id": "trace-refs",
+      "tool": "trace",
+      "accepted": true,
+      "grader_hits": [
+        true,
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "89c9439d551e9ff305ac354d479ab4e62fde2b1b9c2befefd2f076f714a350d1",
+      "text_bytes": 252
+    },
+    {
+      "id": "trace-impls",
+      "tool": "trace",
+      "accepted": true,
+      "grader_hits": [
+        true
+      ],
+      "pass": true,
+      "error": null,
+      "text_sha256": "f9716147330b5836c325ca9e326ceb29501303957dd9e47f5b3e365eeb445f20",
+      "text_bytes": 198
+    }
+  ],
+  "by_tool": {
+    "read": {
+      "passed": 4,
+      "tasks": 4
+    },
+    "search": {
+      "passed": 4,
+      "tasks": 4
+    },
+    "map": {
+      "passed": 4,
+      "tasks": 4
+    },
+    "trace": {
+      "passed": 4,
+      "tasks": 4
+    }
+  },
+  "binary": "/agent/repos/speedread/target/fast/speedread",
+  "flags": [
+    "--deadline-ms",
+    "10000",
+    "--cache-mb",
+    "256"
+  ],
+  "host": {
+    "git_sha": "7478ebc4e93ea1faa11f18148669bb4a175b06d2",
+    "nproc": 4,
+    "uptime_s": "989.40",
+    "loadavg": "0.13 0.35 0.22 1/243 6690",
+    "uname": "Linux cursor 6.12.113+ #1 SMP PREEMPT_DYNAMIC Mon Nov 23 16:05:51 UTC 2026 x86_64",
+    "cpu_model": "Intel(R) Xeon(R) Processor",
+    "meminfo": {
+      "MemTotal": "16387328 kB",
+      "MemFree": "4253508 kB",
+      "MemAvailable": "8996200 kB",
+      "Buffers": "401816 kB",
+      "Cached": "3712184 kB"
+    },
+    "balloon_mib": 6144.0,
+    "rustc_stable": "rustc 1.100.0 (0ef1bc386 2026-11-09)",
+    "binary_sha256": "656a455eda60145c52c460742a77e023cfdfc2e29d1c92562a9e677765a0e27b"
+  }
+}

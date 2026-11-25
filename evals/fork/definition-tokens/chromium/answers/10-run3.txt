@@ -1,0 +1,90 @@
+==> callers of content.RenderFrameHostImpl.DidCommitNavigation (content/browser/renderer_host/render_frame_host_impl.cc:18234-18421)
+void RenderFrameHostImpl::DidCommitNavigation(NavigationRequest* committing_navigation_request, mojom::DidCommitProvisionalLoadParamsPtr params, mojom::DidCommitProvisionalLoadInte…
+7 call sites + 2 passed as value in 9 functions · syntactic: comments, strings and the definition excluded; → = passed, stored or returned, not called here; 17 other definitions named `DidCommitNavigation` (20 sites attributed to them left out); ? = receiver unknown; +181 textual matches in 95 files farther away not examined (raise budget)
+content/browser/renderer_host/render_frame_host_impl.cc
+  [6751-6760] void RenderFrameHostImpl::DidCommitProvisionalLoad(mojom::DidCommitProvisionalLoadParamsPtr params, mojom::DidCommitProvisionalLoadInterfaceParamsPtr interface_params) (in content)
+    6759	DidCommitNavigation(nullptr, std::move(params), std::move(interface_params));
+      ← content/browser/renderer_host/navigation_controller_impl.cc ? [5054-5091] void NavigationControllerImpl::NotifyNavigationEntryCommitted(LoadCommittedDetails* details, ScopedDeferredNavigationStateChangeNotifier* deferred_notifier) (in content)
+        5062	ssl_manager_.DidCommitProvisionalLoad(*details);
+      ← content/browser/renderer_host/navigation_controller_impl_browsertest.cc ? [17256-17287] IN_PROC_BROWSER_TEST_P(NavigationControllerBrowserTest, ErrorPageNavigationWithoutNavigationRequestGetsKilled) (in content)
+        17278	static_cast<mojom::FrameHost*>(rfh)->DidCommitProvisionalLoad(
+      ← content/browser/security_exploit_browsertest.cc ? [2001-2036] IN_PROC_BROWSER_TEST_F(SecurityExploitBrowserTest, NonInitialAboutBlankRendererKill) (in content)
+        2027	static_cast<mojom::FrameHost*>(rfh)->DidCommitProvisionalLoad(
+      ← content/renderer/accessibility/render_accessibility_impl_browsertest.cc ? [656-706] TEST_F(RenderAccessibilityImplTest, SendPendingAccessibilityEventsPostLoad) (in content)
+        673	GetRenderAccessibilityImpl()->DidCommitProvisionalLoad(
+      ← content/renderer/accessibility/render_accessibility_impl_browsertest.cc ? [1005-1065] TEST_F(RenderAccessibilityImplUKMTest, TestFireUKMs) (in content)
+        1059	GetRenderAccessibilityImpl()->DidCommitProvisionalLoad(
+      ← content/renderer/render_frame_impl.cc ? [5408-5416] void RenderFrameImpl::NotifyObserversOfNavigationCommit(ui::PageTransition transition) (in content)
+        5414	observer.DidCommitProvisionalLoad(transition);
+      ← content/renderer/render_frame_impl.cc ? [5453-5522] void RenderFrameImpl::DidCommitNavigationInternal(blink::WebHistoryCommitType commit_type, ui::PageTransition transition, NavigationState* navigation_state, const network::ParsedPe… (in content)
+        5498	GetFrameHost()->DidCommitProvisionalLoad(std::move(params),
+  [18423-18429] mojom::NavigationClient::CommitNavigationCallback RenderFrameHostImpl::BuildCommitNavigationCallback(NavigationRequest* navigation_request) (in content)
+    18427	return base::BindOnce(&RenderFrameHostImpl::DidCommitNavigation,  → passed to base::BindOnce
+      ← [18018-18186] void RenderFrameHostImpl::SendCommitNavigation(NavigationRequest* navigation_request, blink::mojom::CommonNavigationParamsPtr common_params, blink::mojom::CommitNavigationParamsPtr… (in content)
+        18180	BuildCommitNavigationCallback(navigation_request));
+  [18431-18437] mojom::NavigationClient::CommitFailedNavigationCallback RenderFrameHostImpl::BuildCommitFailedNavigationCallback(NavigationRequest* navigation_request) (in content)
+    18435	return base::BindOnce(&RenderFrameHostImpl::DidCommitNavigation,  → passed to base::BindOnce
+      ← [18188-18232] void RenderFrameHostImpl::SendCommitFailedNavigation(NavigationRequest* navigation_request, blink::mojom::CommonNavigationParamsPtr common_params, blink::mojom::CommitNavigationPar… (in content)
+        18230	BuildCommitFailedNavigationCallback(navigation_request));
+content/browser/renderer_host/navigation_controller_impl.cc
+  ? [1843-2231] NavigationControllerImpl::CommitResult NavigationControllerImpl::RendererDidNavigate(RenderFrameHostImpl* rfh, const mojom::DidCommitProvisionalLoadParams& params, LoadCommittedDet… (in content)
+    2136	active_entry->back_forward_cache_metrics()->DidCommitNavigation(
+      ← content/browser/renderer_host/navigation_controller_impl.h [59-1272] class CONTENT_EXPORT NavigationControllerImpl : public NavigationController (in content)
+        393	CommitResult RendererDidNavigate(
+      ← content/browser/renderer_host/navigator.cc [482-836] void Navigator::DidNavigate(RenderFrameHostImpl* render_frame_host, const mojom::DidCommitProvisionalLoadParams& params, std::unique_ptr<NavigationRequest> navigation_request, bool… (in content)
+        698	controller_.RendererDidNavigate(
+content/browser/renderer_host/navigator.cc
+  ? [482-836] void Navigator::DidNavigate(RenderFrameHostImpl* render_frame_host, const mojom::DidCommitProvisionalLoadParams& params, std::unique_ptr<NavigationRequest> navigation_request, bool… (in content)
+    789	navigation_request->DidCommitNavigation(params, did_navigate,
+      ← content/browser/renderer_host/render_frame_host_impl.cc ? [16780-17393] bool RenderFrameHostImpl::DidCommitNavigationInternal(std::unique_ptr<NavigationRequest> navigation_request, mojom::DidCommitProvisionalLoadParamsPtr params, mojom::DidCommitSameDo… (in content)
+        17343	frame_tree_node->navigator().DidNavigate(
+      ← content/browser/renderer_host/render_frame_host_impl.cc ? [18234-18421] void RenderFrameHostImpl::DidCommitNavigation(NavigationRequest* committing_navigation_request, mojom::DidCommitProvisionalLoadParamsPtr params, mojom::DidCommitProvisionalLoadInte… (in content)
+        18415	RenderWidgetHostImpl::From(GetView()->GetRenderWidgetHost())->DidNavigate();
+      ← content/browser/renderer_host/browser_compositor_ios.mm ? [28-470] namespace content
+        335	void BrowserCompositorIOS::DidNavigate() {
+        353	delegated_frame_host_->DidNavigate();
+      ← content/browser/renderer_host/browser_compositor_view_mac.mm ? [28-467] namespace content
+        380	void BrowserCompositorMac::DidNavigate() {
+        398	delegated_frame_host_->DidNavigate();
+      ← content/browser/renderer_host/delegated_frame_host_unittest.cc ? [155-191] TEST_F(DelegatedFrameHostTest, NoCopyOutputRequestWithNoValidSurface) (in content)
+        162	dfh->DidNavigate();
+      ← content/browser/renderer_host/delegated_frame_host_unittest.cc ? [235-311] TEST_F(DelegatedFrameHostTest, EvictDelegatedFrameRequestsOldestAcceptableSurfaceAndEvictsOnEmptyCopy) (in content)
+        255	dfh->DidNavigate();
+      ← content/browser/renderer_host/render_widget_host_impl.cc ? [1636-1659] void RenderWidgetHostImpl::DidNavigate() (in content)
+        1642	view_->DidNavigate();
+      ← content/browser/renderer_host/render_widget_host_unittest.cc ? [3254-3276] TEST_F(RenderWidgetHostTest, NavigateInBackgroundShowsBlank) (in content)
+        3260	host_->DidNavigate();
+        3272	host_->DidNavigate();
+      ← content/browser/renderer_host/render_widget_host_view_android.cc ? [3578-3612] void RenderWidgetHostViewAndroid::DidNavigate() (in content)
+        3609	delegated_frame_host_->DidNavigate();
+      ← content/browser/renderer_host/render_widget_host_view_android.cc ? [3759-3862] void RenderWidgetHostViewAndroid::NotifyHostAndDelegateOnWasShown(std::optional<blink::RecordContentToVisibleTimeRequest> visible_time_request) (in content)
+        3795	delegated_frame_host_->DidNavigate();
+      ← content/browser/renderer_host/render_widget_host_view_android_unittest.cc ? [524-550] TEST_F(RenderWidgetHostViewAndroidTest, RenderFrameSubmittedBeforeNavigation) (in content)
+        548	rwhva->DidNavigate();
+      ← content/browser/renderer_host/render_widget_host_view_aura.cc ? [3971-3992] void RenderWidgetHostViewAura::DidNavigate() (in content)
+        3990	delegated_frame_host_->DidNavigate();
+      ← content/browser/renderer_host/render_widget_host_view_aura_unittest.cc ? [6785-6831] TEST_F(RenderWidgetHostViewAuraTest, MAYBE_NewContentRenderingTimeout) (in content)
+        6800	widget_host_->DidNavigate();
+        6815	widget_host_->DidNavigate();
+      ← content/browser/renderer_host/render_widget_host_view_aura_unittest.cc ? [6867-6885] TEST_F(RenderWidgetHostViewAuraTest, DontDropFallbackIfNotResizedWhileHidden) (in content)
+        6874	view_->DidNavigate();
+      ← content/browser/renderer_host/render_widget_host_view_ios.mm ? [538-540] void RenderWidgetHostViewIOS::DidNavigate()
+        539	browser_compositor_->DidNavigate();
+      ← content/browser/renderer_host/render_widget_host_view_mac.h ? [144-331] bool IsPointerLocked() override; void SetActive(bool active) override; void ShowDefinitionForSelection() override; void SpeakSelection() override; void SetWindowFrameInScreen(const…
+        207	void DidNavigate() override;
+      ← content/browser/renderer_host/render_widget_host_view_mac.mm ? [1082-1084] void RenderWidgetHostViewMac::DidNavigate()
+        1083	browser_compositor_->DidNavigate();
+content/browser/back_forward_cache/back_forward_cache_metrics.h
+  ? [47-298] class CONTENT_EXPORT BackForwardCacheMetrics : public base::RefCounted<BackForwardCacheMetrics> (in content)
+    149	void DidCommitNavigation(NavigationRequest* navigation_request,
+third_party/blink/renderer/core/frame/local_frame_client_impl.cc
+  ? [542-595] void LocalFrameClientImpl::DispatchDidCommitLoad(HistoryItem* item, WebHistoryCommitType commit_type, bool should_reset_browser_interface_broker, const network::ParsedPermissionsPo… (in blink)
+    554	web_frame_->Client()->DidCommitNavigation(
+content/test/content_browser_test_utils_internal.cc
+  ? [978-985] void CommitNavigationPauser::ResumePausedCommit() (in content)
+    982	paused_request_->GetRenderFrameHost()->DidCommitNavigation(
+      ← content/browser/renderer_host/render_frame_host_impl_browsertest.cc ? [13512-13515] void ResumePausedCommit() (in content.(anonymous).ReadyToCommitPauserObserver)
+        13514	pauser_->ResumePausedCommit();
+third_party/blink/renderer/core/frame/web_local_frame_client_test.cc
+… 16 more, 1 in tests in: content/browser/renderer_host/render_frame_host_impl_browsertest.cc, content/browser/renderer_host/render_frame_host_manager_browsertest.cc, content/browser/devtools/render_frame_devtools_agent_host_browsertest.cc, content/browser/navigation_browsertest.cc, third_party/blink/renderer/core/frame/web_local_frame_client_test.cc. Raise budget or trace a narrower target.
+not fully searched: 2 files have a line longer than 4 MiB and were read only up to it, e.g. third_party/webxr_test_pages/webxr-samples/proposals/opencv/opencv.js

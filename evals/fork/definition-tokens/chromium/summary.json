@@ -1,0 +1,723 @@
+{
+  "verdict": "baseline",
+  "corpus": "/agent/repos/speedread/target/eval-repos/chromium",
+  "queries_from": "scripts/fork-big-eval.py REPOS['chromium']['queries']",
+  "runs_per_query": 5,
+  "order": "all runs of a query before the next query, same order as fork-big-eval.py; no 6s early stop",
+  "flags": [
+    "--deadline-ms",
+    "10000",
+    "--cache-mb",
+    "256"
+  ],
+  "cwd": "/",
+  "build_note": "pass the binary you built; this script does not rebuild",
+  "clock": "time.perf_counter wall; ru_utime+ru_stime CPU; Linux ru_maxrss/1024 = MiB",
+  "tokenizer": "tiktoken 0.14.0",
+  "encode": "Encoding.encode(stdout decoded as utf-8 with replacement, disallowed_special=())",
+  "loadavg_before": "0.13 0.33 0.21 1/244 7188",
+  "loadavg_after": "3.88 1.74 0.76 1/303 8671",
+  "host": {
+    "git_sha": "7478ebc4e93ea1faa11f18148669bb4a175b06d2",
+    "nproc": 4,
+    "uptime_s": "1160.34",
+    "loadavg": "3.88 1.74 0.76 6/303 8678",
+    "uname": "Linux cursor 6.12.113+ #1 SMP PREEMPT_DYNAMIC Mon Nov 23 16:05:51 UTC 2026 x86_64",
+    "cpu_model": "Intel(R) Xeon(R) Processor",
+    "meminfo": {
+      "MemTotal": "16387328 kB",
+      "MemFree": "3422772 kB",
+      "MemAvailable": "10558716 kB",
+      "Buffers": "412392 kB",
+      "Cached": "6086832 kB"
+    },
+    "balloon_mib": 4096.0,
+    "rustc_stable": "rustc 1.100.0 (0ef1bc386 2026-11-09)",
+    "binary_sha256": "656a455eda60145c52c460742a77e023cfdfc2e29d1c92562a9e677765a0e27b"
+  },
+  "profile_not_in_table": {
+    "ran": true,
+    "in_timed_table": false,
+    "why": "strace slows the work; this run is the limiter check, not a result",
+    "query": [
+      "search",
+      "zzz_profile_not_in_the_timed_set_zzz"
+    ],
+    "wall_ms_under_strace": 1127.5,
+    "exit_code": 0,
+    "strace": "/agent/repos/speedread/evals/fork/definition-tokens/chromium/profile/strace.txt",
+    "stderr_tail": "speedread-stats walks=1 entries=471431 stopped=0 cancelled=0\n"
+  },
+  "queries": [
+    {
+      "query": [
+        "search",
+        "base::BindOnce"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [
+        "not fully searched: 1 file has a line longer than 4 MiB and was read only up to it: tools/perf/testd",
+        "not fully searched: 2 files have a line longer than 4 MiB and were read only up to it, e.g. tools/pe"
+      ],
+      "wall_ms": {
+        "first": 237.4,
+        "median": 115.0,
+        "min": 96.2,
+        "max": 237.4
+      },
+      "cpu_s": {
+        "median": 0.371,
+        "min": 0.329,
+        "max": 0.67
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 5203,
+        "min": 5178,
+        "max": 5813
+      },
+      "answer_tokens_cl100k": {
+        "median": 5185,
+        "min": 5159,
+        "max": 5752
+      },
+      "answer_identical_across_runs": false
+    },
+    {
+      "query": [
+        "search",
+        "-w",
+        "ScopedObservation"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [
+        "not fully searched: 3 files have a line longer than 4 MiB and were read only up to it, e.g. third_pa"
+      ],
+      "wall_ms": {
+        "first": 2670.7,
+        "median": 1140.7,
+        "min": 1129.4,
+        "max": 2670.7
+      },
+      "cpu_s": {
+        "median": 4.249,
+        "min": 4.199,
+        "max": 6.46
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 5596,
+        "min": 5596,
+        "max": 5596
+      },
+      "answer_tokens_cl100k": {
+        "median": 5625,
+        "min": 5625,
+        "max": 5625
+      },
+      "answer_identical_across_runs": true
+    },
+    {
+      "query": [
+        "search",
+        "DCHECK_CURRENTLY_ON",
+        "--output",
+        "files"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [
+        "not fully searched: 3 files have a line longer than 4 MiB and were read only up to it, e.g. third_pa"
+      ],
+      "wall_ms": {
+        "first": 1026.6,
+        "median": 1021.9,
+        "min": 1003.2,
+        "max": 1027.9
+      },
+      "cpu_s": {
+        "median": 4.039,
+        "min": 3.973,
+        "max": 4.064
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 6095,
+        "min": 6095,
+        "max": 6095
+      },
+      "answer_tokens_cl100k": {
+        "median": 5770,
+        "min": 5770,
+        "max": 5770
+      },
+      "answer_identical_across_runs": true
+    },
+    {
+      "query": [
+        "search",
+        "zzz_not_there_zzz"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [
+        "not fully searched: 3 files have a line longer than 4 MiB and were read only up to it, e.g. third_pa"
+      ],
+      "wall_ms": {
+        "first": 1059.4,
+        "median": 1057.3,
+        "min": 1041.1,
+        "max": 1064.1
+      },
+      "cpu_s": {
+        "median": 4.199,
+        "min": 4.134,
+        "max": 4.222
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 71,
+        "min": 71,
+        "max": 71
+      },
+      "answer_tokens_cl100k": {
+        "median": 73,
+        "min": 73,
+        "max": 73
+      },
+      "answer_identical_across_runs": true
+    },
+    {
+      "query": [
+        "search",
+        "NavigationThrottle",
+        "content/browser"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [],
+      "wall_ms": {
+        "first": 95.6,
+        "median": 95.6,
+        "min": 93.7,
+        "max": 98.4
+      },
+      "cpu_s": {
+        "median": 0.189,
+        "min": 0.186,
+        "max": 0.193
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 4687,
+        "min": 4687,
+        "max": 4687
+      },
+      "answer_tokens_cl100k": {
+        "median": 4912,
+        "min": 4912,
+        "max": 4912
+      },
+      "answer_identical_across_runs": true
+    },
+    {
+      "query": [
+        "read",
+        "#DidCommitNavigation"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [],
+      "wall_ms": {
+        "first": 1041.2,
+        "median": 996.3,
+        "min": 990.1,
+        "max": 1041.2
+      },
+      "cpu_s": {
+        "median": 3.885,
+        "min": 3.852,
+        "max": 3.907
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 4562,
+        "min": 4562,
+        "max": 4562
+      },
+      "answer_tokens_cl100k": {
+        "median": 4568,
+        "min": 4568,
+        "max": 4568
+      },
+      "answer_identical_across_runs": true
+    },
+    {
+      "query": [
+        "read",
+        "content/browser/renderer_host/render_frame_host_impl.cc#RenderFrameHostImpl::DidCommitNavigation"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [],
+      "wall_ms": {
+        "first": 85.0,
+        "median": 82.8,
+        "min": 81.3,
+        "max": 86.5
+      },
+      "cpu_s": {
+        "median": 0.083,
+        "min": 0.081,
+        "max": 0.087
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 2312,
+        "min": 2312,
+        "max": 2312
+      },
+      "answer_tokens_cl100k": {
+        "median": 2321,
+        "min": 2321,
+        "max": 2321
+      },
+      "answer_identical_across_runs": true
+    },
+    {
+      "query": [
+        "trace",
+        "DidCommitNavigation"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [
+        "not fully searched: 1 file has a line longer than 4 MiB and was read only up to it: third_party/webx"
+      ],
+      "wall_ms": {
+        "first": 1575.1,
+        "median": 1508.0,
+        "min": 1469.8,
+        "max": 1575.1
+      },
+      "cpu_s": {
+        "median": 5.676,
+        "min": 5.657,
+        "max": 5.69
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 731,
+        "min": 731,
+        "max": 731
+      },
+      "answer_tokens_cl100k": {
+        "median": 725,
+        "min": 725,
+        "max": 725
+      },
+      "answer_identical_across_runs": true
+    },
+    {
+      "query": [
+        "trace",
+        "PostTask"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [
+        "not fully searched: 1 file has a line longer than 4 MiB and was read only up to it: third_party/webx"
+      ],
+      "wall_ms": {
+        "first": 2027.9,
+        "median": 2066.9,
+        "min": 2000.5,
+        "max": 2111.2
+      },
+      "cpu_s": {
+        "median": 7.786,
+        "min": 7.709,
+        "max": 7.956
+      },
+      "peak_rss_mib": {
+        "median": 175.2,
+        "min": 173.8,
+        "max": 178.4
+      },
+      "answer_tokens_o200k": {
+        "median": 2983,
+        "min": 2983,
+        "max": 2983
+      },
+      "answer_tokens_cl100k": {
+        "median": 2954,
+        "min": 2954,
+        "max": 2954
+      },
+      "answer_identical_across_runs": true
+    },
+    {
+      "query": [
+        "trace",
+        "Run",
+        "--depth",
+        "2"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [
+        "incomplete: the name is in more files than a lookup examines (at most 20,000 searched, 5,000"
+      ],
+      "wall_ms": {
+        "first": 8374.5,
+        "median": 8374.5,
+        "min": 7851.3,
+        "max": 8644.7
+      },
+      "cpu_s": {
+        "median": 30.837,
+        "min": 29.767,
+        "max": 32.089
+      },
+      "peak_rss_mib": {
+        "median": 512.1,
+        "min": 504.5,
+        "max": 713.4
+      },
+      "answer_tokens_o200k": {
+        "median": 2795,
+        "min": 2783,
+        "max": 2928
+      },
+      "answer_tokens_cl100k": {
+        "median": 2787,
+        "min": 2775,
+        "max": 2932
+      },
+      "answer_identical_across_runs": false
+    },
+    {
+      "query": [
+        "trace",
+        "content/browser/renderer_host/render_frame_host_impl.cc#DidCommitNavigation",
+        "--depth",
+        "2"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [
+        "not fully searched: 2 files have a line longer than 4 MiB and were read only up to it, e.g. third_pa"
+      ],
+      "wall_ms": {
+        "first": 3125.4,
+        "median": 3119.5,
+        "min": 3084.1,
+        "max": 3136.6
+      },
+      "cpu_s": {
+        "median": 11.729,
+        "min": 11.67,
+        "max": 11.789
+      },
+      "peak_rss_mib": {
+        "median": 200.5,
+        "min": 191.2,
+        "max": 208.1
+      },
+      "answer_tokens_o200k": {
+        "median": 2522,
+        "min": 2522,
+        "max": 2522
+      },
+      "answer_tokens_cl100k": {
+        "median": 2496,
+        "min": 2496,
+        "max": 2496
+      },
+      "answer_identical_across_runs": true
+    },
+    {
+      "query": [
+        "map"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [],
+      "wall_ms": {
+        "first": 744.1,
+        "median": 750.0,
+        "min": 737.4,
+        "max": 768.4
+      },
+      "cpu_s": {
+        "median": 1.992,
+        "min": 1.942,
+        "max": 2.02
+      },
+      "peak_rss_mib": {
+        "median": 174.6,
+        "min": 173.8,
+        "max": 178.7
+      },
+      "answer_tokens_o200k": {
+        "median": 2814,
+        "min": 2814,
+        "max": 2814
+      },
+      "answer_tokens_cl100k": {
+        "median": 2811,
+        "min": 2811,
+        "max": 2811
+      },
+      "answer_identical_across_runs": false
+    },
+    {
+      "query": [
+        "map",
+        "content/browser"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [],
+      "wall_ms": {
+        "first": 21.9,
+        "median": 19.5,
+        "min": 18.6,
+        "max": 21.9
+      },
+      "cpu_s": {
+        "median": 0.039,
+        "min": 0.033,
+        "max": 0.042
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 2452,
+        "min": 2452,
+        "max": 2452
+      },
+      "answer_tokens_cl100k": {
+        "median": 2421,
+        "min": 2421,
+        "max": 2421
+      },
+      "answer_identical_across_runs": true
+    },
+    {
+      "query": [
+        "search",
+        "--ast",
+        "base::BindOnce($$$A)",
+        "--lang",
+        "cpp",
+        "content/browser/renderer_host"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [],
+      "wall_ms": {
+        "first": 505.6,
+        "median": 505.6,
+        "min": 476.3,
+        "max": 521.1
+      },
+      "cpu_s": {
+        "median": 1.032,
+        "min": 1.022,
+        "max": 1.084
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 5579,
+        "min": 5579,
+        "max": 5579
+      },
+      "answer_tokens_cl100k": {
+        "median": 5477,
+        "min": 5477,
+        "max": 5477
+      },
+      "answer_identical_across_runs": true
+    },
+    {
+      "query": [
+        "search",
+        "--ast",
+        "base::BindOnce($$$A)",
+        "--lang",
+        "cpp"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [],
+      "wall_ms": {
+        "first": 3494.8,
+        "median": 2935.9,
+        "min": 2812.5,
+        "max": 3676.1
+      },
+      "cpu_s": {
+        "median": 8.721,
+        "min": 8.622,
+        "max": 9.094
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 5432,
+        "min": 5432,
+        "max": 5432
+      },
+      "answer_tokens_cl100k": {
+        "median": 5338,
+        "min": 5338,
+        "max": 5338
+      },
+      "answer_identical_across_runs": false
+    },
+    {
+      "query": [
+        "search",
+        "--ast",
+        "std::make_unique<$T>()",
+        "--lang",
+        "cpp",
+        "content"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [],
+      "wall_ms": {
+        "first": 2434.2,
+        "median": 2447.1,
+        "min": 2395.2,
+        "max": 2476.4
+      },
+      "cpu_s": {
+        "median": 6.123,
+        "min": 6.056,
+        "max": 6.154
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 5468,
+        "min": 5468,
+        "max": 5468
+      },
+      "answer_tokens_cl100k": {
+        "median": 5371,
+        "min": 5371,
+        "max": 5371
+      },
+      "answer_identical_across_runs": true
+    },
+    {
+      "query": [
+        "search",
+        "--ast",
+        "zzz_not_there($A)",
+        "--lang",
+        "cpp"
+      ],
+      "runs": 5,
+      "errors": 0,
+      "notes": [],
+      "wall_ms": {
+        "first": 1038.1,
+        "median": 1048.1,
+        "min": 1038.1,
+        "max": 1072.4
+      },
+      "cpu_s": {
+        "median": 4.129,
+        "min": 4.106,
+        "max": 4.225
+      },
+      "peak_rss_mib": {
+        "median": 173.8,
+        "min": 173.8,
+        "max": 173.8
+      },
+      "answer_tokens_o200k": {
+        "median": 34,
+        "min": 34,
+        "max": 34
+      },
+      "answer_tokens_cl100k": {
+        "median": 36,
+        "min": 36,
+        "max": 36
+      },
+      "answer_identical_across_runs": true
+    }
+  ],
+  "errors": 0,
+  "limiter": "page cache, deadline, and load. A definition-token edit cannot move these times; a later latency gap larger than the min\u2013max here is an observation error.",
+  "host_before": {
+    "git_sha": "7478ebc4e93ea1faa11f18148669bb4a175b06d2",
+    "nproc": 4,
+    "uptime_s": "1020.13",
+    "loadavg": "0.13 0.33 0.21 1/244 7195",
+    "uname": "Linux cursor 6.12.113+ #1 SMP PREEMPT_DYNAMIC Mon Nov 23 16:05:51 UTC 2026 x86_64",
+    "cpu_model": "Intel(R) Xeon(R) Processor",
+    "meminfo": {
+      "MemTotal": "16387328 kB",
+      "MemFree": "4210952 kB",
+      "MemAvailable": "9032560 kB",
+      "Buffers": "403748 kB",
+      "Cached": "3788940 kB"
+    },
+    "balloon_mib": 6144.0,
+    "rustc_stable": "rustc 1.100.0 (0ef1bc386 2026-11-09)",
+    "binary_sha256": "656a455eda60145c52c460742a77e023cfdfc2e29d1c92562a9e677765a0e27b"
+  }
+}

@@ -1,0 +1,6 @@
+2 matches in 1 file for /Greeting/
+==> src/lib.rs @1619622437581e91 (2 matches)
+[14-16] pub trait Greeting
+14	pub trait Greeting {
+[20-24] impl Greeting for Bot
+20	impl Greeting for Bot {
