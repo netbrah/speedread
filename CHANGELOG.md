@@ -4,7 +4,7 @@ Notable changes by release. Before 1.0, minor versions may change tool arguments
 
 ## Fork (`netbrah/speedread`, on upstream `37abea2`) — 0.2.1-netbrah.1
 
-Release notes: [docs/releases/v0.2.1-netbrah.1.md](docs/releases/v0.2.1-netbrah.1.md). Full GitHub release, compiled and uploaded by hand.
+Release notes: [docs/releases/v0.2.1-netbrah.1.md](docs/releases/v0.2.1-netbrah.1.md). Full GitHub release (not a pre-release).
 
 - Docs and crate metadata identify this repository as netbrah's fork of speedread by Brennen Green (MIT preserved) and point install at this fork's releases and [`plugins/speedread-netbrah/`](plugins/speedread-netbrah/).
 - Release config publishes this fork: MCP Registry name `io.github.netbrah/speedread`, Homebrew formula URLs on `netbrah/speedread`. The Pages workflow no longer deploys or IndexNow-pings upstream's docs site. Upstream's registry name and docs site are unchanged.
