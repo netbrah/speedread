@@ -1,13 +1,13 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "speedread-netbrah",
-  "version": "0.2.0-netbrah.3",
+  "version": "0.2.1-netbrah.1",
   "description": "Read, search and trace code within a token budget: the function around each hit, a big file's skeleton, a symbol's callers, or only what changed. Read-only, no index, no folder to configure. A fork of speedread by Brennen Green (MIT) with request deadlines and bounded memory.",
   "author": {
     "name": "netbrah",
     "url": "https://github.com/netbrah"
   },
-  "homepage": "https://github.com/netbrah/speedread/blob/v0.2.0-netbrah.3/docs/DISTRIBUTION.md",
+  "homepage": "https://github.com/netbrah/speedread/blob/v0.2.1-netbrah.1/docs/DISTRIBUTION.md",
   "repository": "https://github.com/netbrah/speedread",
   "license": "MIT",
   "keywords": [

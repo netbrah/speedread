@@ -2,6 +2,14 @@
 
 Notable changes by release. Before 1.0, minor versions may change tool arguments and output formats.
 
+## Fork (`netbrah/speedread`, on upstream `37abea2`) — 0.2.1-netbrah.1
+
+Release notes: [docs/releases/v0.2.1-netbrah.1.md](docs/releases/v0.2.1-netbrah.1.md). Full GitHub release, compiled and uploaded by hand.
+
+- Docs and crate metadata identify this repository as netbrah's fork of speedread by Brennen Green (MIT preserved) and point install at this fork's releases and [`plugins/speedread-netbrah/`](plugins/speedread-netbrah/).
+- Release config publishes this fork: MCP Registry name `io.github.netbrah/speedread`, Homebrew formula URLs on `netbrah/speedread`. The Pages workflow no longer deploys or IndexNow-pings upstream's docs site. Upstream's registry name and docs site are unchanged.
+- No change to read, search, trace, or map behavior from 0.2.0-netbrah.3. `--unrestricted` is unchanged.
+
 ## Fork (`netbrah/speedread`, on upstream `37abea2`) — 0.2.0-netbrah.3
 
 Pre-release notes: [docs/releases/v0.2.0-netbrah.3.md](docs/releases/v0.2.0-netbrah.3.md). Spec: [docs/specs/08-unfenced-server.md](docs/specs/08-unfenced-server.md).
@@ -33,11 +41,6 @@ Not part of an upstream release. Pre-release notes: [docs/releases/v0.2.0-netbra
 - Linux: clippy passes with `-D warnings` (macOS-only code gated).
 
 ## Unreleased
-
-- Docs and crate metadata identify this repository as netbrah's fork of speedread by Brennen Green (MIT preserved) and point install at this fork's releases and [`plugins/speedread-netbrah/`](plugins/speedread-netbrah/).
-- Release automation publishes this fork: MCP Registry name `io.github.netbrah/speedread`, Homebrew formula URLs on `netbrah/speedread`, and the GitHub Actions release builds all four targets as a full release. The Pages workflow no longer deploys or IndexNow-pings upstream's docs site. Upstream's registry name and docs site are unchanged.
-
-
 
 - Luau: outlines, `path#Symbol`, function-grouped `search` hits and `trace` for `.luau` files, and for `.lua` files that use Luau syntax (recognized by a `--!strict` directive, type aliases or annotations, or because only Luau parses them). Covers type aliases, attributes such as `@native`, and functions in table constructors.
 - Lua and Luau: `function M.f()` is named `f` in scope `M`, and `function C:m()` is a method `m` of `C`. `#m`, `#C.m` and `#C:m` all find it, and `trace` resolves `obj:m()` calls. Calls through the standard libraries and Roblox globals (`table.insert`, `task.spawn`, `Instance.new`) are no longer matched to workspace functions of the same name.

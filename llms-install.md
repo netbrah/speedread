@@ -2,7 +2,7 @@
 
 These steps install the **netbrah fork** of speedread: a fork of [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green. The MIT license is preserved. speedread is an MCP server (stdio) and CLI for macOS and Linux.
 
-Releases of this fork are pre-releases. Do not use GitHub's `releases/latest` URL; it does not select them. The current tag is `v0.2.0-netbrah.3`.
+The current release is `v0.2.1-netbrah.1`, a full release, so GitHub's `releases/latest` selects it.
 
 ## 1. Install the binary
 
@@ -13,18 +13,18 @@ Otherwise use the first option that works:
 1. Prebuilt, macOS on Apple Silicon (`sha256.txt` is on the same release; Intel macOS uses `speedread-x86_64-apple-darwin.tar.gz`):
    ```sh
    mkdir -p ~/.local/bin
-   curl -fsSL https://github.com/netbrah/speedread/releases/download/v0.2.0-netbrah.3/speedread-aarch64-apple-darwin.tar.gz | tar -xz -C ~/.local/bin
+   curl -fsSL https://github.com/netbrah/speedread/releases/download/v0.2.1-netbrah.1/speedread-aarch64-apple-darwin.tar.gz | tar -xz -C ~/.local/bin
    ```
    Make sure `~/.local/bin` is on `PATH`.
 2. Prebuilt, Linux x86_64, static musl (arm64 uses `speedread-aarch64-unknown-linux-musl.tar.gz`):
    ```sh
    mkdir -p ~/.local/bin
-   curl -fsSL https://github.com/netbrah/speedread/releases/download/v0.2.0-netbrah.3/speedread-x86_64-unknown-linux-musl.tar.gz | tar -xz -C ~/.local/bin
+   curl -fsSL https://github.com/netbrah/speedread/releases/download/v0.2.1-netbrah.1/speedread-x86_64-unknown-linux-musl.tar.gz | tar -xz -C ~/.local/bin
    ```
 3. From source, macOS or Linux (Rust 1.90+): `cargo install --locked --git https://github.com/netbrah/speedread`
 4. Upstream Homebrew tap only (builds Brennen Green's repository, not this fork): `brew install brennengreen/tap/speedread`. Use the full name: `brew install speedread` installs an unrelated program.
 
-Check: `speedread --version` prints `speedread 0.2.0-netbrah.3` or a later netbrah tag.
+Check: `speedread --version` prints `speedread 0.2.1-netbrah.1` or a later netbrah tag.
 
 ## 2. Register the MCP server
 
@@ -38,7 +38,7 @@ The server command is `speedread mcp`. It needs no API keys or environment varia
 | Cline, Gemini CLI | add `{"mcpServers": {"speedread": {"command": "speedread", "args": ["mcp"]}}}` to the client's MCP settings |
 | VS Code | `.vscode/mcp.json`: `{"servers": {"speedread": {"type": "stdio", "command": "speedread", "args": ["mcp"]}}}` |
 | Codex CLI | `~/.codex/config.toml`: `[mcp_servers.speedread]` with `command = "speedread"` and `args = ["mcp"]` |
-| Claude Desktop | open `speedread-aarch64-apple-darwin.mcpb` from the `v0.2.0-netbrah.3` release (Apple Silicon). This fork's bundle does not ask for a folder. |
+| Claude Desktop | open `speedread-aarch64-apple-darwin.mcpb` from the `v0.2.1-netbrah.1` release (Apple Silicon). This fork's bundle does not ask for a folder. |
 
 GUI apps may not inherit the shell's `PATH`; use the absolute path from `which speedread`.
 

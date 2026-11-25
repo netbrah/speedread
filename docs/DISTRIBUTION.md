@@ -1,6 +1,6 @@
 # Installing and publishing the fork
 
-[netbrah/speedread](https://github.com/netbrah/speedread) is a fork of [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green. The MIT license is preserved ([LICENSE](../LICENSE)). Releases below are this fork's pre-releases, not upstream's.
+[netbrah/speedread](https://github.com/netbrah/speedread) is a fork of [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green. The MIT license is preserved ([LICENSE](../LICENSE)). The current release, `v0.2.1-netbrah.1`, is a full release of this fork, not an upstream release.
 
 One plugin, `speedread-netbrah`, for Claude Code, Claude Cowork, Cursor, Grok Build and
 Perplexity Computer, plus an `.mcpb` bundle for Claude Desktop chat. It installs beside
@@ -9,8 +9,8 @@ upstream's `speedread` and asks for no folder. Design, sources and the test log:
 [plugins/speedread-netbrah/](../plugins/speedread-netbrah/README.md).
 
 The plugin is on the default branch, so the commands below name only the repository and
-follow `main`. To stay on one release instead, pin its tag: `netbrah/speedread#v0.2.0-netbrah.3`
-for Claude, `netbrah/speedread@v0.2.0-netbrah.3#plugins/speedread-netbrah` for Grok. Either
+follow `main`. To stay on one release instead, pin its tag: `netbrah/speedread#v0.2.1-netbrah.1`
+for Claude, `netbrah/speedread@v0.2.1-netbrah.1#plugins/speedread-netbrah` for Grok. Either
 way the binary is the one the launcher pins, checked by SHA-256.
 
 ## Install
@@ -29,7 +29,7 @@ The same two commands work inside a session as `/plugin marketplace add …` and
 ### Claude Cowork
 
 Customize > Plugins > upload `speedread-netbrah-plugin.zip` from the
-[release](https://github.com/netbrah/speedread/releases/tag/v0.2.0-netbrah.3), or
+[release](https://github.com/netbrah/speedread/releases/tag/v0.2.1-netbrah.1), or
 Add marketplace > `netbrah/speedread`. The tools appear in Cowork sessions
 that run on your computer.
 
@@ -45,7 +45,7 @@ longer asks for a folder. If macOS refuses to open it:
 For one machine, put the plugin folder where Cursor looks for local plugins and reload:
 
 ```
-git clone --depth 1 --branch v0.2.0-netbrah.3 https://github.com/netbrah/speedread /tmp/speedread-netbrah
+git clone --depth 1 --branch v0.2.1-netbrah.1 https://github.com/netbrah/speedread /tmp/speedread-netbrah
 mkdir -p ~/.cursor/plugins/local
 cp -R /tmp/speedread-netbrah/plugins/speedread-netbrah ~/.cursor/plugins/local/
 ```
@@ -71,7 +71,7 @@ server healthy with 4 tools.
 Plugins > Add custom > Import plugin from GitHub, and paste the plugin folder's URL:
 
 ```
-https://github.com/netbrah/speedread/tree/v0.2.0-netbrah.3/plugins/speedread-netbrah
+https://github.com/netbrah/speedread/tree/v0.2.1-netbrah.1/plugins/speedread-netbrah
 ```
 
 or Upload plugin with `speedread-netbrah-plugin.zip` from the release. Perplexity does not

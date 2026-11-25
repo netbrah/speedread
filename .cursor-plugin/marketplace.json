@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "netbrah's fork of speedread by Brennen Green (MIT), packaged for Cursor.",
-    "version": "0.2.0-netbrah.3"
+    "version": "0.2.1-netbrah.1"
   },
   "plugins": [
     {

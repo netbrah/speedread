@@ -280,7 +280,7 @@ cargo install --locked --git https://github.com/netbrah/speedread   # or, in a c
 
 This installs one native binary, `~/.cargo/bin/speedread`, with no runtime dependencies. `--locked` builds the dependency versions in `Cargo.lock`, which CI tests.
 
-**Prebuilt.** Each [netbrah release](https://github.com/netbrah/speedread/releases) attaches four tarballs and `sha256.txt`. The current tag is `v0.2.0-netbrah.3`. These are pre-releases, so GitHub's `releases/latest` does not select them.
+**Prebuilt.** Each [netbrah release](https://github.com/netbrah/speedread/releases) attaches four tarballs and `sha256.txt`. The current tag is `v0.2.1-netbrah.1`, a full release, so GitHub's `releases/latest` selects it.
 
 | Archive | Platform |
 |---|---|
@@ -293,19 +293,19 @@ macOS (Apple Silicon):
 
 ```sh
 mkdir -p ~/.local/bin   # or any directory on your PATH
-curl -fsSL https://github.com/netbrah/speedread/releases/download/v0.2.0-netbrah.3/speedread-aarch64-apple-darwin.tar.gz | tar -xz -C ~/.local/bin
+curl -fsSL https://github.com/netbrah/speedread/releases/download/v0.2.1-netbrah.1/speedread-aarch64-apple-darwin.tar.gz | tar -xz -C ~/.local/bin
 ```
 
 Linux (x86_64, static musl):
 
 ```sh
 mkdir -p ~/.local/bin
-curl -fsSL https://github.com/netbrah/speedread/releases/download/v0.2.0-netbrah.3/speedread-x86_64-unknown-linux-musl.tar.gz | tar -xz -C ~/.local/bin
+curl -fsSL https://github.com/netbrah/speedread/releases/download/v0.2.1-netbrah.1/speedread-x86_64-unknown-linux-musl.tar.gz | tar -xz -C ~/.local/bin
 ```
 
 Intel macOS uses `speedread-x86_64-apple-darwin.tar.gz`. Linux arm64 uses `speedread-aarch64-unknown-linux-musl.tar.gz`. Check the file you downloaded against `sha256.txt` from the same release. The macOS binary is not notarized. `curl` doesn't set macOS's quarantine flag; if you download it with a browser instead, clear it with `xattr -d com.apple.quarantine speedread`.
 
-**Claude Desktop:** download [`speedread-aarch64-apple-darwin.mcpb`](https://github.com/netbrah/speedread/releases/download/v0.2.0-netbrah.3/speedread-aarch64-apple-darwin.mcpb) from that release and open it (Apple Silicon). This fork's bundle does not ask for a folder.
+**Claude Desktop:** download [`speedread-aarch64-apple-darwin.mcpb`](https://github.com/netbrah/speedread/releases/download/v0.2.1-netbrah.1/speedread-aarch64-apple-darwin.mcpb) from that release and open it (Apple Silicon). This fork's bundle does not ask for a folder.
 
 **Homebrew (upstream, not this fork):** `brew install brennengreen/tap/speedread` builds Brennen Green's repository from source. Use the full name: plain `brew install speedread` installs a different program, an RSVP speed-reading tool from homebrew-core that also installs a `speedread` binary.
 

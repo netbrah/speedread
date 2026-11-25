@@ -1,6 +1,6 @@
 [package]
 name = "speedread"
-version = "0.2.0-netbrah.3"
+version = "0.2.1-netbrah.1"
 authors = ["Brennen Green", "netbrah (maintainer)"]
 edition = "2024"
 rust-version = "1.90"

@@ -7,7 +7,7 @@ Perplexity Computer. It gives the agent four read-only tools for code —
 `read`, `search`, `trace`, `map` — that return the part of a codebase a
 question needs within a token budget: the function around each search hit, a
 large file's skeleton, a symbol's callers and implementations, or only what
-changed since the last read. What the fork changes is in [docs/FORK.md](https://github.com/netbrah/speedread/blob/v0.2.0-netbrah.3/docs/FORK.md).
+changed since the last read. What the fork changes is in [docs/FORK.md](https://github.com/netbrah/speedread/blob/v0.2.1-netbrah.1/docs/FORK.md).
 
 ## What is in the folder
 
@@ -24,7 +24,7 @@ changed since the last read. What the fork changes is in [docs/FORK.md](https://
 ## Use
 
 Install it (commands per host are in
-[docs/DISTRIBUTION.md](https://github.com/netbrah/speedread/blob/v0.2.0-netbrah.3/docs/DISTRIBUTION.md)), then ask about code. There
+[docs/DISTRIBUTION.md](https://github.com/netbrah/speedread/blob/v0.2.1-netbrah.1/docs/DISTRIBUTION.md)), then ask about code. There
 is nothing to configure and no folder to choose: the agent names files by
 absolute path, or passes `base_dir` to scope a call to one project. Example
 prompts: "map /path/to/repo", "who calls `parse_header` in /path/to/repo?",
