@@ -5,14 +5,14 @@
     "url": "https://github.com/netbrah"
   },
   "metadata": {
-    "description": "netbrah's fork of speedread, packaged for Cursor.",
+    "description": "netbrah's fork of speedread by Brennen Green (MIT), packaged for Cursor.",
     "version": "0.2.0-netbrah.3"
   },
   "plugins": [
     {
       "name": "speedread-netbrah",
       "source": "./plugins/speedread-netbrah",
-      "description": "Read, search and trace code within a token budget: the function around each hit, a big file's skeleton, a symbol's callers, or only what changed. Read-only, no index, no folder to configure. A fork of speedread with request deadlines and bounded memory."
+      "description": "Read, search and trace code within a token budget: the function around each hit, a big file's skeleton, a symbol's callers, or only what changed. Read-only, no index, no folder to configure. A fork of speedread by Brennen Green (MIT) with request deadlines and bounded memory."
     }
   ]
 }

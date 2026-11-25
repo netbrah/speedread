@@ -34,6 +34,10 @@ Not part of an upstream release. Pre-release notes: [docs/releases/v0.2.0-netbra
 
 ## Unreleased
 
+- Docs and crate metadata identify this repository as netbrah's fork of speedread by Brennen Green (MIT preserved) and point install at this fork's releases and [`plugins/speedread-netbrah/`](plugins/speedread-netbrah/).
+
+
+
 - Luau: outlines, `path#Symbol`, function-grouped `search` hits and `trace` for `.luau` files, and for `.lua` files that use Luau syntax (recognized by a `--!strict` directive, type aliases or annotations, or because only Luau parses them). Covers type aliases, attributes such as `@native`, and functions in table constructors.
 - Lua and Luau: `function M.f()` is named `f` in scope `M`, and `function C:m()` is a method `m` of `C`. `#m`, `#C.m` and `#C:m` all find it, and `trace` resolves `obj:m()` calls. Calls through the standard libraries and Roblox globals (`table.insert`, `task.spawn`, `Instance.new`) are no longer matched to workspace functions of the same name.
 - `read path:LINE` outside any symbol (top-level code, or a language without a grammar) returns the enclosing block, found from indentation and closing lines such as `end` and `}`, instead of a fixed 81-line window.

@@ -2,6 +2,8 @@
 
 Work that would make speedread more useful or better evidenced, written so you can tell whether you can help. The README's [Limitations](README.md#limitations-and-roadmap) section is the short version.
 
+This list came with upstream [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green. Items this fork already ships are marked below. Fork behavior is in [docs/FORK.md](docs/FORK.md).
+
 Sizes: **S** is an afternoon, **M** a few days, **L** a design discussion first. If you want to take something on, comment on its issue (or open one) so work isn't duplicated.
 
 | Item | Size | First contribution? | Needs |
@@ -31,6 +33,7 @@ The README gives a configuration for VS Code, Cursor, Codex CLI, Gemini CLI, Zed
 
 On Linux, `cargo clippy --all-targets -- -D warnings`, the check CI enforces on macOS, fails with five `dead_code` errors in `src/walk.rs`: `IgnoreNode`, `is_ignored`, `load_matcher`, `global_node` and `initial_stack`. Only the macOS walker (`mod fast`) uses them, but unlike it they aren't behind `#[cfg(target_os = "macos")]`. Nothing else fails. This blocks running the same checks on Linux as on macOS, not using speedread there.
 
+- **Status (this fork):** done. Those helpers are behind `#[cfg(target_os = "macos")]`, and Linux clippy is clean. The notes below are the upstream task as it was written.
 - **Done when:** those items are compiled only on macOS (a `#[cfg(target_os = "macos")]` on each, or moving them into `mod fast`), and clippy passes on both macOS and Linux.
 - **Start:** the five warnings also appear in any Linux build, including the log of the [Linux](.github/workflows/linux.yml) workflow.
 
@@ -58,7 +61,7 @@ Claude Code requires a native `Read` of a file before `Edit` or `Write`, and MCP
 
 ## Linux in CI, and more release binaries
 
-- **Status:** the Linux test job runs on every push and pull request; the release binaries remain.
+- **Status (this fork):** the Linux test job runs on every push and pull request. Releases attach static musl binaries for Linux x86_64 and arm64, and an Intel macOS binary, next to the Apple Silicon one, plus `sha256.txt`. Linux is still less tuned than Apple Silicon.
 - **Done when:** a Linux job runs on every push and pull request, and releases attach Linux (x86_64 and arm64) and Intel macOS binaries next to the Apple Silicon one.
 - **Start:** after the Linux tests pass, move the experimental job into `.github/workflows/ci.yml`, then extend the `release` job. For Intel macOS, the test suite already passes as an x86_64 build under Rosetta 2 (`rustup target add x86_64-apple-darwin`, then `cargo test --target x86_64-apple-darwin` on an Apple Silicon Mac), so building that target on the existing macOS runner is a likely path.
 

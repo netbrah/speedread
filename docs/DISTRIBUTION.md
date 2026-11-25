@@ -1,5 +1,7 @@
 # Installing and publishing the fork
 
+[netbrah/speedread](https://github.com/netbrah/speedread) is a fork of [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green. The MIT license is preserved ([LICENSE](../LICENSE)). Releases below are this fork's pre-releases, not upstream's.
+
 One plugin, `speedread-netbrah`, for Claude Code, Claude Cowork, Cursor, Grok Build and
 Perplexity Computer, plus an `.mcpb` bundle for Claude Desktop chat. It installs beside
 upstream's `speedread` and asks for no folder. Design, sources and the test log:
