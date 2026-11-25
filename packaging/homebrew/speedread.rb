@@ -12,8 +12,8 @@
 class Speedread < Formula
   desc "Token-efficient code search and navigation for AI coding agents (MCP)"
   homepage "https://github.com/netbrah/speedread"
-  url "https://github.com/netbrah/speedread/archive/refs/tags/v0.2.0-netbrah.3.tar.gz"
-  sha256 "b490df9f413b2603632f1a6f2702cc204d208cea53bf2a1b04653bc57eac2d65"
+  url "https://github.com/netbrah/speedread/archive/refs/tags/v0.2.1-netbrah.1.tar.gz"
+  sha256 "b489eb28e8fc4617219232fd71d96af27eae5a2b7cb0cc53a1b89a75209edff0"
   license "MIT"
   head "https://github.com/netbrah/speedread.git", branch: "main"
 
