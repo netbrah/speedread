@@ -37,6 +37,25 @@ pub fn human_bytes(n: u64) -> String {
     }
 }
 
+/// A path that looks like a test, so definition lookup prefers production code.
+pub(crate) fn is_test_path(p: &str) -> bool {
+    let lower = p.to_ascii_lowercase();
+    let name = lower.rsplit('/').next().unwrap_or(&lower);
+    lower.split('/').any(|seg| {
+        matches!(
+            seg,
+            "test" | "tests" | "__tests__" | "spec" | "specs" | "testing" | "testdata"
+        ) || seg.ends_with("tests")
+    }) || name.contains("_test.")
+        || name.starts_with("test_")
+        || name.contains(".test.")
+        || name.contains(".spec.")
+        || name.contains("_spec.")
+        || name.ends_with("tests.swift")
+        || name.ends_with("test.java")
+        || name.ends_with("test.kt")
+}
+
 pub fn thousands(n: usize) -> String {
     let s = n.to_string();
     let mut out = String::with_capacity(s.len() + s.len() / 3);

@@ -17,8 +17,7 @@ Sizes: **S** is an afternoon, **M** a few days, **L** a design discussion first.
 | [Evals in another harness](#evals-in-another-harness) | M–L | — | Python, the harness's logs, API budget |
 | [More tasks and trials](#more-tasks-and-trials) | M | — | the eval suites, API budget |
 | [Leaner definitions and unprompted adoption](#leaner-definitions-and-unprompted-adoption) | M–L | — | evals; see the model-facing rule in CONTRIBUTING |
-| [Exact relationships: an optional LSP/SCIP layer](#exact-relationships-an-optional-lspscip-layer) | L | — | LSP or SCIP, async Rust, `src/trace.rs` |
-| [Calls inside closures](#calls-inside-closures) | M | — | tree-sitter, `src/trace.rs` |
+| [Exact relationships: an optional LSP/SCIP layer](#exact-relationships-an-optional-lspscip-layer) | — | — | not pursued; `trace` was removed |
 | [Windows](#windows) | L | — | Rust on Windows |
 
 ## Verify a client setup
@@ -47,7 +46,7 @@ On Linux, macOS-specific code is compiled out and the portable walker (the `igno
 
 ## Outline fixes for a language
 
-Skeletons, `path#Symbol` and `trace` all depend on the outline. If speedread misses or misnames a definition in your language (a decorator, an extension function, a template, a macro), that is a contained fix.
+Skeletons and `path#Symbol` depend on the outline. If speedread misses or misnames a definition in your language (a decorator, an extension function, a template, a macro), that is a contained fix.
 
 - **Done when:** a fixture in `tests/fixtures/` shows the construct, its snapshot is right, and nothing else changed.
 - **Start:** `speedread debug <file> --sexp` shows what tree-sitter parsed. See "Adding or improving a language" in [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -84,22 +83,13 @@ The relationship and bug-fix suites have 8 and 16 trials per arm, and most bug-f
 
 speedread's tool definitions and instructions add about 2.2k tokens to every model call (net +0.9k when they replace view, grep and glob), and without guidance agents didn't use it at all.
 
-- **Candidates:** shorter descriptions; A/B tests of tool names and descriptions for unprompted adoption; a single high-level `context` tool that picks map, search, trace or read itself.
+- **Candidates:** shorter descriptions; A/B tests of tool names and descriptions for unprompted adoption.
 - **Done when:** a change reduces definition tokens or raises unprompted adoption, with before/after eval numbers.
 - These strings are model-facing; read the rule in [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 ## Exact relationships: an optional LSP/SCIP layer
 
-`trace` is syntactic: tree-sitter plus name resolution by receiver, class and package, with no type inference. `x.f()` on an unknown receiver matches every `f` (marked `?`).
-
-- **Goal:** exact references, overrides and call hierarchies from a language server or a SCIP index when one is available, behind the same `trace` interface and output format, with the syntactic path as the fallback.
-- **Start with an issue:** which languages first, how servers are discovered and started, and how results stay within budget.
-
-## Calls inside closures
-
-Calls inside closures and lambdas are attributed to the enclosing named function, and functions passed as values aren't treated as calls. The eval graders accept either reading, but a user may want to tell them apart.
-
-- **Done when:** `trace` can report, or mark, calls that happen inside a closure, with fixtures covering at least Go and JavaScript.
+Not pursued. `trace` was removed; search plus a batched read is the relationship path. See [docs/rejected/precise-trace.md](docs/rejected/precise-trace.md).
 
 ## Windows
 

@@ -134,7 +134,7 @@ fn mcp_session_end_to_end() {
         .iter()
         .map(|t| t["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names, vec!["map", "read", "search", "trace"]);
+    assert_eq!(names, vec!["map", "read", "search"]);
     for t in tools["result"]["tools"].as_array().unwrap() {
         assert_eq!(t["annotations"]["readOnlyHint"], json!(true));
     }
@@ -224,30 +224,6 @@ fn mcp_session_end_to_end() {
         out.contains("[1-7] pub fn add(a: i32, b: i32) -> i32"),
         "{out}"
     );
-
-    // Trace: callers grouped by enclosing function, callees resolved.
-    std::fs::write(
-        dir.join("src/use.rs"),
-        "use crate::add;\n\npub fn twice(x: i32) -> i32 {\n    // add(1, 2) in a comment is not a call\n    let s = \"add(\";\n    add(x, x)\n}\n",
-    )
-    .unwrap();
-    let out = c.call("trace", json!({"target": "#add"}));
-    assert!(out.contains("==> callers of add (src/lib.rs:1-7)"), "{out}");
-    assert!(out.contains("1 call site in 1 function"), "{out}");
-    assert!(
-        out.contains("[3-7] pub fn twice(x: i32) -> i32\n    6\tadd(x, x)"),
-        "{out}"
-    );
-    let out = c.call(
-        "trace",
-        json!({"target": "src/use.rs#twice", "direction": "callees"}),
-    );
-    assert!(
-        out.contains("→ src/lib.rs:1-7 pub fn add(a: i32, b: i32) -> i32"),
-        "{out}"
-    );
-    let out = c.call("trace", json!({"target": "add", "direction": "references"}));
-    assert!(out.contains("1 import"), "{out}");
 
     // Map lists files with line counts and symbols.
     let out = c.call("map", json!({"symbols": true}));
@@ -409,12 +385,6 @@ fn an_mcp_server_reads_outside_its_folder_unless_restricted() {
         assert!(out.contains("calls_outside"), "{what}: search: {out}");
         let out = c.call("search", json!({"pattern": "outside", "base_dir": other_s}));
         assert!(out.contains("==> src/lib.rs @"), "{what}: base_dir: {out}");
-        let out = c.call(
-            "trace",
-            json!({"target": format!("{}#outside", other_file.display())}),
-        );
-        assert!(out.contains("calls_outside"), "{what}: trace: {out}");
-        assert!(!out.contains("utside the workspace"), "{what}: {out}");
     };
 
     // A server with a folder: the folder scopes path-less calls, nothing more.
@@ -462,10 +432,6 @@ fn an_mcp_server_reads_outside_its_folder_unless_restricted() {
         ),
         c.call("search", json!({"pattern": "outside", "path": other_s})),
         c.call("search", json!({"pattern": "outside", "base_dir": other_s})),
-        c.call(
-            "trace",
-            json!({"target": format!("{}#outside", other_file.display())}),
-        ),
     ];
     for out in &refusals {
         assert!(out.contains("utside the workspace"), "{out}");
@@ -519,7 +485,7 @@ fn an_mcp_server_reads_outside_its_folder_unless_restricted() {
 }
 
 #[test]
-fn luau_symbols_and_trace() {
+fn luau_symbols() {
     let dir = std::env::temp_dir().join(format!("speedread-luau-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("src")).unwrap();
@@ -565,71 +531,10 @@ fn luau_symbols_and_trace() {
         );
     }
 
-    // `obj:method()` calls resolve to the method, across files and at top level.
-    let out = c.call("trace", json!({"target": "#Account:deposit"}));
-    assert!(out.contains("2 call sites"), "{out}");
-    assert!(
-        out.contains("[5-9] function Bank.open(name: string)\n    7\tacct:deposit(5)"),
-        "{out}"
-    );
-    let out = c.call("trace", json!({"target": "#Account.new"}));
-    assert!(out.contains("1 call site"), "{out}");
-    assert!(!out.contains("Vector3"), "{out}");
-    // `task.spawn(...)` is Luau's task library, not a call to `Bank.spawn`.
-    let out = c.call("trace", json!({"target": "#Bank.spawn"}));
-    assert!(
-        out.contains("1 call site") && out.contains("21\tBank.spawn(\"b\")"),
-        "{out}"
-    );
-    assert!(!out.contains("task.spawn"), "{out}");
-    let out = c.call(
-        "trace",
-        json!({"target": "src/Bank.luau#open", "direction": "callees"}),
-    );
-    assert!(
-        out.contains("→ src/Account.luau:5-9 function Account.new(owner: string)"),
-        "{out}"
-    );
-    assert!(
-        out.contains("→ src/Account.luau:11-14 function Account:deposit(amount: number)"),
-        "{out}"
-    );
-
     // Search hits are grouped under their function.
     let out = c.call("search", json!({"pattern": "balance"}));
     assert!(
         out.contains("[11-14] function Account:deposit(amount: number)\n13\t"),
-        "{out}"
-    );
-
-    // Lua modules are mostly all `M`: a file's own `M.new()` is not a call to
-    // another file's, and a local `vector` module is not a library.
-    std::fs::create_dir_all(dir.join("lua")).unwrap();
-    for f in ["a", "b"] {
-        std::fs::write(
-            dir.join(format!("lua/{f}.lua")),
-            "local M = {}\n\nfunction M.new()\n  return {}\nend\n\nfunction M.copy()\n  return M.new()\nend\n\nreturn M\n",
-        )
-        .unwrap();
-    }
-    let out = c.call("trace", json!({"target": "lua/a.lua#new"}));
-    assert!(
-        out.contains("1 call site") && out.contains("lua/a.lua\n  [7-9] function M.copy()"),
-        "{out}"
-    );
-    std::fs::write(
-        dir.join("lua/vector.lua"),
-        "local function create(x, y)\n  return { x = x, y = y }\nend\n\nreturn { create = create }\n",
-    )
-    .unwrap();
-    std::fs::write(
-        dir.join("lua/main.lua"),
-        "local vector = require(\"vector\")\n\nfunction spawn()\n  return vector.create(1, 2)\nend\n",
-    )
-    .unwrap();
-    let out = c.call("trace", json!({"target": "lua/vector.lua#create"}));
-    assert!(
-        out.contains("[3-5] function spawn()\n    4\treturn vector.create(1, 2)"),
         "{out}"
     );
 

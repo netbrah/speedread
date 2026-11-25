@@ -18,7 +18,6 @@ pub mod source;
 pub mod structural;
 pub mod structured;
 pub mod tokens;
-pub mod trace;
 pub mod util;
 pub mod walk;
 pub mod workspace;

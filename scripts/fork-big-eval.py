@@ -13,7 +13,7 @@ REPO is one of:
 
 Without --session: wall time (first run and best of three), CPU time and peak memory of each CLI
 request. With --session: one MCP server answering N symbol reads (default 400), N/10 searches
-and N/20 traces twice over; resident memory and the time of each pass.
+and a repeat of that pass; resident memory and the time of each pass.
 """
 import json, os, re, resource, subprocess, sys, time
 
@@ -26,9 +26,6 @@ REPOS = {
             ["search", "struct file_operations", "--output", "files"],
             ["search", "zzz_not_there_zzz"],
             ["read", "#vfs_read"],
-            ["trace", "vfs_read"],
-            ["trace", "kmalloc"],
-            ["trace", "mutex_lock", "--depth", "2"],
             ["map"],
             ["search", "--ast", "kfree($A)", "--lang", "c", "fs/ext4"],
             ["search", "--ast", "kfree($A)", "--lang", "c"],
@@ -45,10 +42,6 @@ REPOS = {
             ["search", "NavigationThrottle", "content/browser"],
             ["read", "#DidCommitNavigation"],
             ["read", "content/browser/renderer_host/render_frame_host_impl.cc#RenderFrameHostImpl::DidCommitNavigation"],
-            ["trace", "DidCommitNavigation"],
-            ["trace", "PostTask"],
-            ["trace", "Run", "--depth", "2"],
-            ["trace", "content/browser/renderer_host/render_frame_host_impl.cc#DidCommitNavigation", "--depth", "2"],
             ["map"],
             ["map", "content/browser"],
             ["search", "--ast", "base::BindOnce($$$A)", "--lang", "cpp", "content/browser/renderer_host"],
@@ -127,11 +120,7 @@ def session(binary, extra, names):
         for name in reads[::10]:
             size += len(tool("search", {"pattern": name}))
         b = time.time() - t
-        t = time.time()
-        for name in reads[::20]:
-            size += len(tool("trace", {"target": name}))
-        c = time.time() - t
-        print(f"{label}: reads {a:.1f} s, searches {b:.1f} s, traces {c:.1f} s, {size} bytes -> {rss()} MiB")
+        print(f"{label}: reads {a:.1f} s, searches {b:.1f} s, {size} bytes -> {rss()} MiB")
     p.stdin.close()
     p.wait()
 

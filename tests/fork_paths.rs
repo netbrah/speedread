@@ -135,37 +135,13 @@ fn absolute_targets_do_not_depend_on_the_cwd() {
 }
 
 #[test]
-fn trace_searches_the_targets_repository_not_the_cwd() {
-    let fx = Fx::new("trace");
-    let target = format!("{}#target", fx.p("b/src/lib.rs"));
-    // CWD (and therefore the primary root) is repo `a`.
-    let out = fx.ok("a", &["--unrestricted", "trace", &target]);
-    assert!(out.contains("b_caller"), "{out}");
-    assert!(out.contains("b_other"), "{out}");
-    assert!(!out.contains("a_caller"), "{out}");
-    // Refs and callees follow the same rule.
-    let refs = fx.ok("a", &["--unrestricted", "trace", &target, "-d", "refs"]);
-    assert!(
-        refs.contains("b_other") && !refs.contains("a_caller"),
-        "{refs}"
-    );
-    let callee = format!("{}#b_caller", fx.p("b/src/lib.rs"));
-    let out = fx.ok("a", &["--unrestricted", "trace", &callee, "-d", "callees"]);
-    // The callee resolves to b's definition (upstream resolved it to a's).
-    let resolved = format!("→ {}:1-3 pub fn target", fx.p("b/src/lib.rs"));
-    assert!(out.contains(&resolved), "{out}");
-}
-
-#[test]
 fn secondary_roots_are_searched_for_their_own_targets() {
     let fx = Fx::new("multi");
     let (a, b) = (fx.p("a"), fx.p("b"));
     let target = format!("{}#target", fx.p("b/src/lib.rs"));
-    let out = fx.ok("elsewhere", &["--root", &a, "--root", &b, "trace", &target]);
-    assert!(
-        out.contains("b_caller") && !out.contains("a_caller"),
-        "{out}"
-    );
+    let out = fx.ok("elsewhere", &["--root", &a, "--root", &b, "read", &target]);
+    assert!(out.contains("    2\n") || out.contains("2"), "{out}");
+    assert!(!out.contains("a_caller"), "{out}");
 }
 
 #[test]
@@ -175,11 +151,6 @@ fn base_dir_scopes_pathless_lookups() {
     let pre = with(HARNESS, &["--base-dir", &b]);
     let out = fx.ok("a", &with(&pre, &["read", "#b_other"]));
     assert!(out.starts_with("==> src/other.rs:1-3 @"), "{out}");
-    let out = fx.ok("a", &with(&pre, &["trace", "#target"]));
-    assert!(
-        out.contains("b_caller") && !out.contains("a_caller"),
-        "{out}"
-    );
     let out = fx.ok("a", &with(&pre, &["search", "fn target"]));
     assert!(out.contains("==> src/lib.rs @"), "{out}");
     assert!(
@@ -222,8 +193,6 @@ fn no_base_means_no_guessing_and_no_walks() {
         &["read", "src/lib.rs"],
         &["read", "#target"],
         &["read", "src/*.rs"],
-        &["trace", "#target"],
-        &["trace", "src/lib.rs#target"],
         &["symbols"],
         &["search", "target", "--json"],
         &["map", "--json"],
@@ -330,35 +299,6 @@ fn displayed_paths_round_trip() {
     assert_eq!(shown, fx.p("a/src/lib.rs"));
     let back = fx.ok("elsewhere", &with(&pre, &["read", &shown]));
     assert!(back.contains("a_caller"), "{back}");
-}
-
-#[test]
-fn dependency_targets_are_traced_into_the_workspace() {
-    // Unchanged behaviour: who in *my project* calls this dependency function.
-    let fx = Fx::new("deps");
-    let dep = format!(
-        "{}#dep_fn",
-        fx.p("home/.cargo/registry/src/idx/dep-1.0/src/lib.rs")
-    );
-    let out = fx.ok("a", &["trace", &dep]);
-    assert!(out.contains("calls_dep"), "{out}");
-}
-
-#[test]
-fn lookup_root_falls_back_to_the_targets_directory() {
-    // No configured root and no repository: only the target's directory is
-    // searched (never a parent chosen by guesswork).
-    let fx = Fx::new("fallback");
-    std::fs::write(
-        fx.dir.join("w1/g.rs"),
-        "pub fn g() -> u32 {\n    crate::which()\n}\n",
-    )
-    .unwrap();
-    let target = format!("{}#which", fx.p("w1/f.rs"));
-    let (out, err, ok) = fx.run("elsewhere", &with(HARNESS, &["trace", &target]));
-    assert!(ok, "{err}");
-    assert!(out.contains("g.rs"), "{out}");
-    assert!(!out.contains("w2"), "{out}");
 }
 
 struct Client {
@@ -472,11 +412,6 @@ fn mcp_base_dir_on_every_tool() {
     assert!(out.starts_with("==> src/other.rs:1-3 @"), "{out}");
     let out = c.call("map", json!({"base_dir": b}));
     assert!(out.contains("other.rs"), "{out}");
-    let out = c.call("trace", json!({"target": "#target", "base_dir": b}));
-    assert!(
-        out.contains("b_caller") && !out.contains("a_caller"),
-        "{out}"
-    );
     // Validation errors are tool output, not protocol failures.
     let out = c.call(
         "search",

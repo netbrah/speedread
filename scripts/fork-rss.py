@@ -5,7 +5,7 @@ usage: scripts/fork-rss.py BINARY [EXTRA_ARGS...]     e.g. ... target/fast/speed
 
 Builds a synthetic tree (1,200 Rust files of ~200 KB, 2,600 small functions each; ~250 MiB)
 in target/eval-big, then over one MCP session reads one symbol from every file twice and runs
-one search and one trace. Prints resident memory and the time of both passes. The corpus is
+one search. Prints resident memory and the time of both passes. The corpus is
 deliberately hostile: outlines of files made of tiny functions are larger than the files.
 """
 import json, os, subprocess, sys, time
@@ -70,7 +70,6 @@ def main():
     r1 = rss()
     t2, out2 = sweep()
     tool("search", {"pattern": "h77_1234"})
-    tool("trace", {"target": "src/m0005.rs#h5_9"})
     print(f"{' '.join(extra) or 'default'}\tfirst pass {t1:.1f} s\trepeat pass {t2:.1f} s\t"
           f"rss {r1} MiB after reads, {rss()} MiB at end\tout {out1}+{out2} bytes")
     p.stdin.close()

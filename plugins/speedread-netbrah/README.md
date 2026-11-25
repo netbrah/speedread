@@ -3,10 +3,10 @@
 > **Fork of [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green.** The MIT license is preserved. Maintained by netbrah.
 
 One plugin folder for Claude Code, Claude Cowork, Cursor, Grok Build and
-Perplexity Computer. It gives the agent four read-only tools for code —
-`read`, `search`, `trace`, `map` — that return the part of a codebase a
+Perplexity Computer. It gives the agent three read-only tools for code —
+`read`, `search`, `map` — that return the part of a codebase a
 question needs within a token budget: the function around each search hit, a
-large file's skeleton, a symbol's callers and implementations, or only what
+large file's skeleton, or only what
 changed since the last read. What the fork changes is in [docs/FORK.md](https://github.com/netbrah/speedread/blob/v0.2.1-netbrah.1/docs/FORK.md).
 
 ## What is in the folder
@@ -31,7 +31,7 @@ prompts: "map /path/to/repo", "who calls `parse_header` in /path/to/repo?",
 "read `src/server.rs#Server.start` and what it calls".
 
 Hosts that start local MCP servers (Claude Code, Cowork sessions on your
-computer, Cursor, Grok Build) get the four tools. Perplexity Computer does not
+computer, Cursor, Grok Build) get the three tools. Perplexity Computer does not
 start local servers, so there the skill drives the same binary as a command
 line inside its sandbox.
 

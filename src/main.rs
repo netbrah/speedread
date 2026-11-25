@@ -75,14 +75,6 @@ enum ModeArg {
 }
 
 #[derive(Clone, Copy, ValueEnum)]
-enum DirectionArg {
-    Callers,
-    Callees,
-    Refs,
-    Impls,
-}
-
-#[derive(Clone, Copy, ValueEnum)]
 enum OutputArg {
     Matches,
     Symbols,
@@ -147,16 +139,6 @@ enum Cmd {
         /// Emit JSON Lines (unbudgeted): {path, bytes, lines} per file.
         #[arg(long)]
         json: bool,
-    },
-    /// Relationships of a symbol: callers, callees, references or implementations.
-    Trace {
-        /// `#Name`, `Type.method`, `path#Name` or `path:LINE`.
-        target: String,
-        #[arg(short = 'd', long, value_enum, default_value = "callers")]
-        direction: DirectionArg,
-        /// Levels to follow (1-3) for callers/callees/impls.
-        #[arg(long, default_value_t = 1)]
-        depth: usize,
     },
     /// List symbols (functions, types, headings, keys) in files, directories or globs.
     Symbols {
@@ -434,25 +416,6 @@ fn run() -> anyhow::Result<()> {
                 budget,
             };
             print!("{}", speedread::map::map(&engine, &req));
-        }
-        Cmd::Trace {
-            target,
-            direction,
-            depth,
-        } => {
-            use speedread::trace::{Direction, TraceRequest};
-            let req = TraceRequest {
-                target,
-                direction: match direction {
-                    DirectionArg::Callers => Direction::Callers,
-                    DirectionArg::Callees => Direction::Callees,
-                    DirectionArg::Refs => Direction::Refs,
-                    DirectionArg::Impls => Direction::Impls,
-                },
-                depth,
-                budget: cli_budget,
-            };
-            print!("{}", speedread::trace::trace(&engine, &req));
         }
         Cmd::Symbols { targets, json } => {
             if json {

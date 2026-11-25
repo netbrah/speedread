@@ -12,9 +12,9 @@
 
 > **Fork of [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green.** [netbrah/speedread](https://github.com/netbrah/speedread) is maintained by netbrah. The MIT license is preserved ([LICENSE](LICENSE)): Copyright (c) 2026 Brennen Green, and fork changes Copyright (c) 2026 netbrah.
 
-**Token-efficient code search and navigation for AI coding agents.** speedread is an MCP server and CLI that gives Claude Code, GitHub Copilot, Codex, Cursor, Gemini CLI and other agents the part of a codebase a question needs, within a token budget: the function around each search hit, a large file's skeleton, a symbol's callers and implementations, or only what changed since the last read. Not whole files and bare grep hits.
+**Token-efficient code search and navigation for AI coding agents.** speedread is an MCP server and CLI that gives Claude Code, GitHub Copilot, Codex, Cursor, Gemini CLI and other agents the part of a codebase a question needs, within a token budget: the function around each search hit, a large file's skeleton, or only what changed since the last read. Not whole files and bare grep hits.
 
-This fork adds working-directory independence, bounded discovery and memory, loop and branch context for hits, structural search, and closure and value marks in `trace`. Install it from the [netbrah releases](https://github.com/netbrah/speedread/releases) or the plugin at [`plugins/speedread-netbrah/`](plugins/speedread-netbrah/) (Cursor, Claude, Grok). What changed: [docs/FORK.md](docs/FORK.md).
+This fork adds working-directory independence, bounded discovery and memory, loop and branch context for hits, and structural search. Install it from the [netbrah releases](https://github.com/netbrah/speedread/releases) or the plugin at [`plugins/speedread-netbrah/`](plugins/speedread-netbrah/) (Cursor, Claude, Grok). What changed: [docs/FORK.md](docs/FORK.md).
 
 **`Read` is the wrong abstraction for coding agents.** Agent code reading should be adaptive, stateful, symbol-aware and token-budgeted instead of byte-oriented. Every model call re-sends the system prompt, tool definitions and conversation so far (18–21k tokens before any code, in our evals), so an agent's cost is driven more by round trips than by bytes. ripgrep returns matches and `cat` returns bytes, so the agent asks again: open the file, find the function, search for the next hop. speedread returns *the minimum useful unit of code for the question*, with enough structure that the next call often isn't needed.
 
@@ -22,7 +22,7 @@ This fork adds working-directory independence, bounded discovery and memory, loo
 |---|---|---|
 | where something is | file names, or bare matching lines | each hit under its enclosing function or class, with its line range (`search`) |
 | one function in a large file | the file in 2,000-line pages, or a guessed range | that symbol's full source (`read path#Symbol`), or a skeleton of the file |
-| callers, callees, implementations | a search per hop, then more reads | the relationship in one call, up to three levels deep (`trace`) |
+| callers, callees, implementations | a search per hop, then more reads | the enclosing functions from `search`, then their source in one batched `read` |
 | a file again, after an edit | the file again | only what changed, labelled by symbol (`read path@etag`) |
 
 <p align="center"><img src="docs/assets/race.svg" alt="Recorded transcripts replayed: built-in tools need 4 model calls and 86,629 tokens; speedread needs 2 model calls and 43,514 tokens" width="100%"></p>
@@ -40,7 +40,7 @@ These measurements are upstream's, from Brennen Green's [speedread](https://gith
 | **Bug fixes**: find, edit, run the test suite (with guidance · exclusive) | 16 | −3% · −1% (not significant) | −24% · −27% (not significant) | 100% → 100%; compression never hid the bug |
 | **Installed but not made the reader** (Q&A · bug fixes) | 10 · 16 | **+31% · +46%** (higher on 9 of 10 · 8 of 8 tasks) | — | used in **0 of 26** trials |
 
-- **Round trips drive the savings.** speedread saves where it removes model calls: answers with enclosing context, batched reads, `trace` in one hop. On bug fixes, editing and testing dominate the turns, and read results were about 1% of input, so tokens barely moved.
+- **Round trips drive the savings.** speedread saves where it removes model calls: answers with enclosing context and batched reads. On bug fixes, editing and testing dominate the turns, and read results were about 1% of input, so tokens barely moved.
 - **Adoption decides everything.** An unused MCP server is not free: its tool definitions ride along on every call (+2.2k tokens per call, measured). Configure it as [the reader](#make-it-the-reader).
 - **Scope.** One model in one harness, and the relationship and bug-fix suites are small. Other clients and models are untested; treat these numbers as evidence for this setup, not a promise for yours.
 
@@ -77,19 +77,17 @@ VS Code, Cursor, Codex, Gemini CLI, Zed and Claude Desktop: [Configuration](#con
 ```sh
 speedread map --symbols                      # structure, with each file's top-level definitions
 speedread search 'handleRequest'             # hits grouped under their enclosing function
-speedread trace '#handleRequest' --depth 2   # callers of callers; --direction callees|refs|impls
 speedread read 'src/app.ts#Server.start' src/util.ts:40-80   # several targets, one call, one budget
 ```
 
 ## The primitives
 
-Four tools over MCP, mirrored by the CLI:
+Three tools over MCP, mirrored by the CLI:
 
 | Primitive | Job | Returns |
 |---|---|---|
 | **map** | locate structure | budgeted repo tree with line counts, importance-weighted; top-level symbols on request |
 | **search** | locate text | ripgrep's engine; every hit grouped under its enclosing function or class, with line range |
-| **trace** | locate relationships | callers, callees, references, implementations: syntactic and receiver-aware |
 | **read** | obtain exact evidence | batched targets and `path#Symbol`s under one token budget; `path@etag` returns only what changed |
 
 ### `read`: batched, budgeted, symbol-aware
@@ -149,48 +147,13 @@ $ speedread search 'def url_for|current_app.url_for\(' src/flask/helpers.py
 
 `output=symbols` returns the full source of every enclosing function in the same call. `output=files` returns paths with counts.
 
-### `trace`: relationships, not text
-
-The expensive agent loop is search → open → search again to follow a call chain. `trace` does it in one call. Real output on gin (abridged):
-
-```
-$ speedread trace '#AbortWithStatus' --depth 2
-==> callers of Context.AbortWithStatus (context.go:221-227)
-func (c *Context) AbortWithStatus(code int)
-14 call sites in 14 functions · syntactic: comments, strings and the definition excluded
-context.go
-  [245-251] func (c *Context) AbortWithError(code int, err error) *Error
-    249	c.AbortWithStatus(code)
-      ← [820-828] func (c *Context) BindUri(obj any) error
-        824	c.AbortWithError(http.StatusBadRequest, err).SetType(ErrorTypeBind) //nolint: errcheck
-…
-$ speedread trace Render.Render --direction impls
-==> implementations of Render.Render (render/render.go:11-12)
-Render(http.ResponseWriter) error
-19 implementations of Render · syntactic: types whose method sets cover the interface
-  render/bson.go [13-16] type BSON
-    [20-29] func (r BSON) Render(w http.ResponseWriter) error
-  render/data.go [12-16] type Data
-    [18-26] func (r Data) Render(w http.ResponseWriter) (err error)
-…
-```
-
-Its four directions:
-
-- `callers`: call sites grouped by calling function; `depth` 2–3 builds the tree.
-- `callees`: each call in the body, resolved to its definition.
-- `refs`: every use, including imports and type mentions.
-- `impls`: subclasses and trait, protocol and interface implementations. Go interfaces are matched structurally, by method sets. A method target lists each override.
-
-Comments and strings are excluded by tree-sitter. Same-named definitions are told apart by receiver, enclosing class, Go package and file. Sites that stay ambiguous are marked `?`, never silently merged. It is syntactic, with no type inference. See [Limitations](#limitations-and-roadmap).
-
 ### `map`: a budgeted overview
 
 A .gitignore-aware tree with line counts. Directories expand by importance until the budget (default 3,000) is spent: source first, then hidden, test or vendored trees. `symbols=true` adds each file's top-level definitions. Symlinks are listed as `name → target` and never followed.
 
 ### Code execution and Skills
 
-Anthropic's [*Code execution with MCP*](https://www.anthropic.com/engineering/code-execution-with-mcp) argues for filtering data before it reaches the model. The four tool definitions cost **~1.4k tokens** in total. The CLI mirrors them and adds JSON Lines for agents that script:
+Anthropic's [*Code execution with MCP*](https://www.anthropic.com/engineering/code-execution-with-mcp) argues for filtering data before it reaches the model. The three tool definitions' token cost is measured in [`evals/results/remove-trace.md`](evals/results/remove-trace.md). The CLI mirrors them and adds JSON Lines for agents that script:
 
 ```sh
 speedread symbols src --json | jq -r 'select(.kind=="function" and .end-.start>80) | "\(.path):\(.start) \(.qualified)"'
@@ -350,7 +313,7 @@ claude --disallowedTools Grep Glob     # keep Read: Edit requires it
 ## Reading code
 Use the speedread MCP tools to read, search and navigate code; use built-in tools only to edit and run commands.
 - `read` everything you need (files, `path:A-B`, `path#Name`, `#Name`) in ONE call; expand skeletons with `path#Name`.
-- `search` finds text (hits show their enclosing function); `trace` follows callers, callees and implementations.
+- `search` finds text (hits show their enclosing function); batch the enclosing symbols into one `read`.
 - After editing, `read path@etag` to see only what changed.
 ```
 
@@ -376,8 +339,8 @@ Environment variables:
 
 ## Limitations and roadmap
 
-- **`trace` is syntactic.** It uses tree-sitter plus name resolution by receiver, class and package, with no type inference, so `x.f()` on an unknown receiver matches every `f`, marked `?`. Calls inside closures and lambdas are attributed to the enclosing named function, and functions passed as values aren't calls. The next step is an **optional LSP/SCIP layer** behind the same `trace` interface, for exact references, overrides and call hierarchies.
-- **Definition overhead and adoption.** The server adds ~2.2k tokens to every model call (net +0.9k when it replaces view/grep/glob), whether or not it's used. Leaner descriptions, A/B tests of tool names and descriptions for unprompted adoption, and a single high-level `context` tool that picks map, search, trace or read itself are next.
+- **Relationships are search plus a batched read.** A separate `trace` tool was removed: search already groups hits under the enclosing symbol, and one `read` takes every symbol the question needs. A noisy trace still had to be checked by reading the source. See [`docs/rejected/precise-trace.md`](docs/rejected/precise-trace.md).
+- **Definition overhead and adoption.** Tool definitions are sent on every model call, whether or not they are used. Leaner descriptions and A/B tests of tool names and descriptions for unprompted adoption are next.
 - **Sample sizes.** The bug-fix and relationship suites have 16 and 8 trials per arm, and their bug-fix token and time differences are within noise. More tasks, more trials and other harnesses (Claude Code, Codex) are next.
 - Budgets are estimates, not tokenizer counts. They are calibrated to offline tokenizers, plus the Claude profile from production counts.
 - Built and tuned for macOS on Apple Silicon. Linux static musl binaries ship and pass CI, and are still less tuned. Intel macOS binaries ship and are not in CI. Windows is not supported. See [Platform support](#platform-support).

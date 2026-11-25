@@ -1,0 +1,422 @@
+{
+  "binary_bytes": {
+    "after": 42234928,
+    "before": 42583408
+  },
+  "fixture": {
+    "cases": [
+      {
+        "id": "alpha-refs",
+        "name": "alpha",
+        "snippets": 4,
+        "trace": {
+          "calls": 1,
+          "tokens": 222.0,
+          "pass": true
+        },
+        "search": {
+          "calls": 1,
+          "tokens": 238.0,
+          "pass": true,
+          "symbols": 4
+        },
+        "search_plus_batched_read": {
+          "calls": 2,
+          "tokens": 597.2,
+          "pass": true,
+          "read_targets": 4
+        },
+        "one_batched_read": {
+          "calls": 1,
+          "tokens": 855.3,
+          "pass": true
+        }
+      },
+      {
+        "id": "alpha-callers",
+        "name": "alpha",
+        "snippets": 3,
+        "trace": {
+          "calls": 1,
+          "tokens": 224.6,
+          "pass": true
+        },
+        "search": {
+          "calls": 1,
+          "tokens": 238.0,
+          "pass": true,
+          "symbols": 4
+        },
+        "search_plus_batched_read": {
+          "calls": 2,
+          "tokens": 597.2,
+          "pass": true,
+          "read_targets": 4
+        },
+        "one_batched_read": {
+          "calls": 1,
+          "tokens": 855.3,
+          "pass": true
+        }
+      },
+      {
+        "id": "lib-helper-refs",
+        "name": "helper",
+        "snippets": 1,
+        "trace": {
+          "calls": 1,
+          "tokens": 126.4,
+          "pass": true
+        },
+        "search": {
+          "calls": 1,
+          "tokens": 189.1,
+          "pass": true,
+          "symbols": 3
+        },
+        "search_plus_batched_read": {
+          "calls": 2,
+          "tokens": 398.1,
+          "pass": true,
+          "read_targets": 3
+        },
+        "one_batched_read": {
+          "calls": 1,
+          "tokens": 855.3,
+          "pass": true
+        }
+      },
+      {
+        "id": "other-helper-refs",
+        "name": "helper",
+        "snippets": 1,
+        "trace": {
+          "calls": 1,
+          "tokens": 137.3,
+          "pass": true
+        },
+        "search": {
+          "calls": 1,
+          "tokens": 189.1,
+          "pass": true,
+          "symbols": 3
+        },
+        "search_plus_batched_read": {
+          "calls": 2,
+          "tokens": 398.1,
+          "pass": true,
+          "read_targets": 3
+        },
+        "one_batched_read": {
+          "calls": 1,
+          "tokens": 855.3,
+          "pass": true
+        }
+      },
+      {
+        "id": "buf-push-refs",
+        "name": "push",
+        "snippets": 1,
+        "trace": {
+          "calls": 1,
+          "tokens": 156.0,
+          "pass": true
+        },
+        "search": {
+          "calls": 1,
+          "tokens": 192.6,
+          "pass": true,
+          "symbols": 4
+        },
+        "search_plus_batched_read": {
+          "calls": 2,
+          "tokens": 475.1,
+          "pass": true,
+          "read_targets": 4
+        },
+        "one_batched_read": {
+          "calls": 1,
+          "tokens": 855.3,
+          "pass": true
+        }
+      },
+      {
+        "id": "buf-push-callers",
+        "name": "push",
+        "snippets": 1,
+        "trace": {
+          "calls": 1,
+          "tokens": 146.1,
+          "pass": true
+        },
+        "search": {
+          "calls": 1,
+          "tokens": 192.6,
+          "pass": true,
+          "symbols": 4
+        },
+        "search_plus_batched_read": {
+          "calls": 2,
+          "tokens": 475.1,
+          "pass": true,
+          "read_targets": 4
+        },
+        "one_batched_read": {
+          "calls": 1,
+          "tokens": 855.3,
+          "pass": true
+        }
+      },
+      {
+        "id": "speak-impls",
+        "name": "Speak",
+        "snippets": 2,
+        "trace": {
+          "calls": 1,
+          "tokens": 82.7,
+          "pass": true
+        },
+        "search": {
+          "calls": 1,
+          "tokens": 155.6,
+          "pass": true,
+          "symbols": 4
+        },
+        "search_plus_batched_read": {
+          "calls": 2,
+          "tokens": 448.4,
+          "pass": true,
+          "read_targets": 4
+        },
+        "one_batched_read": {
+          "calls": 1,
+          "tokens": 855.3,
+          "pass": true
+        }
+      },
+      {
+        "id": "beta-callees",
+        "name": "beta",
+        "snippets": 1,
+        "trace": {
+          "calls": 1,
+          "tokens": 93.3,
+          "pass": true
+        },
+        "search": {
+          "calls": 1,
+          "tokens": 73.3,
+          "pass": false,
+          "symbols": 1
+        },
+        "search_plus_batched_read": {
+          "calls": 2,
+          "tokens": 138.6,
+          "pass": true,
+          "read_targets": 1
+        },
+        "one_batched_read": {
+          "calls": 1,
+          "tokens": 855.3,
+          "pass": true
+        }
+      },
+      {
+        "id": "uses-helper-callees",
+        "name": "uses_helper",
+        "snippets": 2,
+        "trace": {
+          "calls": 1,
+          "tokens": 149.0,
+          "pass": true
+        },
+        "search": {
+          "calls": 1,
+          "tokens": 78.9,
+          "pass": false,
+          "symbols": 1
+        },
+        "search_plus_batched_read": {
+          "calls": 2,
+          "tokens": 155.0,
+          "pass": true,
+          "read_targets": 1
+        },
+        "one_batched_read": {
+          "calls": 1,
+          "tokens": 855.3,
+          "pass": true
+        }
+      }
+    ],
+    "one_read_tokens": 855.3
+  },
+  "schema_after": {
+    "names": [
+      "map",
+      "read",
+      "search"
+    ],
+    "tools_tokens": 1550.5,
+    "trace_tool_tokens": 0,
+    "instructions_tokens": 144.6
+  },
+  "schema_before": {
+    "names": [
+      "map",
+      "read",
+      "search",
+      "trace"
+    ],
+    "tools_tokens": 1949.2,
+    "trace_tool_tokens": 398.0,
+    "instructions_tokens": 156.4
+  },
+  "definition_tokens_saved_per_call": 398.7,
+  "instruction_tokens_saved_per_call": 11.8,
+  "relationships": {
+    "commits": {
+      "gin": "3b08cd7235bd5ad2f055aa9e38135f111f6c5926",
+      "flask": "d73fa1cdcbd8b1465c151db8924ba58b1dd14e35",
+      "ripgrep": "3fce3b5bb0236da2df6d99672afb8a719642eca7"
+    },
+    "tasks": [
+      {
+        "id": "gin-render-impls",
+        "trace": {
+          "calls": 1,
+          "tokens": 359.1,
+          "graders": 10,
+          "passed": 10,
+          "pass": true,
+          "misses": []
+        },
+        "search": {
+          "calls": 1,
+          "tokens": 1441.3,
+          "graders": 10,
+          "passed": 10,
+          "pass": true,
+          "misses": []
+        },
+        "search_plus_batched_read": {
+          "calls": 2,
+          "read_targets": 18,
+          "tokens": 4785.8,
+          "graders": 10,
+          "passed": 10,
+          "pass": true,
+          "misses": []
+        }
+      },
+      {
+        "id": "ripgrep-sink-impls",
+        "trace": {
+          "calls": 1,
+          "tokens": 434.9,
+          "graders": 6,
+          "passed": 6,
+          "pass": true,
+          "misses": []
+        },
+        "search": {
+          "calls": 1,
+          "tokens": 697.7,
+          "graders": 6,
+          "passed": 6,
+          "pass": true,
+          "misses": []
+        },
+        "search_plus_batched_read": {
+          "calls": 2,
+          "read_targets": 9,
+          "tokens": 7019.8,
+          "graders": 6,
+          "passed": 6,
+          "pass": true,
+          "misses": []
+        }
+      },
+      {
+        "id": "flask-dispatch-callees",
+        "trace": {
+          "calls": 1,
+          "tokens": 322.1,
+          "graders": 7,
+          "passed": 7,
+          "pass": true,
+          "misses": []
+        },
+        "read_body": {
+          "calls": 1,
+          "tokens": 404.0,
+          "graders": 7,
+          "passed": 3,
+          "pass": false,
+          "misses": [
+            "\\bdispatch_request\\b[^\\n]*\\b969\\b|\\b969\\b[^\\n]*\\bdispatch_request\\b",
+            "\\b1369\\b",
+            "\\b868\\b",
+            "\\b1024\\b"
+          ]
+        },
+        "search": {
+          "calls": 1,
+          "tokens": 404.0,
+          "graders": 7,
+          "passed": 3,
+          "pass": false,
+          "misses": [
+            "\\bdispatch_request\\b[^\\n]*\\b969\\b|\\b969\\b[^\\n]*\\bdispatch_request\\b",
+            "\\b1369\\b",
+            "\\b868\\b",
+            "\\b1024\\b"
+          ]
+        },
+        "search_plus_batched_read": {
+          "calls": 2,
+          "read_targets": 4,
+          "methods": [
+            "preprocess_request",
+            "dispatch_request",
+            "handle_user_exception",
+            "finalize_request"
+          ],
+          "tokens": 2188.9,
+          "graders": 7,
+          "passed": 7,
+          "pass": true,
+          "misses": []
+        }
+      },
+      {
+        "id": "gin-abort-two-hop",
+        "trace": {
+          "calls": 1,
+          "tokens": 1376.2,
+          "graders": 3,
+          "passed": 3,
+          "pass": true,
+          "misses": []
+        },
+        "search": {
+          "calls": 2,
+          "tokens": 1056.8,
+          "graders": 3,
+          "passed": 3,
+          "pass": true,
+          "misses": []
+        },
+        "search_plus_batched_read": {
+          "calls": 3,
+          "read_targets": 10,
+          "tokens": 3703.3,
+          "graders": 3,
+          "passed": 3,
+          "pass": true,
+          "misses": []
+        }
+      }
+    ]
+  }
+}

@@ -77,7 +77,7 @@ kept) and `dropin` (speedread merely added — measures unprompted adoption).
 
 ## Suite 3b — agent relationship questions (real agent)
 
-Four questions whose answers are relationships: two-hop callers, resolved callees, Go interface implementations (structural) and Rust trait implementations. The prompts never mention speedread or `trace`, so the suite also measures whether an agent picks the new primitive on its own. It is balanced: two questions are answerable with one good grep. Conditions `baseline` and `speedread` match Suite 3, plus `--no-subagents` in both.
+Four questions whose answers are relationships: two-hop callers, resolved callees, Go interface implementations (structural) and Rust trait implementations. The prompts never mention speedread or `trace`, so the suite also measures whether an agent picks the new primitive on its own. It is balanced: two questions are answerable with one good grep. Conditions `baseline` and `speedread` match Suite 3, plus `--no-subagents` in both. `trace` was removed after this run. The same questions answered with `search` and one batched `read` are in [`results/remove-trace.md`](results/remove-trace.md).
 
 ## Suite 4 — agent coding (real agent, SWE-style)
 
@@ -172,6 +172,7 @@ python3 evals/tool_eval.py  <bench> --speedread target/release/speedread --rg rg
 python3 evals/budget_eval.py <bench> --speedread target/release/speedread --claude-counter tok/claude_count.js
 python3 evals/agent_eval.py  --bench <bench> --trials 3 --conditions baseline,speedread --dropin-trials 1
 python3 evals/agent_eval.py  --bench <bench> --tasks evals/relationship_tasks.json --trials 2 --no-subagents
+python3 evals/trace_replaced.py target/release/speedread <before-binary> <bench>
 python3 evals/coding_eval.py --bench <bench> --venvs <venvs> --verify
 python3 evals/coding_eval.py --bench <bench> --venvs <venvs> --trials 2
 python3 evals/stats.py evals/results/<run>      # bootstrap intervals, per-task wins

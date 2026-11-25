@@ -30,7 +30,7 @@ pub struct Config {
     pub deadline: Option<Duration>,
     /// Ceiling for cached content in total: half for file contents, a quarter
     /// each for outlines and for `path@etag` snapshots. Residency only: files
-    /// and outlines are re-read on a miss, so search/read/trace/map answers do
+    /// and outlines are re-read on a miss, so search/read/map answers do
     /// not depend on it (an evicted snapshot turns a diff into a full read).
     pub cache_bytes: usize,
 }

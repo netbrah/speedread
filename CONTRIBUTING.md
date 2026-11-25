@@ -4,7 +4,7 @@ Thanks for helping. This repository is [netbrah/speedread](https://github.com/ne
 
 Good ways to help, roughly from smallest to largest:
 
-- **Report a wrong result**: an outline that misses a definition, a `trace` that misattributes a call, a budget that's exceeded. A public repository and commit, or a small file, makes it fixable. Send it as a pull request, or as a comment on one.
+- **Report a wrong result**: an outline that misses a definition, a search that groups a hit under the wrong symbol, a budget that's exceeded. A public repository and commit, or a small file, makes it fixable. Send it as a pull request, or as a comment on one.
 - **Verify a client setup** and fix its row in the README.
 - **Try it on Linux.** Static musl binaries ship and are still less tuned than Apple Silicon. Reports from distributions other than the CI image are welcome.
 - **Share eval results** from another harness or model, favorable or not. The form is [eval_report.yml](.github/ISSUE_TEMPLATE/eval_report.yml). Upstream's tracker (Brennen Green's repository): [eval report](https://github.com/brennengreen/speedread/issues/new?template=eval_report.yml).
@@ -37,14 +37,14 @@ Two debugging aids: `speedread debug <file> --sexp` prints a file's parsed symbo
 
 | File | What it does |
 |---|---|
-| `src/server.rs` | MCP server: the four tools, their argument schemas, and the model-facing instructions and descriptions |
+| `src/server.rs` | MCP server: the three tools, their argument schemas, and the model-facing instructions and descriptions |
 | `src/main.rs` | CLI, mirroring the tools, plus `symbols` and JSON Lines output |
 | `src/read.rs` | target parsing (`path:A-B`, `#Symbol`, globs, `@etag`) and the budget ladder |
 | `src/block.rs` | the enclosing block around a line when no symbol encloses it (indentation and closers) |
 | `src/render.rs` | line-number format, skeletons, comment and import folding |
 | `src/outline.rs` | tree-sitter symbol extraction, per language |
 | `src/structured.rs` | Markdown, JSON, YAML and TOML outlines |
-| `src/search.rs`, `src/trace.rs`, `src/map.rs` | the other three primitives |
+| `src/search.rs`, `src/map.rs` | search and map |
 | `src/diff.rs` | symbol-labelled diffs for `path@etag` |
 | `src/tokens.rs`, `src/engine.rs` | token estimator, tokenizer profiles, caches |
 | `src/walk.rs`, `src/macos.rs` | the macOS `getattrlistbulk` walker, the portable walker, process tuning |
@@ -55,7 +55,7 @@ Two debugging aids: `speedread debug <file> --sexp` prints a file's parsed symbo
 
 ## Model-facing text is product behavior
 
-The server instructions and tool descriptions in `src/server.rs` (`INSTRUCTIONS`, `READ_DESC`, `SEARCH_DESC`, `MAP_DESC`, `TRACE_DESC`) and the `description` in `skills/speedread/SKILL.md` are read by the model. They decide whether an agent uses speedread at all, and in the evals adoption decided everything: installed without guidance, speedread was used in 0 of 26 trials. They are also paid for on every model call.
+The server instructions and tool descriptions in `src/server.rs` (`INSTRUCTIONS`, `READ_DESC`, `SEARCH_DESC`, `MAP_DESC`) and the `description` in `skills/speedread/SKILL.md` are read by the model. They decide whether an agent uses speedread at all, and in the evals adoption decided everything: installed without guidance, speedread was used in 0 of 26 trials. They are also paid for on every model call.
 
 So changes to these strings:
 
@@ -70,11 +70,10 @@ So changes to these strings:
 2. In `src/lang.rs`, add a `LangId` variant with its `name()` and `grammar()`, and its extensions or file names in `detect()` (and `detect_shebang()` for scripts).
 3. In `src/outline.rs`, map the grammar's definition nodes to symbols in `Extractor::classify`. `Extractor::lua` is a small example. Set `comment_prefix` if comments don't start with `//`.
 4. In `src/render.rs`, teach `line_kind` the comment syntax if it isn't `//`, `/*` or one of the `#` languages, so compact skeletons fold comments.
-5. In `src/trace.rs`, check how `attribute` resolves receivers for the new language; languages are grouped there by how method calls name their receiver.
-6. Add `tests/fixtures/Sample.<ext>` with the constructs you mapped, run `UPDATE_SNAPSHOTS=1 cargo test --test outlines`, and review the generated `.outline` file line by line.
-7. Add the language to the list in the README (How it works → Outlines).
+5. Add `tests/fixtures/Sample.<ext>` with the constructs you mapped, run `UPDATE_SNAPSHOTS=1 cargo test --test outlines`, and review the generated `.outline` file line by line.
+6. Add the language to the list in the README (How it works → Outlines).
 
-To fix an outline in a language that's already supported, steps 3 and 6 are usually enough: add the construct that goes wrong to the fixture first, so the snapshot diff shows the fix.
+To fix an outline in a language that's already supported, steps 3 and 5 are usually enough: add the construct that goes wrong to the fixture first, so the snapshot diff shows the fix.
 
 ## Adding or verifying a client
 

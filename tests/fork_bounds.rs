@@ -186,16 +186,6 @@ fn every_tool_reports_incomplete_discovery() {
     let out = limited(&["read", "#zzz_absent_symbol"]);
     assert!(out.contains("incomplete"), "{out}");
     assert!(!out.contains("no definition found in"), "{out}");
-    // trace: a bare name, and callers of an explicit target.
-    let out = limited(&["trace", "#zzz_absent_symbol"]);
-    assert!(out.contains("incomplete"), "{out}");
-    let out = limited(&["trace", "src/core.rs#tracked_fn"]);
-    assert!(out.contains("incomplete:"), "{out}");
-    let (out, _) = fx.run(&["trace", "src/core.rs#tracked_fn"]);
-    assert!(
-        out.contains("tracked_caller") && !out.contains("incomplete"),
-        "{out}"
-    );
     // map
     let out = limited(&["map"]);
     assert!(out.contains("incomplete:"), "{out}");
@@ -265,46 +255,6 @@ fn the_definition_candidate_cap_is_no_longer_silent() {
     let (out, _) = fx.run(&["read", "#popular_name"]);
     assert!(out.contains("incomplete"), "{out}");
     assert!(out.contains("5,000 parsed"), "{out}");
-}
-
-#[test]
-fn a_trace_that_ran_out_of_time_does_not_claim_there_are_no_callers() {
-    let fx = Fx::new("trace-deadline", 0);
-    // Large enough that parsing it alone outlasts a 1 ms deadline.
-    let mut big = String::from("pub fn big_target() -> u32 {\n    7\n}\n");
-    for i in 0..20_000 {
-        big.push_str(&format!("pub fn filler_{i}() -> u32 {{\n    {i}\n}}\n"));
-    }
-    std::fs::write(fx.dir.join("repo/src/big.rs"), big).unwrap();
-    std::fs::write(
-        fx.dir.join("repo/src/user.rs"),
-        "pub fn user() -> u32 {\n    crate::big::big_target()\n}\n",
-    )
-    .unwrap();
-    let (out, _) = fx.run(&["--deadline-ms", "1", "trace", "src/big.rs#big_target"]);
-    assert!(out.contains("incomplete: stopped after 1 ms"), "{out}");
-    assert!(!out.contains("it may be unused"), "{out}");
-    assert!(out.contains("before the trace stopped"), "{out}");
-    // With time to finish, the caller is there.
-    let (out, _) = fx.run(&["trace", "src/big.rs#big_target"]);
-    assert!(out.contains("user") && !out.contains("incomplete"), "{out}");
-}
-
-#[test]
-fn a_trace_reads_the_tree_once_per_level() {
-    let fx = Fx::new("trace-walks", 300);
-    std::fs::write(
-        fx.dir.join("repo/src/outer.rs"),
-        "pub fn outer() -> u32 {\n    crate::core::tracked_caller()\n}\n",
-    )
-    .unwrap();
-    // The definition, its namesakes and its call sites: one walk, not three.
-    let (out, err) = fx.run(&["trace", "tracked_fn"]);
-    assert!(out.contains("tracked_caller"), "{out}");
-    assert_eq!(stat(&err, "walks"), 1, "{err}");
-    let (out, err) = fx.run(&["trace", "tracked_fn", "--depth", "2"]);
-    assert!(out.contains("outer"), "{out}");
-    assert_eq!(stat(&err, "walks"), 2, "{err}");
 }
 
 struct Client {
@@ -425,7 +375,6 @@ fn cache_size_changes_residency_not_answers() {
                 ));
             }
             outs.push(c.call("search", json!({"pattern": "fn big_3_59\\d\\d\\("})));
-            outs.push(c.call("trace", json!({"target": "src/core.rs#tracked_fn"})));
             outs.push(c.call("read", json!({"targets": ["#big_7_5999"]})));
             outs.push(c.call("map", json!({"path": "src", "symbols": true})));
         }
@@ -453,17 +402,6 @@ fn mcp_limits_are_per_request() {
     std::thread::sleep(std::time::Duration::from_millis(700));
     let b = c.call("search", json!({"pattern": "tracked_caller"}));
     assert_eq!(a, b);
-    // The entry limit applies to each walk, so a trace (several walks) of a
-    // tree under the limit stays complete.
-    let mut c = Client::spawn(&fx, &["--max-walk", "250"]);
-    let t = c.call(
-        "trace",
-        json!({"target": "src/core.rs#tracked_fn", "depth": 2}),
-    );
-    assert!(
-        t.contains("tracked_caller") && !t.contains("incomplete"),
-        "{t}"
-    );
 }
 
 #[test]
@@ -597,11 +535,4 @@ fn a_definition_after_a_very_long_line_is_still_found() {
     let (out, _) = fx.run(&["read", "#after_long"]);
     assert!(out.contains("src/generated.rs:"), "{out}");
     assert!(out.contains("pub fn after_long() -> u32 {"), "{out}");
-
-    let (out, _) = fx.run(&["trace", "after_long"]);
-    assert!(
-        out.starts_with("==> callers of after_long (src/generated.rs:"),
-        "{out}"
-    );
-    assert!(out.contains("crate::generated::after_long()"), "{out}");
 }

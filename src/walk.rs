@@ -87,8 +87,8 @@ pub const MAX_CANDIDATES: usize = 5000;
 
 /// Discovery limits of one request, shared by every walk it performs.
 ///
-/// The entry limit applies to each walk (a trace walks the same tree several
-/// times); the deadline and cancellation apply to the request as a whole.
+/// The entry limit applies to each walk; the deadline and cancellation apply
+/// to the request as a whole.
 /// When a limit fires the walk stops and [`Limits::stopped`] says why, so the
 /// answer can state that it is incomplete instead of claiming absence.
 #[derive(Debug)]
@@ -105,11 +105,11 @@ pub struct Limits {
     long_first: parking_lot::Mutex<Option<PathBuf>>,
     /// Times a limit was reached, whether or not it became the reported one.
     events: AtomicU64,
-    /// Files found to mention a name, by root and pattern: a trace asks the
-    /// same question of the same tree several times, and one walk answers it.
+    /// Files found to mention a name, by root and pattern: one walk answers a
+    /// repeated question about the same tree.
     mentions: parking_lot::Mutex<Vec<(MentionKey, Mentions)>>,
-    /// Whether those lists should cover every searchable file (a trace also
-    /// reads call sites from them) or only files that can hold a definition.
+    /// Whether those lists should cover every searchable file or only files
+    /// that can hold a definition.
     all_mentions: AtomicBool,
 }
 
@@ -147,10 +147,6 @@ impl Limits {
     }
 
     /// This request will look for occurrences as well as definitions.
-    pub(crate) fn want_all_mentions(&self) {
-        self.all_mentions.store(true, Ordering::Relaxed);
-    }
-
     pub(crate) fn wants_all_mentions(&self) -> bool {
         self.all_mentions.load(Ordering::Relaxed)
     }

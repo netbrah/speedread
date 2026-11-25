@@ -55,7 +55,7 @@ Tool definitions are paid on every request. speedread's four tool definitions co
 | Token budgets, not line counts | aider (binary search to 1,024 tokens), Codex (token budget) | Every tool is budgeted; items degrade largest-first |
 | Head + tail for logs | Codex CLI | Plain-text and streamed files truncate as head + tail with the exact omitted range |
 | Diff on re-read | Implied by AgentDiet ("expired" content) and Manus (filesystem as memory); **no existing implementation found** | `path@etag`: unchanged / appended lines / diff labelled with changed symbols |
-| Relationship queries | LocAgent (code graph), AutoCodeRover (AST search APIs), Serena (LSP) | `trace`: callers, callees, refs, impls, syntactic and receiver-aware |
+| Relationship queries | LocAgent (code graph), AutoCodeRover (AST search APIs), Serena (LSP) | `search` for the name, then one `read` of the enclosing symbols |
 | Actionable errors | Anthropic tool guidance, MCP `isError` guidance | "Did you mean", closest symbols, exact continuation targets |
 | Deterministic output | Manus: KV-cache hit rate is "the single most important metric" | Sorted walks, stable formats, no timings in tool output |
 
@@ -129,8 +129,6 @@ The evals in [`evals/`](../evals/README.md) follow Anthropic's [*Demystifying ev
 - **The Claude Code caveat is material for edit-heavy work.** Its Read-before-Edit rule, applied as an upper bound (a full Read of every edited file, re-sent on every later turn), turns the bug-fix suite's −3%/−1% into +10%/+19%.
 - **Identifiers that decide what an agent believes it has seen must not alias.** Etags are the full 64-bit xxh3 of the content (a collision among 100k snapshots is ~3 × 10⁻¹⁰), and shorter tags are rejected rather than prefix-matched.
 - **Next:**
-  - an optional LSP/SCIP layer behind `trace` for exact references, overrides and call hierarchies;
   - leaner tool definitions;
   - A/B tests of tool descriptions for unprompted adoption;
-  - a single high-level `context` tool;
   - more tasks and trials, and other harnesses (Claude Code, Codex).

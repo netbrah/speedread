@@ -15,7 +15,7 @@ Nothing here adds a persistent index, a graph store or a background process.
 | Bounded memory | `--cache-mb <MIB>` (`SPEEDREAD_CACHE_MB`) | on (256 MiB) | [02](specs/02-bounded-discovery.md) |
 | Loop/branch context for hits | `search --output scopes` / `output="scopes"` | opt-in | [03](specs/03-ancestor-context.md) |
 | Structural search | `search --ast '$X.unwrap()' [--lang rust]` / `ast=true`, `lang` | opt-in | [04](specs/04-structural-search.md) |
-| Closure and value-use marks in `trace` | nothing; `λ` and `→` appear in `trace` output | on | [05](specs/05-relationship-kinds.md) |
+| Closure and value-use marks in `trace` | removed with the `trace` tool | — | [rejected](rejected/precise-trace.md) |
 
 ## What changes if you do nothing
 
@@ -25,8 +25,7 @@ Nothing here adds a persistent index, a graph store or a background process.
   longer; `0` waits forever, as upstream does.
 - A text search no longer buffers a line of any length: past 4 MiB it stops reading that
   file and says `not fully searched: …`. One 200 MiB single-line bundle used to cost 1 GiB.
-- `trace` reads the tree once per level instead of three times, and a trace that reaches
-  its 20,000-line limit keeps the call sites nearest the definition, the same on every run.
+- `trace` was removed. Callers and callees are a `search` for the name, then one `read` of the enclosing symbols.
 - The MCP server no longer answers `Outside the workspace`. A server registered with
   `--root DIR`, or launched inside a project, used to refuse paths outside it; now the
   folder only says where relative paths and path-less calls resolve. Add `--restricted` to
@@ -42,9 +41,6 @@ Nothing here adds a persistent index, a graph store or a background process.
 - A long-lived server gives memory back when a request ends. Tree-sitter's C library used the
   system allocator, which kept what each parse freed: upstream stays at the high-water mark
   of the largest file it ever parsed (340 MiB after one 7 MiB file; 33 MiB here).
-- `trace` marks call sites inside closures with `λ` and lists places a function is passed,
-  assigned or returned as a value with `→`.
-
 Everything else is byte-identical to upstream `37abea2` on the 15-query reference set
 ([eval log](specs/eval.md)).
 
@@ -91,8 +87,8 @@ Perplexity Computer; an `.mcpb` bundle covers Claude Desktop chat. Commands for 
 with `--no-cwd-root` (and `--unrestricted`, which a server no longer needs), reads by
 absolute path or `base_dir`, and refuses a
 path-less call rather than searching wherever it was launched. It installs beside
-upstream's `speedread` rather than over it; both offer tools named `map`, `read`, `search`
-and `trace`, so enable one at a time.
+upstream's `speedread` rather than over it; both offer tools named `map`, `read` and
+`search`, so enable one at a time.
 
 Fork releases are versioned `<upstream minor + 1>.0-netbrah.N` (`speedread --version`, the
 MCP server info, the bundle and the plugin agree). The GitHub Actions release job publishes

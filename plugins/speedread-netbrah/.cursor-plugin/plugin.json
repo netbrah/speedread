@@ -2,7 +2,7 @@
   "name": "speedread-netbrah",
   "displayName": "speedread (netbrah fork)",
   "version": "0.2.1-netbrah.1",
-  "description": "Read, search and trace code within a token budget: the function around each hit, a big file's skeleton, a symbol's callers, or only what changed. Read-only, no index, no folder to configure. A fork of speedread by Brennen Green (MIT) with request deadlines and bounded memory.",
+  "description": "Read and search code within a token budget: the function around each hit, a big file's skeleton, or only what changed. Read-only, no index, no folder to configure. A fork of speedread by Brennen Green (MIT) with request deadlines and bounded memory.",
   "author": {
     "name": "netbrah",
     "url": "https://github.com/netbrah"

@@ -1,5 +1,7 @@
 # 05 — Relationship kinds and evidence
 
+The `trace` tool this note describes was removed. Relationships are a search plus one batched read; see [docs/rejected/precise-trace.md](../rejected/precise-trace.md). The rest of this note records what had shipped.
+
 Status: shipped (default; output is unchanged when no mark applies). Invariant: 6. Borrowed from codebase-memory-mcp (CALLS vs callable
 reference vs unresolved usage) and CodeGraph (annotated, inferred relationships).
 Covers upstream ROADMAP "Calls inside closures".

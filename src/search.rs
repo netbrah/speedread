@@ -361,18 +361,7 @@ pub(crate) fn scan(
     context: usize,
     max_matches: usize,
 ) -> Scan {
-    scan_in(e, roots, globs, None, matcher, context, max_matches)
-}
-
-/// [`scan`] over files already found to match, instead of walking for them.
-pub(crate) fn scan_files(
-    e: &Engine,
-    files: &[PathBuf],
-    matcher: &RegexMatcher,
-    context: usize,
-    max_matches: usize,
-) -> Scan {
-    scan_in(e, &[], &[], Some(files), matcher, context, max_matches)
+    scan_in(e, roots, globs, matcher, context, max_matches)
 }
 
 /// A whole-word pattern for any of `names`: `\b` only where a name itself
@@ -489,7 +478,6 @@ fn scan_in(
     e: &Engine,
     roots: &[PathBuf],
     globs: &[String],
-    known: Option<&[PathBuf]>,
     matcher: &RegexMatcher,
     context: usize,
     max_matches: usize,
@@ -529,43 +517,21 @@ fn scan_in(
         search_one(path);
         true
     };
-    match known {
-        // The files are already known (a walk of this request found them):
-        // search just those.
-        // The files are given in the caller's order of preference. Whole
-        // chunks are searched, in order, until the limit is reached, so what
-        // a limited scan keeps is the preferred files and the same ones on
-        // every run (a walk keeps whichever it reaches first).
-        Some(files) => {
-            for part in files.chunks(256) {
-                if total.load(Ordering::Relaxed) >= max_matches {
-                    stopped.store(true, Ordering::Relaxed);
-                    break;
-                }
-                if e.limits.expired() {
-                    break;
-                }
-                part.par_iter().for_each(|p| search_one(p));
-            }
+    for root in roots {
+        if root.is_file() {
+            visit(root);
+            continue;
         }
-        None => {
-            for root in roots {
-                if root.is_file() {
-                    visit(root);
-                    continue;
-                }
-                let opts = WalkOpts {
-                    globs: globs.to_vec(),
-                    ..e.walk_opts()
-                };
-                let _ = walk::walk(root, &opts, |entry| {
-                    if !searchable(&entry) {
-                        return true;
-                    }
-                    visit(&entry.path)
-                });
+        let opts = WalkOpts {
+            globs: globs.to_vec(),
+            ..e.walk_opts()
+        };
+        let _ = walk::walk(root, &opts, |entry| {
+            if !searchable(&entry) {
+                return true;
             }
-        }
+            visit(&entry.path)
+        });
     }
     let mut files = out.into_inner();
     files.sort_unstable_by(|a, b| {
@@ -1086,7 +1052,7 @@ pub fn find_definitions(
         let place = |h: &(Arc<Source>, Arc<Outline>, usize, i32)| {
             let disp = h.0.path.to_string_lossy();
             (
-                crate::trace::is_test_path(&disp),
+                crate::util::is_test_path(&disp),
                 h.0.path.components().count(),
             )
         };

@@ -50,7 +50,7 @@ speedread saves tokens only when the agent uses it instead of the built-in read 
 ## Reading code
 Use the speedread MCP tools to read, search and navigate code; use built-in tools only to edit and run commands.
 - `read` everything you need (files, `path:A-B`, `path#Name`, `#Name`) in ONE call; expand skeletons with `path#Name`.
-- `search` finds text (hits show their enclosing function); `trace` follows callers, callees and implementations.
+- `search` finds text (hits show their enclosing function); batch the enclosing symbols into one `read`.
 - After editing, `read path@etag` to see only what changed.
 ```
 

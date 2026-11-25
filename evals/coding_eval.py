@@ -47,7 +47,7 @@ sys.path.insert(0, str(HERE))
 from agent_eval import COMMON, session_usage, tok  # noqa: E402
 
 CONDITIONS = ("baseline", "available", "preferred", "exclusive")
-PREFER = ("\n\nUse the speedread MCP tools (read, search, trace, map) to read, search and navigate code; "
+PREFER = ("\n\nUse the speedread MCP tools (read, search, map) to read, search and navigate code; "
           "use the built-in tools only to edit files and run commands.")
 SR_TOOLS = {"speedread-read", "speedread-search", "speedread-map", "speedread-trace"}
 NATIVE_READ = {"view", "grep", "glob", "rg"}
