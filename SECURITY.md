@@ -2,7 +2,9 @@
 
 ## Reporting a vulnerability
 
-Please report vulnerabilities privately through GitHub: **Security → Report a vulnerability** ([direct link](https://github.com/brennengreen/speedread/security/advisories/new)). Please don't open a public issue. This is a one-person project, so allow a few days for a reply.
+Please report vulnerabilities in this fork privately through GitHub: **Security → Report a vulnerability** ([direct link](https://github.com/netbrah/speedread/security/advisories/new)). Please don't open a public issue. netbrah maintains the fork, so allow a few days for a reply.
+
+A vulnerability that is also in the original code can be reported upstream, to Brennen Green: [brennengreen/speedread advisories](https://github.com/brennengreen/speedread/security/advisories/new) (upstream).
 
 Fixes go into the latest release and `main`; older versions aren't patched.
 

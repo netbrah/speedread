@@ -6,6 +6,8 @@ license: MIT
 
 # speedread
 
+Fork of [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green. The MIT license is preserved. This copy is the netbrah plugin skill.
+
 speedread returns the *smallest useful unit of code* for the question, sized to a
 token budget: a symbol instead of a file, a skeleton instead of a truncated page, a
 diff instead of a re-read. Four tools (MCP) or the same four commands (CLI).

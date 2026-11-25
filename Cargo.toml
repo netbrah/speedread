@@ -1,12 +1,14 @@
 [package]
 name = "speedread"
 version = "0.2.0-netbrah.3"
+authors = ["Brennen Green", "netbrah (maintainer)"]
 edition = "2024"
 rust-version = "1.90"
-description = "Token-efficient code search and navigation for AI coding agents: a symbol-aware, token-budgeted MCP server and CLI. Built for macOS on Apple Silicon."
+description = "Token-efficient code search and navigation for AI coding agents: a symbol-aware, token-budgeted MCP server and CLI. Built for macOS and Linux."
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/brennengreen/speedread"
+repository = "https://github.com/netbrah/speedread"
+homepage = "https://github.com/netbrah/speedread"
 keywords = ["mcp", "ai-agents", "code-search", "code-navigation", "tree-sitter"]
 categories = ["command-line-utilities", "development-tools"]
 # Eval transcripts, demo and image assets stay on GitHub; the crate ships only what builds and tests.

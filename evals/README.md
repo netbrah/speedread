@@ -1,5 +1,7 @@
 # How speedread is evaluated
 
+These suites, and the committed results, are upstream's: Brennen Green's [speedread](https://github.com/brennengreen/speedread). They are kept in this fork unchanged. The interactive report is hosted upstream at [brennengreen.github.io/speedread](https://brennengreen.github.io/speedread/).
+
 speedread makes a strong claim — that coding agents should read code through a
 budgeted, symbol-aware, stateful interface instead of byte-oriented `Read`/`Grep`.
 A claim like that needs evidence at three levels: does each tool return the right

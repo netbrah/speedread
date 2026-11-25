@@ -1,13 +1,13 @@
 # speedread (netbrah fork) — plugin
 
+> **Fork of [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green.** The MIT license is preserved. Maintained by netbrah.
+
 One plugin folder for Claude Code, Claude Cowork, Cursor, Grok Build and
 Perplexity Computer. It gives the agent four read-only tools for code —
 `read`, `search`, `trace`, `map` — that return the part of a codebase a
 question needs within a token budget: the function around each search hit, a
 large file's skeleton, a symbol's callers and implementations, or only what
-changed since the last read. A fork of
-[speedread](https://github.com/brennengreen/speedread) by Brennen Green (MIT);
-what the fork changes is in [docs/FORK.md](https://github.com/netbrah/speedread/blob/v0.2.0-netbrah.3/docs/FORK.md).
+changed since the last read. What the fork changes is in [docs/FORK.md](https://github.com/netbrah/speedread/blob/v0.2.0-netbrah.3/docs/FORK.md).
 
 ## What is in the folder
 
@@ -65,4 +65,4 @@ Windows; WSL counts as Linux.
 
 ## License
 
-MIT, as upstream. See `LICENSE`.
+MIT, preserved from upstream. Copyright (c) 2026 Brennen Green, and fork changes Copyright (c) 2026 netbrah. See [LICENSE](../../LICENSE).

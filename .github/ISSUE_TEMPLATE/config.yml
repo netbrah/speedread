@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Questions and ideas
+  - name: Questions and ideas (upstream)
     url: https://github.com/brennengreen/speedread/discussions
-    about: Ask how to set speedread up for your agent, or discuss an idea before opening an issue.
+    about: Upstream discussions for Brennen Green's speedread. This fork takes changes as pull requests.
   - name: Security vulnerability
-    url: https://github.com/brennengreen/speedread/security/advisories/new
-    about: Please report these privately instead of in a public issue.
+    url: https://github.com/netbrah/speedread/security/advisories/new
+    about: Report a vulnerability in this fork privately. Issues in the original code can also go to Brennen Green via the upstream advisory form.

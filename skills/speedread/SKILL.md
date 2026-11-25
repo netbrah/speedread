@@ -5,6 +5,8 @@ description: Read, search and navigate code with a token budget. Use for any cod
 
 # speedread
 
+Fork of [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green. The MIT license is preserved. Maintained at [netbrah/speedread](https://github.com/netbrah/speedread). This file keeps upstream's workflow. The plugin copy, with this fork's arguments, is [`plugins/speedread-netbrah/skills/speedread/SKILL.md`](../../plugins/speedread-netbrah/skills/speedread/SKILL.md).
+
 speedread returns the *smallest useful unit of code* for the question, sized to a
 token budget: a symbol instead of a file, a skeleton instead of a truncated page, a
 diff instead of a re-read. Four tools (MCP) or the same four commands (CLI).

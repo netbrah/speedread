@@ -1,6 +1,8 @@
 # Fork additions
 
-This fork (`netbrah/speedread`) keeps speedread's
+[netbrah/speedread](https://github.com/netbrah/speedread) is a fork of [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green. The MIT license is preserved ([LICENSE](../LICENSE)). netbrah maintains the fork.
+
+This fork keeps speedread's
 shape — a stateless reader, no index, no daemon — and adds what a long-lived agent tool on
 large or messy trees needs. Specs, plan and measurements: [docs/specs/](specs/README.md).
 Nothing here adds a persistent index, a graph store or a background process.
@@ -93,20 +95,23 @@ upstream's `speedread` rather than over it; both offer tools named `map`, `read`
 and `trace`, so enable one at a time.
 
 Fork releases are versioned `<upstream minor + 1>.0-netbrah.N` (`speedread --version`, the
-MCP server info, the bundle and the plugin agree) and are GitHub pre-releases. They are not
-listed in the MCP Registry, which holds upstream's `io.github.brennengreen/speedread`.
+MCP server info, the bundle and the plugin agree). The GitHub Actions release job publishes
+a full release of this fork (not a pre-release) and registers it as `io.github.netbrah/speedread`.
+Upstream's registry listing stays `io.github.brennengreen/speedread`.
 
 `scripts/fork-release.sh TAG` cross-compiles every asset from Linux (macOS arm64 and
 x86_64, static Linux x86_64 and arm64, the bundle, checksums) and pins the plugin launcher
 to them. Binaries built that way for a platform the build machine cannot run have not been
-executed, and the release notes must say which. With Actions enabled on the fork, pushing a
-`v*` tag also builds the macOS arm64 assets natively (`.github/workflows/ci.yml`).
+executed, and the release notes must say which. With Actions enabled, pushing a `v*` tag
+builds all four targets and the bundle (`.github/workflows/ci.yml`).
 
 ## Not changed
 
 - The MCP tool descriptions and server instructions (model-facing text) are untouched apart
-  from the new argument descriptions. Upstream's skill (`skills/speedread/`) is untouched; the plugin carries its own copy with
-  the fork's arguments. A server started with no root appends one sentence to its
+  from the new argument descriptions. [`skills/speedread/SKILL.md`](../skills/speedread/SKILL.md)
+  keeps upstream's workflow and its model-facing description; it now says this repository
+  is netbrah's fork of speedread by Brennen Green. The plugin carries its own copy with
+  the fork's arguments, including `--unrestricted` on the command-line route. A server started with no root appends one sentence to its
   instructions (spec [07](specs/07-distribution.md)). Whether models pick
   the new arguments unprompted is not measured; upstream's agent evals need API keys.
 - The macOS fast walker compiles and lints clean for `aarch64-apple-darwin` with the limits
@@ -114,5 +119,5 @@ executed, and the release notes must say which. With Actions enabled on the fork
 
 ## Relationship to upstream
 
-Based on `brennengreen/speedread` `37abea2`. The plan for what to offer upstream, and in
+Based on [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green at `37abea2`. The MIT license is preserved. The plan for what to offer upstream, and in
 what order, is in [00-research.md](specs/00-research.md#pr-or-fork).

@@ -1,21 +1,21 @@
 # Contributing to speedread
 
-Thanks for helping. speedread has one maintainer, so for anything larger than a fix, a short issue first saves everyone time.
+Thanks for helping. This repository is [netbrah/speedread](https://github.com/netbrah/speedread), a fork of [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green. The MIT license is preserved ([LICENSE](LICENSE)). netbrah maintains the fork. GitHub Issues and Discussions are not enabled here, so open a pull request; for anything larger than a fix, describe the plan in the pull request.
 
 Good ways to help, roughly from smallest to largest:
 
-- **Report a wrong result**: an outline that misses a definition, a `trace` that misattributes a call, a budget that's exceeded. A public repository and commit, or a small file, makes it fixable.
+- **Report a wrong result**: an outline that misses a definition, a `trace` that misattributes a call, a budget that's exceeded. A public repository and commit, or a small file, makes it fixable. Send it as a pull request, or as a comment on one.
 - **Verify a client setup** and fix its row in the README.
-- **Try it on Linux** and report what breaks.
-- **Share eval results** from another harness or model, favorable or not ([template](https://github.com/brennengreen/speedread/issues/new?template=eval_report.yml)).
-- **Pick up a [ROADMAP.md](ROADMAP.md) item.** Each one lists its scope and the skills it needs.
+- **Try it on Linux.** Static musl binaries ship and are still less tuned than Apple Silicon. Reports from distributions other than the CI image are welcome.
+- **Share eval results** from another harness or model, favorable or not. The form is [eval_report.yml](.github/ISSUE_TEMPLATE/eval_report.yml). Upstream's tracker (Brennen Green's repository): [eval report](https://github.com/brennengreen/speedread/issues/new?template=eval_report.yml).
+- **Pick up a [ROADMAP.md](ROADMAP.md) item.** Each one lists its scope and the skills it needs. The list came with upstream; items this fork already ships are marked there.
 
 ## Setup
 
 You need Rust 1.90+ and a C compiler for the tree-sitter grammars (on macOS, Xcode's Command Line Tools).
 
 ```sh
-git clone https://github.com/brennengreen/speedread && cd speedread
+git clone https://github.com/netbrah/speedread && cd speedread
 cargo build --profile fast        # quick local builds, no LTO: target/fast/speedread
 cargo test
 ```

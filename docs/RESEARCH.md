@@ -1,6 +1,6 @@
 # Research: why agents read files badly, and what a better reader looks like
 
-This document summarizes the research behind speedread's design: how today's coding agents read files, where their tokens and turns go, which techniques have evidence behind them, what macOS offers for speed, and what MCP clients allow. Numbers marked **(measured)** come from our own experiments on an Apple M4 (see [evals/RESULTS.md](../evals/RESULTS.md)). Everything else is cited. Research was conducted in September 2026.
+Written for upstream [https://github.com/brennengreen/speedread](https://github.com/brennengreen/speedread) by Brennen Green, and kept in this fork. This document summarizes the research behind speedread's design: how today's coding agents read files, where their tokens and turns go, which techniques have evidence behind them, what macOS offers for speed, and what MCP clients allow. Numbers marked **(measured)** come from our own experiments on an Apple M4 (see [evals/RESULTS.md](../evals/RESULTS.md)). Everything else is cited. Research was conducted in September 2026.
 
 ## 1. Findings in brief
 
