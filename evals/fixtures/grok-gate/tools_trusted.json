@@ -1,0 +1,18 @@
+{
+  "label": "same built-ins as tools_untrusted.json plus the speedread MCP names a trusted server advertises. Shape from the grok 1.0.92 smoke, not a second live capture.",
+  "type": "available_commands",
+  "tools": [
+    "read_file",
+    "grep",
+    "list_dir",
+    "search_tool",
+    "use_tool",
+    "run_terminal_command",
+    "search_replace",
+    "write",
+    "speedread__map",
+    "speedread__read",
+    "speedread__search",
+    "speedread__trace"
+  ]
+}

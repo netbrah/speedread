@@ -197,4 +197,9 @@ python3 scripts/fetch-chromium-corpus.py
 python3 evals/definition_cost.py chromium --binary target/fast/speedread
 python3 evals/definition_cost.py agent --harness grok \
     --binary "$PWD/target/fast/speedread" --model <id from grok models> --yes
+python3 evals/test_grok_gate.py
 ```
+
+The agent command passes `--trust` and runs one preflight session per condition
+before the counted trials. `test_grok_gate.py` checks the grok 1.0.92 transcript
+shapes (sanitized) without starting Grok.

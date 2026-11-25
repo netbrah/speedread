@@ -1,0 +1,23 @@
+{
+  "label": "real-shape grok usage turns from one grok 1.0.92 smoke (model grok-4.7, usage reports grok-4.7-build). n=1. Session ids sanitized. inputTokens is the full prompt: 15004 = 6172 uncached + 8832 cache. Do not add cachedReadTokens on top.",
+  "baseline": {
+    "sessionId": "00000000-0000-0000-0000-000000000001",
+    "turns": [
+      {
+        "inputTokens": 15004,
+        "cachedReadTokens": 8832,
+        "cacheCreationTokens": 0
+      }
+    ]
+  },
+  "available_with_trust": {
+    "sessionId": "00000000-0000-0000-0000-000000000002",
+    "turns": [
+      {
+        "inputTokens": 15279,
+        "cachedReadTokens": 8832,
+        "cacheCreationTokens": 0
+      }
+    ]
+  }
+}

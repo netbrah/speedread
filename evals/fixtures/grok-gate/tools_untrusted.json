@@ -1,0 +1,14 @@
+{
+  "label": "real-shape tool list from a grok 1.0.92 session whose project MCP server was not trusted. The smoke saw 24 tools and no speedread__ name. This fixture keeps the names that the parser previously treated as speedread. search_tool and use_tool are built-ins and are on the baseline arm too.",
+  "type": "available_commands",
+  "tools": [
+    "read_file",
+    "grep",
+    "list_dir",
+    "search_tool",
+    "use_tool",
+    "run_terminal_command",
+    "search_replace",
+    "write"
+  ]
+}

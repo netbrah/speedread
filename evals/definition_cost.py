@@ -1043,6 +1043,9 @@ def cmd_self_test(_args) -> int:
         sys.exit("planned per-tool n is under 80% for the argument-validity MDE")
     if power_two_proportions(SELECTION_P0, SELECTION_P1, per_tool) < 0.80:
         sys.exit("planned per-tool n is under 80% for the selection MDE")
+    from test_grok_gate import main as grok_gate_tests
+    if grok_gate_tests() != 0:
+        return 1
     print(f"self-test ok: 5-tool attribution sums on o200k and cl100k; {len(tasks)} tasks")
     return 0
 
@@ -1057,7 +1060,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("power", help="print the pre-registered sample-size table").set_defaults(fn=cmd_power)
-    sub.add_parser("self-test", help="fifth-tool attribution and the task-set shape").set_defaults(fn=cmd_self_test)
+    sub.add_parser("self-test", help="token attribution, task shape, and Grok transcript fixtures").set_defaults(fn=cmd_self_test)
 
     p = sub.add_parser("tokens", help="tokenize the live tools/list and initialize payloads")
     p.add_argument("--binary", required=True)

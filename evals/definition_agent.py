@@ -10,9 +10,10 @@ execute this. One command:
 Without `--yes` the command prints the plan and exits.
 
 Copilot is the same gate with `--harness copilot`. It is not the adoption
-experiment in evals/agent_eval.py: sub-agents and web tools are off in every
-condition, and the exclusive condition also disallows the harness file tools
-so a shell read cannot pass as tool selection.
+experiment in evals/agent_eval.py. Every Grok argv passes `--trust`. The
+exclusive Grok deny list is read_file, grep, list_dir, run_terminal_command,
+search_replace, and write. A preflight session per condition aborts the run
+if init fails or the tool list has no `speedread__` name.
 """
 
 from __future__ import annotations
@@ -42,12 +43,27 @@ from definition_plan import (  # noqa: E402
     TOOLS,
 )
 
-# Grok reaches MCP tools as `<server>__<tool>` and, per the session docs, also
-# through search_tool / use_tool. `context` is recognised so a fifth tool is
-# scored as itself rather than dropped.
+# Grok reaches MCP tools as `<server>__<tool>` via `use_tool` (`tool_name` +
+# `tool_input`). `search_tool` and `use_tool` themselves are built-ins and are
+# present on a baseline session that has no speedread server. `context` is
+# recognised so a fifth tool is scored as itself rather than dropped.
 SPEEDREAD_TOOLS = ("read", "search", "map", "trace", "context")
-GROK_FILE_TOOLS = ("read_file", "grep", "list_dir", "bash")
+# Exclusive is read-only. `search_replace` refuses to start a session unless a
+# Read tool is still allowed or `skip_read_before_edit=true`. Denying the edit
+# tools removes that dependency. The shell tool is `run_terminal_command`.
+GROK_EXCLUSIVE_DENY = (
+    "read_file",
+    "grep",
+    "list_dir",
+    "run_terminal_command",
+    "search_replace",
+    "write",
+)
 COPILOT_DB = Path.home() / ".copilot" / "session-store.db"
+# `grok usage` field `inputTokens` is already the full prompt. These cache
+# fields are components of that total, not addends.
+GROK_CACHE_READ_KEYS = ("cachedReadTokens", "cacheReadTokens", "cache_read_input_tokens")
+GROK_CACHE_CREATE_KEYS = ("cacheCreationTokens", "cache_creation_input_tokens")
 
 
 def match_tool(name: str) -> str | None:
@@ -58,18 +74,28 @@ def match_tool(name: str) -> str | None:
     return None
 
 
+def argument_object(raw: dict) -> tuple[dict, bool]:
+    """Return (arguments, lost). `tool_input` is the Grok `use_tool` shape."""
+    for key in ("tool_input", "arguments", "args", "input"):
+        value = raw.get(key)
+        if isinstance(value, dict):
+            return value, False
+    return {}, True
+
+
 def nested_tool(raw, depth: int = 0):
     if depth > 6:
         return None
     if isinstance(raw, dict):
-        for key in ("name", "tool", "tool_name", "toolName"):
+        for key in ("tool_name", "name", "tool", "toolName"):
             if isinstance(raw.get(key), str):
                 found = match_tool(raw[key])
                 if found:
-                    args = raw.get("arguments", raw.get("args", raw.get("input", {})))
-                    if not isinstance(args, dict):
-                        args = {}
-                    return {"tool": found, "arguments": args, "via": raw[key]}
+                    args, lost = argument_object(raw)
+                    resolved = {"tool": found, "arguments": args, "via": raw[key]}
+                    if lost:
+                        resolved["arguments_lost"] = True
+                    return resolved
         for value in raw.values():
             found = nested_tool(value, depth + 1)
             if found:
@@ -178,64 +204,101 @@ def speedread_calls(events: list[dict]) -> list[dict]:
     return found
 
 
-def surface_ok(events: list[dict], exclusive: bool):
-    """True/False when a tools list was observed, else None (unverified)."""
-    names = None
+def tool_names(events: list[dict]) -> list[str] | None:
+    """Last `tools` list in the stream. None when the transcript never listed tools."""
+    found = None
     for event in events:
         tools = event.get("tools")
-        if event.get("type") in ("available_commands", "system") and isinstance(tools, list):
-            names = tools
+        if not isinstance(tools, list):
+            continue
+        names = []
+        for item in tools:
+            if isinstance(item, str):
+                names.append(item)
+            elif isinstance(item, dict) and isinstance(item.get("name"), str):
+                names.append(item["name"])
+        if names:
+            found = names
+    return found
+
+
+def speedread_listed(names: list[str]) -> bool:
+    """A real speedread MCP tool. Built-in `search_tool` / `use_tool` do not count."""
+    return any("speedread__" in name for name in names)
+
+
+def surface_ok(events: list[dict], condition: str):
+    """True when the listed tools match the condition, False when they do not, None if no list."""
+    names = tool_names(events)
     if names is None:
         return None
-    flat = {item if isinstance(item, str) else str(item) for item in names}
-    if not exclusive:
-        return True
-    leaked = set(GROK_FILE_TOOLS) & flat
-    has_entry = any(
-        name == "use_tool" or name == "search_tool" or name.startswith("speedread")
-        for name in flat
-    )
-    return not leaked and has_entry
+    has_speedread = speedread_listed(names)
+    if condition == "baseline":
+        return not has_speedread
+    if condition == "available":
+        return has_speedread
+    if condition == "exclusive":
+        leaked = [name for name in names if name in GROK_EXCLUSIVE_DENY]
+        return has_speedread and not leaked
+    return None
 
 
-def extract_full_input(obj: dict) -> tuple[int | None, dict]:
-    """Full prompt tokens for turn 1: uncached + cache read + cache creation.
-
-    Grok's headless `input_tokens` is the uncached bucket. Copilot's first-row
-    `input_tokens` is used as-is when that is all the row has. The raw object
-    is always kept; a missing bucket is not filled in with a guess.
-    """
+def _usage_blobs(obj: dict) -> list[dict]:
     turn = None
     turns = obj.get("turns") if isinstance(obj, dict) else None
-    if isinstance(turns, list) and turns:
+    if isinstance(turns, list) and turns and isinstance(turns[0], dict):
         turn = turns[0]
     elif isinstance(obj.get("session"), dict):
         turn = obj["session"]
-    else:
+    elif isinstance(obj, dict):
         turn = obj
     blobs = []
     if isinstance(turn, dict):
         blobs.append(turn)
         if isinstance(turn.get("usage"), dict):
             blobs.append(turn["usage"])
-    found = {}
-    aliases = {
-        "input_tokens": ("input_tokens", "inputTokens"),
-        "cache_read_input_tokens": ("cache_read_input_tokens", "cacheReadInputTokens"),
-        "cache_creation_input_tokens": ("cache_creation_input_tokens", "cacheCreationInputTokens"),
-    }
-    for blob in blobs:
-        for canon, keys in aliases.items():
-            for key in keys:
-                if key in blob and isinstance(blob[key], (int, float)) and canon not in found:
-                    found[canon] = blob[key]
-    if "input_tokens" not in found:
-        return None, found
-    full = found["input_tokens"]
-    for key in ("cache_read_input_tokens", "cache_creation_input_tokens"):
-        if key in found:
-            full += found[key]
-    return int(full), found
+    return blobs
+
+
+def _first_number(fields: dict, keys: tuple[str, ...]):
+    for key in keys:
+        value = fields.get(key)
+        if isinstance(value, (int, float)):
+            return key, value
+    return None, None
+
+
+def extract_full_input(obj: dict) -> tuple[int | None, dict]:
+    """Full prompt tokens for one `grok usage` turn.
+
+    `inputTokens` is already the full prompt (uncached + cache). Cache fields
+    are recorded and are not added again. A missing field stays missing.
+    """
+    fields: dict = {}
+    for blob in _usage_blobs(obj):
+        for key, value in blob.items():
+            if isinstance(value, (int, float)) and key not in fields:
+                fields[key] = value
+    buckets: dict = {}
+    cache_key, cache_read = _first_number(fields, GROK_CACHE_READ_KEYS)
+    create_key, cache_create = _first_number(fields, GROK_CACHE_CREATE_KEYS)
+    if cache_read is not None:
+        buckets["cached_read_tokens"] = cache_read
+        buckets["cached_read_field"] = cache_key
+    if cache_create is not None:
+        buckets["cache_creation_tokens"] = cache_create
+        buckets["cache_creation_field"] = create_key
+    if isinstance(fields.get("inputTokens"), (int, float)):
+        buckets["inputTokens"] = fields["inputTokens"]
+        buckets["full_source"] = "inputTokens"
+        return int(fields["inputTokens"]), buckets
+    if isinstance(fields.get("input_tokens"), (int, float)):
+        # Snake-case only. Still do not add cache: the live `grok usage` total
+        # is `inputTokens`, and adding a cache bucket double-counted it.
+        buckets["input_tokens"] = fields["input_tokens"]
+        buckets["full_source"] = "input_tokens"
+        return int(fields["input_tokens"]), buckets
+    return None, buckets
 
 
 def grok_usage(session_id: str) -> dict:
@@ -372,7 +435,7 @@ def prepare_dirs(binary: str, harness: str, out: Path) -> dict[str, Path]:
 
 def grok_argv(prompt, model, session_id, cwd, sandbox, exclusive, max_turns) -> list[str]:
     cmd = [
-        "grok", "--no-auto-update", "-p", prompt,
+        "grok", "--no-auto-update", "--trust", "-p", prompt,
         "--output-format", "streaming-json",
         "--always-approve", "-m", model, "-s", session_id,
         "--cwd", str(cwd),
@@ -381,8 +444,45 @@ def grok_argv(prompt, model, session_id, cwd, sandbox, exclusive, max_turns) -> 
         "--max-turns", str(max_turns),
     ]
     if exclusive:
-        cmd += ["--disallowed-tools", ",".join(GROK_FILE_TOOLS)]
+        cmd += ["--disallowed-tools", ",".join(GROK_EXCLUSIVE_DENY)]
     return cmd
+
+
+def init_failure(got: dict) -> str | None:
+    """Why this session never started, or None if it did."""
+    err = got.get("stderr_tail") or ""
+    out = got.get("stdout") or ""
+    text = f"{err}\n{out[:4000]}"
+    if got.get("exit_code") not in (0, None):
+        return f"exit {got.get('exit_code')}: {err[-400:] or out[:400]}"
+    for marker in (
+        "requires a Read tool",
+        "skip_read_before_edit",
+        "Couldn't start session",
+        "could not start session",
+        "failed to initialize",
+    ):
+        if marker.lower() in text.lower():
+            return marker
+    if not got.get("events") and not got.get("session_id"):
+        return "session did not start"
+    return None
+
+
+def preflight_problem(condition: str, got: dict, harness: str) -> str | None:
+    """None when this one session is safe to follow with the rest of the run."""
+    failed = init_failure(got)
+    if failed:
+        return failed
+    if harness != "grok":
+        return None
+    surface = surface_ok(got.get("events") or [], condition)
+    if surface is False:
+        names = tool_names(got.get("events") or [])
+        return f"tool surface does not match {condition}: {names}"
+    if condition in ("available", "exclusive") and surface is None:
+        return "no tools list; cannot confirm a speedread__ tool (--trust, then grok mcp doctor)"
+    return None
 
 
 def copilot_argv(prompt, model, mcp_config: str | None, exclusive: bool, max_credits: int) -> list[str]:
@@ -478,7 +578,9 @@ def plan_text(args) -> str:
         f"  first-call probe sessions: {probes} ({args.probe_sessions} × {', '.join(PROBE_CONDITIONS)}, interleaved)",
         f"  total sessions: {pooled + probes}",
         "  selection / argument-validity / task-success are scored on exclusive only",
-        "  first-call delta primary pair is available − baseline on the probe prompt",
+        "  first-call delta primary pair is available − baseline on grok usage inputTokens",
+        "  one preflight session per condition runs first and aborts the rest on init failure",
+        "  every grok argv passes --trust so a fresh git workdir loads project MCP",
         "  this is not the unprompted-adoption experiment",
         "",
     ])
@@ -581,13 +683,40 @@ def cmd_agent(args) -> int:
             "cmd": cmd,
         }
 
+    problems = []
+    preflight_rows = []
+    for condition in PROBE_CONDITIONS:
+        got = launch(PROBE_PROMPT, condition, "preflight", 1, 90)
+        problem = preflight_problem(condition, got, args.harness)
+        preflight_rows.append({
+            "condition": condition,
+            "exit_code": got["exit_code"],
+            "session_id": got["session_id"],
+            "full_input_tokens": got["full_input_tokens"],
+            "tool_names": tool_names(got["events"]),
+            "surface_ok": surface_ok(got["events"], condition) if args.harness == "grok" else None,
+            "problem": problem,
+            "stderr_tail": got["stderr_tail"],
+        })
+        (transcripts / f"preflight-{condition}.jsonl").write_text(got["stdout"])
+        if problem:
+            problems.append(f"{condition}: {problem}")
+    (out / "preflight.json").write_text(json.dumps(preflight_rows, indent=2) + "\n")
+    if problems:
+        print("preflight failed; not starting the trial loop:", flush=True)
+        for line in problems:
+            print(f"  {line}", flush=True)
+        meta["status"] = "preflight_failed"
+        (out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
+        return 1
+
     with probe_path.open("w") as fh:
         for repeat in range(args.probe_sessions):
             for condition in PROBE_CONDITIONS:
                 got = launch(PROBE_PROMPT, condition, "probe", 1, 90)
                 rec = {k: v for k, v in got.items() if k not in ("events", "stdout", "cmd")}
                 rec["repeat"] = repeat
-                rec["surface_ok"] = surface_ok(got["events"], condition == "exclusive")
+                rec["surface_ok"] = surface_ok(got["events"], condition)
                 fh.write(json.dumps(rec) + "\n")
                 fh.flush()
                 (transcripts / f"probe-{repeat:04d}-{condition}.jsonl").write_text(got["stdout"])
@@ -623,7 +752,7 @@ def cmd_agent(args) -> int:
                     arg_note = f"first speedread tool was {first['tool']}"
                 answer = assistant_text(got["events"])
                 success = graders_ok(task["answer_graders"], answer)
-                surface = surface_ok(got["events"], True)
+                surface = surface_ok(got["events"], "exclusive")
                 scored = surface is not False
                 rec = {
                     "task": task["id"],

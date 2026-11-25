@@ -59,8 +59,10 @@ Pre-registered in `evals/definition_plan.py`, printed by `python3 evals/definiti
 - 16 tasks, 4 per tool (`read`, `search`, `map`, `trace`).
 - **70 trials per task** on the exclusive condition: **280 trials per tool**, **1120** task sessions.
 - Two-sided α = 0.05. At the planning rates, 280 trials is **92% power** for a drop 0.90 → 0.80 (selection and task success) and **82% power** for a drop 0.98 → 0.93 (argument validity). The n those rates need for 80% is 196 and 266. Per-tool tests stay at α = 0.05 rather than Bonferroni: a gate that blocks when any tool regresses would rather false-block than miss a one-tool break.
-- **200 probe sessions per condition** (`baseline`, `available`, `exclusive`), interleaved, one fixed prompt that forbids tool use, `--max-turns 1`. Primary first-call number is available − baseline on full turn-1 input (uncached + cache read + cache creation, from `grok usage <session> 1`). At n = 200 that is 80% power for a **200 token** shift while the SD of the paired difference is at most **1010** tokens. If the observed SD is higher, the report states the shift this n can actually detect and does not keep 200 by inertia.
-- Exclusive disallows the harness file tools (`read_file`, `grep`, `list_dir`, `bash` on Grok; `view`, `grep`, `glob`, `rg`, `bash` on Copilot) so a shell read cannot pass as selection. Sub-agents and web tools are off in every condition. This is stricter than Suite 4's exclusive, which kept bash, and it is not the unprompted-adoption arm.
+- **200 probe sessions per condition** (`baseline`, `available`, `exclusive`), interleaved, one fixed prompt that forbids tool use, `--max-turns 1`. Primary first-call number is available − baseline on `grok usage` turn-1 `inputTokens` (already the full prompt; cache fields are not added). At n = 200 that is 80% power for a **200 token** shift while the SD of the paired difference is at most **1010** tokens. If the observed SD is higher, the report states the shift this n can actually detect and does not keep 200 by inertia.
+- Exclusive on Grok disallows `read_file`, `grep`, `list_dir`, `run_terminal_command`, `search_replace`, and `write`. The shell tool is `run_terminal_command`, not `bash`. `search_replace` refuses to start a session unless a Read tool remains or `skip_read_before_edit=true`; denying the edit tools is the read-only configuration that still inits. Copilot's exclusive list is unchanged (`view`, `grep`, `glob`, `rg`, `bash`). Sub-agents and web tools are off in every condition. This is not the unprompted-adoption arm.
+- Every Grok argv passes `--trust`. A fresh `git init` workdir otherwise leaves the project MCP server untrusted, so it never starts.
+- One preflight session per condition runs before the counted loops. A non-zero exit, an init error, or (on Grok) a tool list that does not match the condition aborts the run. Available and exclusive must list a `speedread__` tool. `search_tool` and `use_tool` are built-ins and do not count.
 - A trial whose tools list still offers those file tools is excluded, not scored as pass or fail. If that happens often, selection is inconclusive.
 - Stop rule: a first-call comparison is inconclusive when the interquartile range of the paired differences is larger than the absolute median difference. Min–max is reported and is not the stop rule, because the range grows with n.
 - If the observed selection or success rate is far from 0.90, or argument validity far from 0.98, recompute the detectable drop from the observed rate and this n. Do not keep the planning MDE.
@@ -76,7 +78,7 @@ python3 evals/definition_cost.py agent --harness grok \
 
 Copilot, same gate: `--harness copilot`. Without `--yes` the command prints the plan and the argv and does not start sessions. Workdirs are created under `/tmp` as their own git roots so `grok mcp add --scope project` cannot write into this repository.
 
-Grok facts this harness depends on, from the CLI docs rather than from a run here: `streaming-json` emits `tool_call` events with `toolName` and `rawInput`; `grok usage <session-id> 1` prints turn 1; headless `input_tokens` is the uncached bucket ([headless mode](https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/14-headless-mode.md), [sessions](https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/17-sessions.md)). MCP tools are namespaced `server__tool`, and `tool_definitions.json` omits those entries because the model reaches them through `search_tool` and `use_tool` ([MCP servers](https://docs.x.ai/build/features/mcp-servers)). The harness resolves both shapes and saves the raw `grok usage` JSON. A field it cannot find stays null.
+Grok's `use_tool` call carries `rawInput.tool_name` (`speedread__read`) and `rawInput.tool_input` (the arguments). `grok usage` turn 1 reports `inputTokens` as the full prompt. `cachedReadTokens` and `cacheCreationTokens` are parts of that total and are not added to it. MCP tools are namespaced `server__tool` ([MCP servers](https://docs.x.ai/build/features/mcp-servers)). A fresh workdir does not load project MCP until the process is started with `--trust`.
 
 Published Copilot first-call medians (Suite 4, claude-sonnet-5, not re-measured): baseline 17,950, available 20,151, exclusive 18,858. That is a harness delta, not this `tools/list` count. See `evals/RESULTS.md`.
 
@@ -108,7 +110,11 @@ Checked against the live payload, not against a reconstruction:
 
 - Most of the result is schema and the long `read` description. `search.inputSchema` (383) plus `read`'s description (244) are 627 of 1578. The whole `search` tool is 515; the whole `read` tool is 447.
 - `base_dir`'s sentence is repeated four times. Instructions are real (145) and are not inside `tools/list`.
-- 1578 and 145 encoded separately are 1723. The published Copilot available-minus-baseline first-call gap is 2,201 (20,151 − 17,950). 1723 is smaller than 2,201, which is consistent with client wrapping adding tokens the server does not send as one blob. It does not measure that wrapping. Grok's omission of MCP `server__tool` entries from `tool_definitions.json` means the live first-call delta on Grok can move by a different amount than 1578. That half stays pending.
+- 1578 and 145 encoded separately are 1723. The published Copilot available-minus-baseline first-call gap is 2,201 (20,151 − 17,950). 1723 is smaller than 2,201, which is consistent with client wrapping adding tokens the server does not send as one blob. It does not measure that wrapping.
+
+## One Grok session (n = 1)
+
+A smoke on the Grok machine (grok 1.0.92, model asked as grok-4.7, usage reports grok-4.7-build) is one diagnostic pair, not a result. With `--trust`, an available-arm first call was **15,279** `inputTokens` and the matching baseline was **15,004**. The rise is about **275** tokens, not 1,578. Grok exposes MCP tools lazily through `search_tool` / `use_tool`, so the per-session definition cost under Grok is not the full `tools/list` payload. The same smoke, without `--trust`, started sessions whose tool list had no `speedread__*` name, so those sessions do not measure the delta. The powered probe (200 pairs, `inputTokens` only, after a preflight that has seen `speedread__`) is what measures it. 275 sits near the 200-token minimum the probe was sized for. One pair does not locate the noise.
 
 ## What a slim would touch
 
@@ -142,4 +148,15 @@ What would change that decision:
 - The IQR of the paired first-call differences is larger than the absolute median difference. Inconclusive.
 - A Chromium query's later median leaves this run's min–max, or its error count changes. Do not explain that as a definition-token effect. Re-measure before citing it.
 
-Noise floor for the number already in hand: **0 tokens** on `tools/list`. Argument validity is one deterministic run. Chromium noise is the per-query min–max in the artifact. Agent noise is whatever the Grok run records; until then the agent half is pending.
+Noise floor for the number already in hand: **0 tokens** on `tools/list`. Argument validity is one deterministic run. Chromium noise is the per-query min–max in the artifact. The Grok first-call delta has one diagnostic pair (about +275) and no powered run yet.
+
+## CI on this fork
+
+`netbrah/speedread` is a fork of `brennengreen/speedread`. `ci.yml` and `linux.yml` trigger on every `pull_request` and on pushes to `main`, with no path filter. The workflow files are `active`. The Actions API reports `total_count: 0` runs for the repository, and PR #7's check rollup is empty. A push to `main` (the release merge) would have queued CI if Actions were enabled, so this is not a first-time-contributor approval and not a path filter.
+
+Nothing in the workflow files can turn Actions on. An owner enables them:
+
+1. Open https://github.com/netbrah/speedread/actions
+2. If the page says workflows are not running on this fork, click **I understand my workflows, go ahead and enable them**.
+
+If that banner is not there: **Settings → Actions → General → Actions permissions → Allow all actions and reusable workflows**, then **Save**. After that, push an empty commit or re-run the workflow from the Actions tab. This PR does not change the workflow files.

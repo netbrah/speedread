@@ -1,0 +1,12 @@
+{
+  "label": "real-shape fixture from a grok 1.0.92 transcript, sanitized",
+  "type": "tool_call",
+  "toolCallId": "call_fixture",
+  "toolName": "use_tool",
+  "rawInput": {
+    "tool_name": "speedread__read",
+    "tool_input": {
+      "targets": ["src/lib.rs#add"]
+    }
+  }
+}
