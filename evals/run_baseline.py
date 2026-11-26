@@ -21,12 +21,16 @@ The live command above is what has to be run where Grok is installed.
 
 import argparse
 import json
+import os
 import platform
 import shutil
 import subprocess
 import sys
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import endpoint  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -174,9 +178,16 @@ def plan_payload(spec):
     }
 
 
-def print_plan(spec):
+def plan_text(spec, endpoint_cfg=None, secret=None):
+    payload = plan_payload(spec)
+    if endpoint_cfg and endpoint_cfg.get("base_url"):
+        payload["endpoint"] = endpoint.public_view(endpoint_cfg, secret)
+    return endpoint.redact(json.dumps(payload, indent=2), secret)
+
+
+def print_plan(spec, endpoint_cfg=None, secret=None):
     print("description baseline plan", flush=True)
-    print(json.dumps(plan_payload(spec), indent=2))
+    print(plan_text(spec, endpoint_cfg, secret), flush=True)
 
 
 def ensure_flask_venv(bench, venvs):
@@ -211,11 +222,15 @@ def ensure_flask_venv(bench, venvs):
     return dest
 
 
-def live(args, spec):
-    print_plan(spec)
+def live(args, spec, ep):
+    secret = os.environ.get(ep.get("api_key_env") or "", "") if ep.get("base_url") else ""
+    print_plan(spec, ep, secret)
     print("grok:", *grok_version(), flush=True)
-    models = [m for m in args.models.split(",") if m]
-    models_present(models)
+    models = list(ep["models"])
+    if ep.get("base_url"):
+        sys.stdout.write(endpoint.redact(endpoint.preflight_report(ep), secret))
+    else:
+        models_present(models)
     binary = build_fast()
     print(f"binary {binary}", flush=True)
     run_checked([sys.executable, str(HERE / "fetch_corpora.py"), "--dest", str(args.bench)])
@@ -232,6 +247,8 @@ def live(args, spec):
         "--description", "current", "--models", ",".join(models),
         "--workers", str(args.workers),
     ]
+    if ep.get("base_url"):
+        common += ["--base-url", ep["base_url"], "--api-key-env", ep["api_key_env"]]
     suites = [
         ("suite3", HERE / "agent_tasks.json"),
         ("pin", HERE / "pin_tasks.json"),
@@ -283,11 +300,22 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bench", type=Path, help="directory of pinned checkouts (created if missing)")
     ap.add_argument("--dry-run", action="store_true", help="fixture self-check only")
-    ap.add_argument("--models", default=f"{PRIMARY},{REPLICATION}")
+    ap.add_argument("--preflight", action="store_true",
+                    help="check the on-prem /models endpoint and exit; does not start trials or print the key")
+    endpoint.add_arguments(ap, default_models=f"{PRIMARY},{REPLICATION}")
     ap.add_argument("--workers", type=int, default=2)
     ap.add_argument("--venvs", type=Path, default=None,
                     help="directory of virtualenvs (default: <bench>/venvs). flask is created there from evals/flask-tests.txt if missing")
     args = ap.parse_args()
+    ep = endpoint.resolve(
+        args.base_url, args.models, args.api_key_env,
+        default_models=f"{PRIMARY},{REPLICATION}",
+    )
+    if args.preflight:
+        if not ep["base_url"]:
+            raise SystemExit(f"preflight needs --base-url or {endpoint.ENV_BASE_URL}")
+        sys.stdout.write(endpoint.preflight_report(ep))
+        return 0
     spec = machine_spec()
     print("machine", json.dumps(spec), flush=True)
     if args.dry_run or not have_grok():
@@ -301,7 +329,7 @@ def main():
         return self_check()
     if not args.bench:
         raise SystemExit("--bench is required for the live run")
-    return live(args, spec)
+    return live(args, spec, ep)
 
 
 if __name__ == "__main__":

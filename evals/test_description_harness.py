@@ -2,6 +2,7 @@
 """Dry checks for the description harness. No model calls."""
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -517,6 +518,67 @@ class EndpointTests(unittest.TestCase):
         self.assertIn("onprem-b", report)
         self.assertIn("key_env ONPREM_API_KEY is set", report)
         self.assertNotIn(secret, report)
+
+    def test_plan_and_cli_preflight_hide_the_key(self):
+        secret = self.SECRET
+        ep = {
+            "base_url": f"http://127.0.0.1/v1?token={secret}",
+            "models": ["onprem-a"],
+            "api_key_env": "ONPREM_API_KEY",
+        }
+        text = run_baseline.plan_text({}, ep, secret=secret)
+        self.assertNotIn(secret, text)
+        self.assertIn("ONPREM_API_KEY", text)
+        self.assertIn("[redacted]", text)
+        clean = dict(ep, base_url="http://127.0.0.1:9/v1")
+        home = grok_eval.prepare_grok_home(Path("/no/such"), "/bin/speedread", "current", None, False, clean)
+        try:
+            toml = (home / "config.toml").read_text()
+        finally:
+            import shutil
+            shutil.rmtree(home, ignore_errors=True)
+        self.assertIn('env_key = "ONPREM_API_KEY"', toml)
+        self.assertNotIn(secret, toml)
+
+    def test_run_baseline_preflight_cli_against_a_stub(self):
+        secret = self.SECRET
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = json.dumps({"data": [{"id": "onprem-a"}, {"id": "onprem-b"}]}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, fmt, *args):
+                return
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            base = f"http://127.0.0.1:{server.server_address[1]}/v1"
+            env = os.environ.copy()
+            env["ONPREM_API_KEY"] = secret
+            env.pop(endpoint.ENV_BASE_URL, None)
+            env.pop(endpoint.ENV_MODELS, None)
+            env.pop(endpoint.ENV_API_KEY_ENV, None)
+            proc = subprocess.run(
+                [sys.executable, str(HERE / "run_baseline.py"), "--preflight",
+                 "--base-url", base, "--models", "onprem-a", "--api-key-env", "ONPREM_API_KEY"],
+                cwd=HERE.parent, env=env, capture_output=True, text=True,
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("onprem-a", proc.stdout)
+        self.assertIn("onprem-b", proc.stdout)
+        self.assertNotIn(secret, proc.stdout)
+        self.assertNotIn(secret, proc.stderr)
+        self.assertNotIn("fixture self-check", proc.stdout)
 
 
 if __name__ == "__main__":

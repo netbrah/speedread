@@ -64,6 +64,7 @@ sys.path.insert(0, str(HERE))
 
 import adoption  # noqa: E402
 import desc_variant  # noqa: E402
+import endpoint  # noqa: E402
 import mcp_allow  # noqa: E402
 from agent_eval import grade as grade_regex  # noqa: E402
 from grok_transcript import normalize_usage, parse_streaming_json  # noqa: E402
@@ -148,7 +149,7 @@ def initialization_failure(rec):
     return any(marker in blob for marker in _INIT_MARKERS)
 
 
-def prepare_grok_home(real_home, speedread_bin, variant, rss_log, use_mcp):
+def prepare_grok_home(real_home, speedread_bin, variant, rss_log, use_mcp, endpoint_cfg=None):
     home = Path(tempfile.mkdtemp(prefix="speedread-grok-"))
     if real_home.is_dir():
         for name in ("auth.json", "mcp_credentials.json"):
@@ -156,13 +157,14 @@ def prepare_grok_home(real_home, speedread_bin, variant, rss_log, use_mcp):
             if src.exists():
                 (home / name).symlink_to(src)
     if use_mcp:
-        (home / "config.toml").write_text(desc_variant.grok_config(
+        text = desc_variant.grok_config(
             speedread_bin, variant, rss_log=rss_log, variant_out=home / "description.json",
-        ))
-    else:
-        (home / "config.toml").write_text(
-            "# baseline trial: no MCP servers, so speedread is not on the tool list\n"
         )
+    else:
+        text = "# baseline trial: no MCP servers, so speedread is not on the tool list\n"
+    if endpoint_cfg:
+        text += endpoint.model_sections(endpoint_cfg)
+    (home / "config.toml").write_text(text)
     return home
 
 
@@ -224,6 +226,7 @@ def run_trial(job, args, out_dir, bench):
     real_home = Path(os.environ.get("GROK_HOME", Path.home() / ".grok"))
     home = prepare_grok_home(
         real_home, args.speedread, args.description, rss_path if use_mcp else None, use_mcp,
+        endpoint_cfg=getattr(args, "endpoint", None),
     )
     env = {**os.environ, "GROK_HOME": str(home)}
     cmd = grok_argv(prompt, model, repo, session_id, cond, args.max_turns)
@@ -523,7 +526,9 @@ def main():
     )
     ap.add_argument("--conditions", default="baseline,dropin")
     ap.add_argument("--trials", type=int, default=5)
-    ap.add_argument("--models", default="grok-4.7")
+    endpoint.add_arguments(ap, default_models=endpoint.GROK_EVAL_DEFAULT_MODELS)
+    ap.add_argument("--preflight", action="store_true",
+                    help="GET {base}/models and exit. Does not start a trial or print the key.")
     ap.add_argument("--description", default="current")
     ap.add_argument("--speedread", default="speedread")
     ap.add_argument("--workers", type=int, default=2)
@@ -535,6 +540,17 @@ def main():
     ap.add_argument("--venvs", type=Path, default=None)
     ap.add_argument("--keep", action="store_true")
     args = ap.parse_args()
+    ep = endpoint.resolve(
+        args.base_url, args.models, args.api_key_env,
+        default_models=endpoint.GROK_EVAL_DEFAULT_MODELS,
+    )
+    args.endpoint = ep
+    args.models = ",".join(ep["models"])
+    if args.preflight:
+        if not ep["base_url"]:
+            raise SystemExit(f"preflight needs --base-url or {endpoint.ENV_BASE_URL}")
+        sys.stdout.write(endpoint.preflight_report(ep))
+        return 0
     if args.live_check:
         model = next(m for m in args.models.split(",") if m)
         return live_check(args.speedread, model)
