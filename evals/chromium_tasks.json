@@ -1,0 +1,119 @@
+{
+  "suite": "speedread-chromium-qa",
+  "commit": "3a7520d2d79d6569d3a11f968d32b20665fa4db3",
+  "description": "Read-only questions on Chromium at 3a7520d2d79d6569d3a11f968d32b20665fa4db3 (the full name of the tree previously cited as 3a7520d2d79d). Graders are line numbers and version fields read from that tree (chrome/VERSION and the headers below were fetched from the commit; the two large-file lines are the symbol ranges in evals/fork/big-chromium.txt). Prompts do not mention speedread, trace, or MCP tools. fetch_corpora.py --check confirms each sentinel on a checkout.",
+  "tasks": [
+    {
+      "id": "chromium-version",
+      "repo": "chromium",
+      "category": "control: tiny file",
+      "prompt": "What MAJOR, MINOR, BUILD, and PATCH values does chrome/VERSION in this tree declare? Answer as MAJOR.MINOR.BUILD.PATCH.",
+      "graders": ["\\b160\\b", "\\b8155\\b", "160\\.0\\.8155\\.0"],
+      "reference": "160.0.8155.0"
+    },
+    {
+      "id": "chromium-command-line-guard",
+      "repo": "chromium",
+      "category": "control: one include guard",
+      "prompt": "What is the include-guard macro at the top of base/command_line.h, and on which line is the #ifndef of that guard? Answer as MACRO line.",
+      "graders": ["BASE_COMMAND_LINE_H_", "\\b16\\b"],
+      "reference": "BASE_COMMAND_LINE_H_ on line 16."
+    },
+    {
+      "id": "chromium-gurl-resolve",
+      "repo": "chromium",
+      "category": "control: small header, one symbol",
+      "prompt": "In url/gurl.h, on which line is GURL::Resolve(std::string_view relative) declared? Answer with the line number.",
+      "graders": ["\\b159\\b"],
+      "reference": "Line 159."
+    },
+    {
+      "id": "chromium-version-compare",
+      "repo": "chromium",
+      "category": "control: small header",
+      "prompt": "In base/version.h, on which line is Version::CompareTo(const Version& other) declared? Answer with the line number.",
+      "graders": ["\\b54\\b"],
+      "reference": "Line 54."
+    },
+    {
+      "id": "chromium-gurl-https",
+      "repo": "chromium",
+      "category": "small header, one method",
+      "prompt": "In url/gurl.h, on which line is GURL::SchemeIsHTTPOrHTTPS() declared? Answer with the line number.",
+      "graders": ["\\b252\\b"],
+      "reference": "Line 252."
+    },
+    {
+      "id": "chromium-gurl-srcdoc",
+      "repo": "chromium",
+      "category": "small header, one method",
+      "prompt": "In url/gurl.h, on which line is GURL::IsAboutSrcdoc() declared? Answer with the line number.",
+      "graders": ["\\b240\\b"],
+      "reference": "Line 240."
+    },
+    {
+      "id": "chromium-rfh-did-commit",
+      "repo": "chromium",
+      "category": "large file",
+      "prompt": "In content/browser/renderer_host/render_frame_host_impl.cc, on which line does RenderFrameHostImpl::DidCommitNavigation begin in this tree? Answer with the starting line number.",
+      "graders": ["\\b18236\\b"],
+      "reference": "Line 18236, `void RenderFrameHostImpl::DidCommitNavigation(`. Line 18234 is the comment above the function. The symbol span in evals/fork/big-chromium.txt started at 18234."
+    },
+    {
+      "id": "chromium-rfi-did-commit",
+      "repo": "chromium",
+      "category": "large file",
+      "prompt": "In content/renderer/render_frame_impl.cc, on which line does RenderFrameImpl::DidCommitNavigation begin in this tree? Answer with the starting line number.",
+      "graders": ["\\b4029\\b"],
+      "reference": "Line 4029, from evals/fork/big-chromium.txt on this commit."
+    },
+    {
+      "id": "chromium-gurl-is-valid",
+      "repo": "chromium",
+      "category": "control: small header",
+      "prompt": "In url/gurl.h, on which line is GURL::is_valid() declared? Answer with the line number.",
+      "graders": ["\\b92\\b"],
+      "reference": "Line 92."
+    },
+    {
+      "id": "chromium-gurl-about-blank",
+      "repo": "chromium",
+      "category": "control: small header",
+      "prompt": "In url/gurl.h, on which line is GURL::IsAboutBlank() declared? Answer with the line number.",
+      "graders": ["\\b236\\b"],
+      "reference": "Line 236."
+    },
+    {
+      "id": "chromium-gurl-is-standard",
+      "repo": "chromium",
+      "category": "control: small header",
+      "prompt": "In url/gurl.h, on which line is GURL::IsStandard() declared? Answer with the line number.",
+      "graders": ["\\b232\\b"],
+      "reference": "Line 232."
+    },
+    {
+      "id": "chromium-version-is-valid",
+      "repo": "chromium",
+      "category": "control: tiny header",
+      "prompt": "In base/version.h, on which line is Version::IsValid() declared? Answer with the line number.",
+      "graders": ["\\b45\\b"],
+      "reference": "Line 45."
+    },
+    {
+      "id": "chromium-version-get-string",
+      "repo": "chromium",
+      "category": "control: tiny header",
+      "prompt": "In base/version.h, on which line is Version::GetString() declared? Answer with the line number.",
+      "graders": ["\\b63\\b"],
+      "reference": "Line 63."
+    },
+    {
+      "id": "chromium-command-line-namespace",
+      "repo": "chromium",
+      "category": "control: one line",
+      "prompt": "In base/command_line.h, on which line does the namespace base open? Answer with the line number.",
+      "graders": ["\\b38\\b"],
+      "reference": "Line 38."
+    }
+  ]
+}

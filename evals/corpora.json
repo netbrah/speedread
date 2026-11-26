@@ -1,0 +1,108 @@
+{
+  "note": "Commits that satisfy the committed graders. Every commit is a full 40-character SHA; evals/fetch_corpora.py rejects a prefix. Chromium's full object name is the tree evals/fork/big-chromium.txt and docs/specs/eval.md called 3a7520d2d79d. A partial checkout that drops the listed extensions is the tree the agent tasks grade.",
+  "repos": {
+    "flask": {
+      "url": "https://github.com/pallets/flask.git",
+      "commit": "d73fa1cdcbd8b1465c151db8924ba58b1dd14e35",
+      "sentinels": [
+        {"path": "src/flask/app.py", "line": 628, "contains": "\"app\": self, \"g\": g"},
+        {"path": "src/flask/app.py", "line": 868, "contains": "def handle_user_exception"},
+        {"path": "src/flask/app.py", "line": 969, "contains": "def dispatch_request"},
+        {"path": "src/flask/app.py", "line": 995, "contains": "def full_dispatch_request"},
+        {"path": "src/flask/app.py", "line": 1024, "contains": "def finalize_request"},
+        {"path": "src/flask/app.py", "line": 1369, "contains": "def preprocess_request"},
+        {"path": "src/flask/app.py", "line": 758, "contains": "def test_client"},
+        {"path": "src/flask/app.py", "line": 1105, "contains": "def url_for"},
+        {"path": "src/flask/app.py", "line": 1569, "contains": "def wsgi_app"}
+      ]
+    },
+    "gin": {
+      "url": "https://github.com/gin-gonic/gin.git",
+      "commit": "0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646",
+      "sentinels": [
+        {"path": "go.mod", "line": 3, "contains": "go 1.26.0"},
+        {"path": "auth.go", "line": 60, "contains": "AbortWithStatus"},
+        {"path": "auth.go", "line": 109, "contains": "AbortWithStatus"},
+        {"path": "recovery.go", "line": 115, "contains": "AbortWithStatus"},
+        {"path": "context.go", "line": 5, "contains": "package gin"},
+        {"path": "gin.go", "line": 215, "contains": "func New("},
+        {"path": "context.go", "line": 208, "contains": "func (c *Context) IsAborted"},
+        {"path": "routergroup.go", "line": 142, "contains": "func (group *RouterGroup) GET("}
+      ]
+    },
+    "ripgrep": {
+      "url": "https://github.com/BurntSushi/ripgrep.git",
+      "commit": "435f59fc4b43af3ab32f34d53fa34978f393fe52",
+      "sentinels": [
+        {"path": "crates/core/flags/defs.rs", "line": 2362, "contains": "struct FixedStrings"},
+        {"path": "crates/ignore/src/walk.rs", "line": 1428, "contains": "pub fn run"},
+        {"path": "crates/core/flags/defs.rs", "line": 2581, "contains": "struct Glob;"},
+        {"path": "crates/core/flags/defs.rs", "line": 3811, "contains": "struct JSON;"},
+        {"path": "crates/core/flags/defs.rs", "line": 3976, "contains": "struct LineNumber;"}
+      ]
+    },
+    "zod": {
+      "url": "https://github.com/colinhacks/zod.git",
+      "commit": "19c40d2072288b4cafec851e9d056a72a88e5973",
+      "sentinels": [
+        {"path": "packages/zod/src/v3/types.ts", "line": 583, "contains": "kind: \"ip\""},
+        {"path": "packages/zod/src/v3/types.ts", "line": 584, "contains": "kind: \"cidr\""},
+        {"path": "packages/zod/src/v3/types.ts", "line": 585, "contains": "kind: \"base64\""}
+      ]
+    },
+    "vscode": {
+      "url": "https://github.com/microsoft/vscode.git",
+      "commit": "2242ebbb54efeeb0129e08e919e7e8d43033cd83",
+      "sentinels": [
+        {"path": "src/vs/editor/common/model/textModel.ts", "line": 487, "contains": "value === null || value === undefined"}
+      ]
+    },
+    "Alamofire": {
+      "url": "https://github.com/Alamofire/Alamofire.git",
+      "commit": "dea4bab91767a971d6e112bc955c6a82295589b7",
+      "sentinels": [
+        {"path": "Source/Core/Session.swift", "line": 136, "contains": "startRequestsImmediately: Bool = true"},
+        {"path": "Source/Core/Session.swift", "line": 272, "contains": "func cancelAllRequests"}
+      ]
+    },
+    "swift-argument-parser": {
+      "url": "https://github.com/apple/swift-argument-parser.git",
+      "commit": "d225b6fe8aed45478d1e36e770bf269c5d48d3a9",
+      "sentinels": [
+        {"path": "Sources/ArgumentParser/Parsable Types/ParsableCommand.swift", "line": 16, "contains": "CommandConfiguration"},
+        {"path": "Sources/ArgumentParser/Parsable Types/ParsableCommand.swift", "line": 32, "contains": "func run() throws"},
+        {"path": "Sources/ArgumentParser/Parsable Types/ParsableCommand.swift", "line": 23, "contains": "_commandName"}
+      ]
+    },
+    "chromium": {
+      "url": "https://chromium.googlesource.com/chromium/src.git",
+      "commit": "3a7520d2d79d6569d3a11f968d32b20665fa4db3",
+      "partial": true,
+      "omit_extensions": [
+        "png", "jpg", "jpeg", "gif", "webp", "ico", "icns", "bmp", "psd",
+        "mp3", "mp4", "wav", "ogg", "webm", "mov", "avi", "flac",
+        "ttf", "otf", "woff", "woff2", "eot",
+        "zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar",
+        "apk", "aab", "dmg", "iso", "pdf"
+      ],
+      "historical_size": "The checkout of this SHA with the extensions below omitted measured 476,800 files and 5.7G. docs/specs/eval.md records 474,447 files and 4.5 GB for the same commit under an earlier omission pass. Those are different trees; do not compare CLI timings to evals/fork/big-chromium.txt as if the file counts matched.",
+      "sentinels": [
+        {"path": "chrome/VERSION", "line": 1, "contains": "MAJOR=160"},
+        {"path": "chrome/VERSION", "line": 3, "contains": "BUILD=8155"},
+        {"path": "url/gurl.h", "line": 159, "contains": "Resolve"},
+        {"path": "base/version.h", "line": 54, "contains": "CompareTo"},
+        {"path": "base/command_line.h", "line": 16, "contains": "BASE_COMMAND_LINE_H_"},
+        {"path": "base/command_line.h", "line": 38, "contains": "namespace base"},
+        {"path": "url/gurl.h", "line": 92, "contains": "is_valid"},
+        {"path": "url/gurl.h", "line": 232, "contains": "IsStandard"},
+        {"path": "url/gurl.h", "line": 236, "contains": "IsAboutBlank"},
+        {"path": "url/gurl.h", "line": 240, "contains": "IsAboutSrcdoc"},
+        {"path": "url/gurl.h", "line": 252, "contains": "SchemeIsHTTPOrHTTPS"},
+        {"path": "base/version.h", "line": 45, "contains": "IsValid"},
+        {"path": "base/version.h", "line": 63, "contains": "GetString"},
+        {"path": "content/browser/renderer_host/render_frame_host_impl.cc", "line": 18236, "contains": "DidCommitNavigation"},
+        {"path": "content/renderer/render_frame_impl.cc", "line": 4029, "contains": "DidCommitNavigation"}
+      ]
+    }
+  }
+}
