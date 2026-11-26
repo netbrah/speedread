@@ -423,6 +423,13 @@ would make it a result, or an inconclusive one.
 python3 evals/run_baseline.py --bench /path/to/bench
 ```
 
+An on-prem OpenAI-compatible gateway uses the same command with
+`SPEEDREAD_BASE_URL`, `SPEEDREAD_MODELS`, and `SPEEDREAD_API_KEY_ENV`.
+The steps, the preflight, and why those token numbers are not grok-4.7
+numbers are in [`evals/RUN-ON-PREM.md`](../../evals/RUN-ON-PREM.md).
+Grok CLI reads the endpoint from the trial `config.toml` (`[model.*]`
+`base_url` and `env_key`), which is how 1.0.92 selects a custom model.
+
 The trace-not-visible and exclusive-starts check, on a machine with grok
 1.0.92. It is two short sessions plus the filtered `tools/list` preflight.
 It is not the baseline:
