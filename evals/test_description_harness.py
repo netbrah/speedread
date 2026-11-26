@@ -6,7 +6,9 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -14,6 +16,7 @@ sys.path.insert(0, str(HERE))
 
 import adoption  # noqa: E402
 import desc_variant  # noqa: E402
+import endpoint  # noqa: E402
 import fetch_corpora  # noqa: E402
 import grok_eval  # noqa: E402
 import run_baseline  # noqa: E402
@@ -432,6 +435,88 @@ class PinTests(unittest.TestCase):
         for name, spec in lock["repos"].items():
             fetch_corpora.require_full_sha(spec["commit"], name)
         self.assertEqual(lock["repos"]["chromium"]["commit"], full)
+
+
+class EndpointTests(unittest.TestCase):
+    SECRET = "super-secret-key-value"
+
+    def test_flag_beats_env_beats_default(self):
+        env = {
+            endpoint.ENV_BASE_URL: "https://from-env.example/v1",
+            endpoint.ENV_MODELS: "env-model",
+            endpoint.ENV_API_KEY_ENV: "ENV_KEY_NAME",
+        }
+        got = endpoint.resolve(None, None, None, default_models="default-model", environ={})
+        self.assertIsNone(got["base_url"])
+        self.assertEqual(got["models"], ["default-model"])
+        self.assertIsNone(got["api_key_env"])
+        got = endpoint.resolve(None, None, None, default_models="default-model", environ=env)
+        self.assertEqual(got["base_url"], "https://from-env.example/v1")
+        self.assertEqual(got["models"], ["env-model"])
+        self.assertEqual(got["api_key_env"], "ENV_KEY_NAME")
+        got = endpoint.resolve(
+            "https://from-flag.example/v1/", "flag-a,flag-b", "FLAG_KEY_NAME",
+            default_models="default-model", environ=env,
+        )
+        self.assertEqual(got["base_url"], "https://from-flag.example/v1")
+        self.assertEqual(got["models"], ["flag-a", "flag-b"])
+        self.assertEqual(got["api_key_env"], "FLAG_KEY_NAME")
+
+    def test_custom_base_url_requires_a_key_var_name(self):
+        with self.assertRaises(SystemExit):
+            endpoint.resolve("https://gw.example/v1", "m", None, default_models="m", environ={})
+
+    def test_config_names_the_key_var_and_not_the_secret(self):
+        ep = endpoint.resolve(
+            "https://gw.example/v1", "onprem.a", "ONPREM_API_KEY",
+            default_models="grok-4.7", environ={endpoint.ENV_API_KEY_ENV: "OTHER"},
+        )
+        toml = endpoint.model_sections(ep)
+        self.assertIn('base_url = "https://gw.example/v1"', toml)
+        self.assertIn('env_key = "ONPREM_API_KEY"', toml)
+        self.assertIn('api_backend = "chat_completions"', toml)
+        self.assertIn('[model."onprem.a"]', toml)
+        self.assertNotIn(self.SECRET, toml)
+        self.assertNotIn("api_key", toml)
+        view = json.dumps(endpoint.public_view(ep, secret=self.SECRET))
+        self.assertNotIn(self.SECRET, view)
+        self.assertEqual(endpoint.model_sections({"base_url": None, "models": ["grok-4.7"], "api_key_env": None}), "")
+
+    def test_preflight_against_a_local_stub_does_not_print_the_key(self):
+        secret = self.SECRET
+        seen = {}
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                seen["path"] = self.path
+                seen["auth"] = self.headers.get("Authorization")
+                body = json.dumps({"object": "list", "data": [{"id": "onprem-a"}, {"id": "onprem-b"}]}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, fmt, *args):
+                return
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            base = f"http://127.0.0.1:{server.server_address[1]}/v1"
+            env = {"ONPREM_API_KEY": secret}
+            ep = {"base_url": base, "models": ["onprem-a"], "api_key_env": "ONPREM_API_KEY"}
+            report = endpoint.preflight_report(ep, environ=env)
+        finally:
+            server.shutdown()
+            server.server_close()
+        self.assertEqual(seen["path"], "/v1/models")
+        self.assertEqual(seen["auth"], "Bearer " + secret)
+        self.assertIn("onprem-a", report)
+        self.assertIn("onprem-b", report)
+        self.assertIn("key_env ONPREM_API_KEY is set", report)
+        self.assertNotIn(secret, report)
 
 
 if __name__ == "__main__":
